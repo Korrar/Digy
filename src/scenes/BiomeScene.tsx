@@ -15,6 +15,8 @@ import { InventoryPanel } from '../components/ui/InventoryPanel';
 import { MobileControls, useTouchDetect } from '../components/ui/MobileControls';
 import { useInventoryStore } from '../stores/inventoryStore';
 import { CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE, CAMERA_MIN_POLAR, CAMERA_MAX_POLAR } from '../utils/constants';
+import { settleWorld } from '../systems/SandPhysics';
+import { updateVoxelShaderUniforms } from '../core/voxel/VoxelShader';
 
 function getTimeEmoji(timeOfDay: number): string {
   // 0=midnight, 0.25=sunrise, 0.5=noon, 0.75=sunset
@@ -46,13 +48,27 @@ export function BiomeScene() {
 
   const handleTimeChange = useCallback((timeOfDay: number, sunIntensity: number) => {
     setTimeIndicator(getTimeEmoji(timeOfDay));
-    setSkyColor(getSkyColor(biome.config.skyColor, sunIntensity));
+    const newSkyColor = getSkyColor(biome.config.skyColor, sunIntensity);
+    setSkyColor(newSkyColor);
+    updateVoxelShaderUniforms({ fogColor: new THREE.Color(newSkyColor) });
   }, [biome.config.skyColor]);
 
   useEffect(() => {
     generateWorld(biomeType, biomeSeed, 2);
+    settleWorld();
+    // Set shader uniforms for cave (static lighting, no DayNightCycle)
+    if (biomeType === 'cave') {
+      updateVoxelShaderUniforms({
+        ambientColor: new THREE.Color(0x4466aa),
+        ambientIntensity: biome.config.ambientLight,
+        lightColor: new THREE.Color(0xff9944),
+        lightIntensity: 0.3,
+        lightDirection: new THREE.Vector3(0.5, 0.7, 0.3),
+        fogColor: new THREE.Color(biome.config.skyColor),
+      });
+    }
     return () => clearWorld();
-  }, [biomeType, biomeSeed, generateWorld, clearWorld]);
+  }, [biomeType, biomeSeed, generateWorld, clearWorld, biome]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -82,7 +98,7 @@ export function BiomeScene() {
     <div style={{ width: '100vw', height: '100vh' }}>
       <Canvas
         shadows
-        camera={{ position: [20, 25, 20], fov: 50, near: 0.1, far: 500 }}
+        camera={{ position: [36, 30, 36], fov: 50, near: 0.1, far: 500 }}
         style={{ background: skyColor }}
       >
         {/* Day/Night replaces static ambient + directional lights */}
@@ -103,12 +119,12 @@ export function BiomeScene() {
               shadow-camera-top={40}
               shadow-camera-bottom={-40}
             />
-            <pointLight position={[0, 20, 0]} intensity={0.5} color="#ff9944" distance={40} />
+            <pointLight position={[16, 20, 16]} intensity={0.5} color="#ff9944" distance={40} />
           </>
         )}
 
         <OrbitControls
-          target={[0, 8, 0]}
+          target={[16, 8, 16]}
           minDistance={CAMERA_MIN_DISTANCE}
           maxDistance={CAMERA_MAX_DISTANCE}
           minPolarAngle={CAMERA_MIN_POLAR}

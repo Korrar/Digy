@@ -6,6 +6,7 @@ import { useInventoryStore } from '../../stores/inventoryStore';
 import { BlockType, getBlock, isSolid } from '../../core/voxel/BlockRegistry';
 import { soundManager } from '../../systems/SoundManager';
 import { spawnParticles } from './DiggingParticles';
+import { processGravity } from '../../systems/SandPhysics';
 
 interface WorldInteractionProps {
   mode: 'mine' | 'build';
@@ -115,6 +116,9 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
             // Play break sound and emit burst particles
             soundManager.playBreakSound(result.blockType);
             spawnParticles(result.blockPos, result.blockType, true);
+
+            // Trigger sand/gravel physics
+            processGravity(bx, by, bz);
 
             miningTimeRef.current = 0;
             miningBlockRef.current = null;
