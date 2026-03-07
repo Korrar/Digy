@@ -17,6 +17,7 @@ import { buildChunkMesh } from '../core/voxel/ChunkMesher';
 import { BlockType } from '../core/voxel/BlockRegistry';
 import { HIDEOUT_SIZE, CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE, CAMERA_MIN_POLAR, CAMERA_MAX_POLAR } from '../utils/constants';
 import { saveHideout, loadHideout } from '../utils/storage';
+import { updateVoxelShaderUniforms } from '../core/voxel/VoxelShader';
 
 function getTimeEmoji(timeOfDay: number): string {
   if (timeOfDay > 0.2 && timeOfDay < 0.3) return '🌅';
@@ -39,7 +40,9 @@ export function HideoutScene() {
     const base = new THREE.Color(0x2a3a4a);
     const night = new THREE.Color(0x0a0a1a);
     const result = new THREE.Color().lerpColors(night, base, Math.max(0.1, sunIntensity));
-    setSkyColor('#' + result.getHexString());
+    const newSkyColor = '#' + result.getHexString();
+    setSkyColor(newSkyColor);
+    updateVoxelShaderUniforms({ fogColor: new THREE.Color(newSkyColor) });
   }, []);
 
   const toggleMode = useCallback(() => {

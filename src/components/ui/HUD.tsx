@@ -1,5 +1,6 @@
 import { useGameStore } from '../../stores/gameStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
+import { DevTools, DevToolsToggle } from './DevTools';
 
 interface HUDProps {
   mode?: 'mine' | 'build';
@@ -57,6 +58,7 @@ export function HUD({ mode, onModeToggle, timeIndicator }: HUDProps) {
               {mode === 'mine' ? '⛏' : '🔨'}
             </button>
           )}
+          <DevToolsToggle />
           <button onClick={toggleInventory} style={btnStyle}>
             🎒
           </button>
@@ -65,6 +67,7 @@ export function HUD({ mode, onModeToggle, timeIndicator }: HUDProps) {
           </button>
         </div>
       </div>
+      <DevTools />
     </>
   );
 }

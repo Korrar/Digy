@@ -17,10 +17,16 @@ export class CaveBiome extends BiomeBase {
     const ox = chunk.cx * CHUNK_SIZE;
     const oz = chunk.cz * CHUNK_SIZE;
 
-    // Fill with stone, then carve caves
+    // Fill with stone within island mask, then carve caves
     for (let x = 0; x < CHUNK_SIZE; x++) {
       for (let z = 0; z < CHUNK_SIZE; z++) {
-        for (let y = 0; y < Math.min(CHUNK_HEIGHT, 22); y++) {
+        const wx = ox + x;
+        const wz = oz + z;
+        const mask = this.getIslandMask(wx, wz);
+        if (mask <= 0) continue;
+
+        const maxHeight = Math.floor(Math.min(CHUNK_HEIGHT, 22) * mask);
+        for (let y = 0; y < maxHeight; y++) {
           chunk.setBlock(x, y, z, BlockType.STONE);
         }
       }
@@ -31,7 +37,11 @@ export class CaveBiome extends BiomeBase {
       for (let z = 0; z < CHUNK_SIZE; z++) {
         const wx = ox + x;
         const wz = oz + z;
+        const mask = this.getIslandMask(wx, wz);
+        if (mask <= 0) continue;
+
         for (let y = 1; y < 21; y++) {
+          if (chunk.getBlock(x, y, z) !== BlockType.STONE) continue;
           const cave = this.noise.get3D(wx, y, wz, 0.08);
           const cave2 = this.noise.get3D(wx, y, wz, 0.15);
           if (cave > 0.2 && cave2 > -0.1) {

@@ -16,16 +16,25 @@ export class ForestBiome extends BiomeBase {
   generate(chunk: ChunkData): void {
     const ox = chunk.cx * CHUNK_SIZE;
     const oz = chunk.cz * CHUNK_SIZE;
+    const WATER_LEVEL = 3;
 
     for (let x = 0; x < CHUNK_SIZE; x++) {
       for (let z = 0; z < CHUNK_SIZE; z++) {
         const wx = ox + x;
         const wz = oz + z;
-        const height = this.getHeight(wx, wz, 12, 6, 0.025);
+        const height = this.getIslandHeight(wx, wz, 12, 6, 0.025);
+
+        // Fill water up to water level if outside island
+        if (height < WATER_LEVEL) {
+          for (let y = 0; y <= WATER_LEVEL; y++) {
+            chunk.setBlock(x, y, z, y <= height ? BlockType.SAND : BlockType.WATER);
+          }
+          continue;
+        }
 
         for (let y = 0; y <= height; y++) {
           if (y === height) {
-            chunk.setBlock(x, y, z, BlockType.GRASS);
+            chunk.setBlock(x, y, z, height <= WATER_LEVEL + 1 ? BlockType.SAND : BlockType.GRASS);
           } else if (y > height - 4) {
             chunk.setBlock(x, y, z, BlockType.DIRT);
           } else {
@@ -33,8 +42,9 @@ export class ForestBiome extends BiomeBase {
           }
         }
 
-        // Trees
-        if (this.shouldPlaceTree(wx, wz) && height > 8) {
+        // Trees (only on higher ground)
+        const mask = this.getIslandMask(wx, wz);
+        if (this.shouldPlaceTree(wx, wz) && height > 8 && mask > 0.4) {
           this.placeTree(chunk, x, height + 1, z);
         }
       }

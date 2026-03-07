@@ -2,8 +2,9 @@ import { useMemo } from 'react';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { CHUNK_SIZE } from '../../utils/constants';
+import { getVoxelMaterial } from '../../core/voxel/VoxelShader';
 
-const material = new THREE.MeshLambertMaterial({ vertexColors: true });
+const material = getVoxelMaterial();
 
 export function VoxelWorld() {
   const chunks = useWorldStore((s) => s.chunks);

@@ -1,7 +1,5 @@
-import * as THREE from 'three';
 import { CHUNK_SIZE } from '../../utils/constants';
-
-const material = new THREE.MeshLambertMaterial({ vertexColors: true });
+import { getVoxelMaterial } from '../../core/voxel/VoxelShader';
 
 interface ChunkMeshProps {
   cx: number;
@@ -13,7 +11,7 @@ export function ChunkMesh({ cx, cz, geometry }: ChunkMeshProps) {
   return (
     <mesh
       geometry={geometry}
-      material={material}
+      material={getVoxelMaterial()}
       position={[cx * CHUNK_SIZE, 0, cz * CHUNK_SIZE]}
       castShadow
       receiveShadow

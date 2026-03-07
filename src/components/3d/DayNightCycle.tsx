@@ -1,6 +1,8 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useDevStore } from '../../stores/devStore';
+import { updateVoxelShaderUniforms } from '../../core/voxel/VoxelShader';
 
 interface DayNightCycleProps {
   /** Full cycle duration in seconds (default 120 = 2 minutes) */
@@ -24,8 +26,16 @@ export function DayNightCycle({ cycleDuration = 120, onTimeChange }: DayNightCyc
   const timeRef = useRef(0.15); // Start at morning
 
   useFrame((_, delta) => {
-    timeRef.current = (timeRef.current + delta / cycleDuration) % 1;
-    const t = timeRef.current;
+    const fixedTime = useDevStore.getState().fixedTimeOfDay;
+
+    let t: number;
+    if (fixedTime !== null) {
+      t = fixedTime;
+      timeRef.current = t;
+    } else {
+      timeRef.current = (timeRef.current + delta / cycleDuration) % 1;
+      t = timeRef.current;
+    }
 
     // t: 0 = midnight, 0.25 = sunrise, 0.5 = noon, 0.75 = sunset
     // Sun angle follows a sine curve
@@ -70,6 +80,26 @@ export function DayNightCycle({ cycleDuration = 120, onTimeChange }: DayNightCyc
         ambientRef.current.color.setHex(0xffffff);
       }
     }
+
+    // Update custom shader uniforms
+    const ambientColor = new THREE.Color();
+    if (sunY < 0) {
+      ambientColor.setHex(0x4466aa);
+    } else if (sunY < 0.2) {
+      ambientColor.lerpColors(new THREE.Color(0x4466aa), new THREE.Color(0xffffff), sunY / 0.2);
+    } else {
+      ambientColor.setHex(0xffffff);
+    }
+
+    const lightDir = new THREE.Vector3(sunX, Math.max(5, sunHeight), 20).normalize();
+
+    updateVoxelShaderUniforms({
+      ambientColor,
+      ambientIntensity,
+      lightColor: sunColor,
+      lightIntensity: directionalIntensity,
+      lightDirection: lightDir,
+    });
 
     onTimeChange?.(t, Math.max(0, sunY));
   });

@@ -16,13 +16,21 @@ export class MountainBiome extends BiomeBase {
   generate(chunk: ChunkData): void {
     const ox = chunk.cx * CHUNK_SIZE;
     const oz = chunk.cz * CHUNK_SIZE;
+    const WATER_LEVEL = 3;
 
     for (let x = 0; x < CHUNK_SIZE; x++) {
       for (let z = 0; z < CHUNK_SIZE; z++) {
         const wx = ox + x;
         const wz = oz + z;
-        const height = this.getHeight(wx, wz, 14, 14, 0.03);
+        const height = this.getIslandHeight(wx, wz, 14, 14, 0.03);
         const snowLine = 22;
+
+        if (height < WATER_LEVEL) {
+          for (let y = 0; y <= WATER_LEVEL; y++) {
+            chunk.setBlock(x, y, z, y <= height ? BlockType.GRAVEL : BlockType.WATER);
+          }
+          continue;
+        }
 
         for (let y = 0; y <= height; y++) {
           if (y >= snowLine) {
