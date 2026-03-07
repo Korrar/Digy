@@ -41,12 +41,20 @@ export class DesertBiome extends BiomeBase {
           }
         }
 
-        // Cacti (only on inner island)
         const mask = this.getIslandMask(wx, wz);
+
+        // Cacti
         if (this.shouldPlaceCactus(wx, wz) && height > 7 && mask > 0.4) {
           const cactusH = 2 + Math.floor(Math.abs(this.noise.get2D(wx * 5, wz * 5, 1)) * 2);
           for (let cy = 1; cy <= cactusH; cy++) {
             chunk.setBlock(x, height + cy, z, BlockType.CACTUS);
+          }
+        }
+        // Dead bushes scattered on sand
+        else if (mask > 0.3 && height > WATER_LEVEL) {
+          const bushNoise = this.noise.get2D(wx * 3.3, wz * 3.3, 0.4);
+          if (bushNoise > 0.55) {
+            chunk.setBlock(x, height + 1, z, BlockType.DEAD_BUSH);
           }
         }
       }

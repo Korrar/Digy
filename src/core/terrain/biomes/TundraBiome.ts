@@ -45,12 +45,21 @@ export class TundraBiome extends BiomeBase {
           }
         }
 
-        // Scattered ice patches
         const mask = this.getIslandMask(wx, wz);
+
+        // Ice patches
         if (mask > 0.3) {
           const icePatch = this.noise.get2D(wx, wz, 0.1);
           if (icePatch > 0.6 && height > WATER_LEVEL) {
             chunk.setBlock(x, height, z, BlockType.ICE);
+          }
+        }
+
+        // Sparse dead bushes on tundra
+        if (mask > 0.3 && height > WATER_LEVEL) {
+          const bushNoise = this.noise.get2D(wx * 2.8, wz * 2.8, 0.4);
+          if (bushNoise > 0.55) {
+            chunk.setBlock(x, height + 1, z, BlockType.DEAD_BUSH);
           }
         }
 

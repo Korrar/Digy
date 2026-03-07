@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BlockType, getBlock, getBlockColor, isTransparent } from './BlockRegistry';
+import { BlockType, getBlock, getBlockColor, isTransparent, isCrossedQuad } from './BlockRegistry';
 import { ChunkData } from './ChunkData';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
 
@@ -19,14 +19,21 @@ const FACES: Face[] = [
   { dir: [0, 0, -1], corners: [[0,0,0],[0,1,0],[1,1,0],[1,0,0]], faceName: 'side', uvs: [[0,0],[0,1],[1,1],[1,0]] },
 ];
 
+// Two crossed quads forming an X shape (diagonal planes)
+const CROSSED_QUAD_FACES: { corners: [number, number, number][]; normal: [number, number, number] }[] = [
+  { corners: [[0.15,0,0.15],[0.15,0.9,0.15],[0.85,0.9,0.85],[0.85,0,0.85]], normal: [-0.707,0,0.707] },
+  { corners: [[0.85,0,0.85],[0.85,0.9,0.85],[0.15,0.9,0.15],[0.15,0,0.15]], normal: [0.707,0,-0.707] },
+  { corners: [[0.85,0,0.15],[0.85,0.9,0.15],[0.15,0.9,0.85],[0.15,0,0.85]], normal: [0.707,0,0.707] },
+  { corners: [[0.15,0,0.85],[0.15,0.9,0.85],[0.85,0.9,0.15],[0.85,0,0.15]], normal: [-0.707,0,-0.707] },
+];
+
 // Fast hash for procedural per-vertex noise (deterministic)
 function hash3(x: number, y: number, z: number): number {
   let h = (x * 374761393 + y * 668265263 + z * 1274126177) | 0;
   h = ((h ^ (h >> 13)) * 1274126177) | 0;
-  return (h & 0x7fffffff) / 0x7fffffff; // 0..1
+  return (h & 0x7fffffff) / 0x7fffffff;
 }
 
-// Per-block texture variation intensity
 function getTextureVariation(block: BlockType): number {
   switch (block) {
     case BlockType.GRASS: return 0.12;
@@ -46,11 +53,15 @@ function getTextureVariation(block: BlockType): number {
     case BlockType.ICE: return 0.06;
     case BlockType.CACTUS: return 0.10;
     case BlockType.WATER: return 0.05;
+    case BlockType.PLANKS: return 0.08;
+    case BlockType.STONE_BRICKS: return 0.12;
+    case BlockType.CLAY: return 0.06;
+    case BlockType.MUD: return 0.14;
+    case BlockType.BOOKSHELF: return 0.10;
     default: return 0.05;
   }
 }
 
-// Compute simple AO by checking neighbor occupancy
 function computeAO(
   chunk: ChunkData,
   x: number, y: number, z: number,
@@ -60,19 +71,14 @@ function computeAO(
   getNeighborBlock?: (wx: number, wy: number, wz: number) => BlockType
 ): number {
   const corner = face.corners[cornerIdx];
-  // Get the two edge neighbors and one corner neighbor
   const cx = x + corner[0];
   const cy = y + corner[1];
   const cz = z + corner[2];
-
-  // Directions along the face from center to corner
   const dx = corner[0] * 2 - 1;
   const dy = corner[1] * 2 - 1;
   const dz = corner[2] * 2 - 1;
-
   let occluders = 0;
 
-  // Check 3 neighbors near this corner that are not on the face itself
   const checks: [number, number, number][] = [];
   if (face.dir[0] !== 0) {
     checks.push([cx, y + (dy > 0 ? 1 : 0), z], [cx, y, z + (dz > 0 ? 1 : 0)], [cx, y + (dy > 0 ? 1 : 0), z + (dz > 0 ? 1 : 0)]);
@@ -96,7 +102,6 @@ function computeAO(
     }
   }
 
-  // 0 occluders = full brightness, 3 = darkest
   return 1.0 - occluders * 0.12;
 }
 
@@ -124,10 +129,46 @@ export function buildChunkMesh(
 
         const wx = ox + x;
         const wz = oz + z;
-        const variation = getTextureVariation(block);
         const blockDef = getBlock(block);
         const sparkle = blockDef.sparkle ?? 0;
         const oreColor = blockDef.oreColor;
+
+        // Crossed quad rendering for vegetation
+        if (isCrossedQuad(block)) {
+          const baseColor = blockDef.color;
+          const topCol = blockDef.topColor;
+
+          for (const cq of CROSSED_QUAD_FACES) {
+            for (let ci = 0; ci < 4; ci++) {
+              const corner = cq.corners[ci];
+              positions.push(x + corner[0], y + corner[1], z + corner[2]);
+              normals.push(cq.normal[0], cq.normal[1], cq.normal[2]);
+
+              const isTop = corner[1] > 0.5;
+              const col = (isTop && topCol) ? topCol : baseColor;
+              const v = (hash3(wx * 5 + ci, y * 3, wz * 5 + ci) - 0.5) * 0.15;
+              colors.push(
+                Math.max(0, Math.min(1, col.r + v)),
+                Math.max(0, Math.min(1, col.g + v)),
+                Math.max(0, Math.min(1, col.b + v * 0.5)),
+              );
+
+              uvs.push(ci % 2 === 0 ? 0 : 1, corner[1] > 0.5 ? 1 : 0);
+              sparkles.push(0);
+              oreColors.push(1.0, 0.95, 0.8);
+            }
+
+            indices.push(
+              vertexCount, vertexCount + 1, vertexCount + 2,
+              vertexCount, vertexCount + 2, vertexCount + 3
+            );
+            vertexCount += 4;
+          }
+          continue;
+        }
+
+        // Normal cube rendering
+        const variation = getTextureVariation(block);
 
         for (const face of FACES) {
           const nx = x + face.dir[0];
@@ -147,8 +188,6 @@ export function buildChunkMesh(
           if (neighborBlock === block) continue;
 
           const color = getBlockColor(block, face.faceName);
-
-          // Base AO-like darkening for side/bottom faces
           const faceBrightness = face.faceName === 'top' ? 1.0 : face.faceName === 'side' ? 0.85 : 0.7;
 
           for (let ci = 0; ci < face.corners.length; ci++) {
@@ -160,12 +199,9 @@ export function buildChunkMesh(
             positions.push(vx, vy, vz);
             normals.push(face.dir[0], face.dir[1], face.dir[2]);
 
-            // Compute per-vertex AO
             const ao = computeAO(chunk, x, y, z, face, ci, ox, oz, getNeighborBlock);
 
-            // Procedural texture noise per vertex (deterministic from world position)
             const noiseVal = (hash3(wx + corner[0], y + corner[1], wz + corner[2]) - 0.5) * 2;
-            // Additional multi-scale noise for more natural look
             const noiseVal2 = (hash3(wx * 3 + 7, (y + corner[1]) * 3 + 13, wz * 3 + 19) - 0.5) * 2;
             const texNoise = (noiseVal * 0.7 + noiseVal2 * 0.3) * variation;
 
@@ -174,12 +210,11 @@ export function buildChunkMesh(
             let cg = color.g * brightness + texNoise * 0.8;
             let cb = color.b * brightness + texNoise * 0.6;
 
-            // Ore-colored speckles: blend ore color into some vertices
             if (oreColor) {
               const speckleNoise = hash3(wx * 7 + corner[0] * 31, (y + corner[1]) * 13 + 97, wz * 7 + corner[2] * 31);
               if (speckleNoise > 0.45) {
-                const blend = (speckleNoise - 0.45) / 0.55; // 0..1
-                const t = blend * 0.7; // max 70% ore color blend
+                const blend = (speckleNoise - 0.45) / 0.55;
+                const t = blend * 0.7;
                 cr = cr * (1 - t) + oreColor.r * brightness * t;
                 cg = cg * (1 - t) + oreColor.g * brightness * t;
                 cb = cb * (1 - t) + oreColor.b * brightness * t;

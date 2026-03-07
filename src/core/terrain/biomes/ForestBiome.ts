@@ -24,7 +24,6 @@ export class ForestBiome extends BiomeBase {
         const wz = oz + z;
         const height = this.getIslandHeight(wx, wz, 12, 6, 0.025);
 
-        // Fill water up to water level if outside island
         if (height < WATER_LEVEL) {
           for (let y = 0; y <= WATER_LEVEL; y++) {
             chunk.setBlock(x, y, z, y <= height ? BlockType.SAND : BlockType.WATER);
@@ -42,10 +41,25 @@ export class ForestBiome extends BiomeBase {
           }
         }
 
-        // Trees (only on higher ground)
         const mask = this.getIslandMask(wx, wz);
+
+        // Trees
         if (this.shouldPlaceTree(wx, wz) && height > 8 && mask > 0.4) {
           this.placeTree(chunk, x, height + 1, z);
+        }
+        // Vegetation on grass
+        else if (height > WATER_LEVEL + 1 && mask > 0.3) {
+          const vegNoise = this.noise.get2D(wx * 2.7, wz * 2.7, 0.3);
+          if (vegNoise > 0.3) {
+            chunk.setBlock(x, height + 1, z, BlockType.TALL_GRASS);
+          } else if (vegNoise > 0.15) {
+            chunk.setBlock(x, height + 1, z, BlockType.FERN);
+          } else if (vegNoise > 0.05) {
+            const fn = this.noise.get2D(wx * 5.1, wz * 5.1, 0.8);
+            chunk.setBlock(x, height + 1, z, fn > 0 ? BlockType.FLOWER_RED : BlockType.FLOWER_YELLOW);
+          } else if (vegNoise < -0.4) {
+            chunk.setBlock(x, height + 1, z, BlockType.MUSHROOM);
+          }
         }
       }
     }
@@ -59,18 +73,16 @@ export class ForestBiome extends BiomeBase {
   private placeTree(chunk: ChunkData, x: number, y: number, z: number): void {
     const trunkHeight = 4 + Math.floor(this.noise.get2D(x * 7, z * 7, 1) * 2);
 
-    // Trunk
     for (let ty = 0; ty < trunkHeight; ty++) {
       chunk.setBlock(x, y + ty, z, BlockType.WOOD);
     }
 
-    // Leaves (sphere-ish)
     const leafStart = y + trunkHeight - 1;
     for (let ly = 0; ly < 4; ly++) {
       const radius = ly < 3 ? 2 : 1;
       for (let lx = -radius; lx <= radius; lx++) {
         for (let lz = -radius; lz <= radius; lz++) {
-          if (lx === 0 && lz === 0 && ly < 2) continue; // trunk space
+          if (lx === 0 && lz === 0 && ly < 2) continue;
           if (Math.abs(lx) === radius && Math.abs(lz) === radius && ly === 0) continue;
           chunk.setBlock(x + lx, leafStart + ly, z + lz, BlockType.LEAVES);
         }

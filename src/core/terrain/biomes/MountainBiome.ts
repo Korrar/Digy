@@ -36,7 +36,7 @@ export class MountainBiome extends BiomeBase {
           if (y >= snowLine) {
             chunk.setBlock(x, y, z, BlockType.SNOW);
           } else if (y === height && height < snowLine) {
-            chunk.setBlock(x, y, z, BlockType.GRAVEL);
+            chunk.setBlock(x, y, z, height > 16 ? BlockType.GRAVEL : BlockType.GRASS);
           } else if (y > height - 3) {
             chunk.setBlock(x, y, z, BlockType.DIRT);
           } else {
@@ -44,7 +44,7 @@ export class MountainBiome extends BiomeBase {
           }
         }
 
-        // Ores in mountains
+        // Ores
         for (let y = 2; y < Math.min(height - 2, 18); y++) {
           if (chunk.getBlock(x, y, z) !== BlockType.STONE) continue;
           const iron = this.noise.get3D(wx * 3 + 200, y * 3, wz * 3 + 200, 0.15);
@@ -57,6 +57,17 @@ export class MountainBiome extends BiomeBase {
             if (gold > 0.75) {
               chunk.setBlock(x, y, z, BlockType.GOLD_ORE);
             }
+          }
+        }
+
+        // Alpine flowers above snowline, grass below
+        const mask = this.getIslandMask(wx, wz);
+        if (mask > 0.3 && height > WATER_LEVEL + 1 && height < snowLine) {
+          const vegNoise = this.noise.get2D(wx * 3.1, wz * 3.1, 0.35);
+          if (height > 18 && vegNoise > 0.4) {
+            chunk.setBlock(x, height + 1, z, BlockType.FLOWER_YELLOW);
+          } else if (height <= 18 && vegNoise > 0.35) {
+            chunk.setBlock(x, height + 1, z, BlockType.TALL_GRASS);
           }
         }
       }

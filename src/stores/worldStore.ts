@@ -4,6 +4,7 @@ import { ChunkData, chunkKey } from '../core/voxel/ChunkData';
 import { buildChunkMesh } from '../core/voxel/ChunkMesher';
 import { BlockType } from '../core/voxel/BlockRegistry';
 import { type BiomeType, createBiome } from '../core/terrain/biomes';
+import { placeStructures } from '../core/terrain/StructureGenerator';
 import { CHUNK_SIZE } from '../utils/constants';
 
 interface ChunkEntry {
@@ -42,6 +43,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
       for (let cz = -radius; cz <= radius; cz++) {
         const chunk = new ChunkData(cx, cz);
         biome.generate(chunk);
+        placeStructures(chunk, biomeType, biome.noiseGen);
 
         const getNeighborBlock = (wx: number, wy: number, wz: number): BlockType => {
           const ncx = Math.floor(wx / CHUNK_SIZE);

@@ -19,6 +19,22 @@ export enum BlockType {
   COBBLESTONE = 15,
   GOLD_ORE = 16,
   DIAMOND_ORE = 17,
+  // Vegetation
+  TALL_GRASS = 18,
+  FLOWER_RED = 19,
+  FLOWER_YELLOW = 20,
+  MUSHROOM = 21,
+  DEAD_BUSH = 22,
+  LILY_PAD = 23,
+  FERN = 24,
+  // Building blocks
+  PLANKS = 25,
+  GLASS = 26,
+  STONE_BRICKS = 27,
+  TORCH = 28,
+  BOOKSHELF = 29,
+  CLAY = 30,
+  MUD = 31,
 }
 
 export interface BlockDefinition {
@@ -26,14 +42,16 @@ export interface BlockDefinition {
   name: string;
   color: THREE.Color;
   topColor?: THREE.Color;
-  hardness: number; // seconds to mine
+  hardness: number;
   transparent: boolean;
   drops: BlockType;
   stackSize: number;
-  /** Sparkle intensity for ores (0 = none, higher = more sparkle) */
   sparkle?: number;
-  /** Characteristic color for ore inclusions and sparkle tint */
   oreColor?: THREE.Color;
+  /** Render as crossed quads instead of cube (vegetation) */
+  crossedQuad?: boolean;
+  /** Emits light (torch etc) */
+  emitsLight?: boolean;
 }
 
 const BLOCKS: Map<BlockType, BlockDefinition> = new Map();
@@ -42,6 +60,7 @@ function register(def: BlockDefinition) {
   BLOCKS.set(def.id, def);
 }
 
+// Basic terrain
 register({ id: BlockType.AIR, name: 'Air', color: new THREE.Color(0x000000), hardness: 0, transparent: true, drops: BlockType.AIR, stackSize: 0 });
 register({ id: BlockType.GRASS, name: 'Grass', color: new THREE.Color(0x5d8a2d), topColor: new THREE.Color(0x7ec850), hardness: 0.6, transparent: false, drops: BlockType.DIRT, stackSize: 64 });
 register({ id: BlockType.DIRT, name: 'Dirt', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: false, drops: BlockType.DIRT, stackSize: 64 });
@@ -61,6 +80,24 @@ register({ id: BlockType.COBBLESTONE, name: 'Cobblestone', color: new THREE.Colo
 register({ id: BlockType.GOLD_ORE, name: 'Gold Ore', color: new THREE.Color(0x808080), topColor: new THREE.Color(0x808080), hardness: 3.0, transparent: false, drops: BlockType.GOLD_ORE, stackSize: 64, sparkle: 0.6, oreColor: new THREE.Color(0xffd700) });
 register({ id: BlockType.DIAMOND_ORE, name: 'Diamond Ore', color: new THREE.Color(0x808080), topColor: new THREE.Color(0x808080), hardness: 5.0, transparent: false, drops: BlockType.DIAMOND_ORE, stackSize: 64, sparkle: 0.9, oreColor: new THREE.Color(0x40e0d0) });
 
+// Vegetation (crossed quads)
+register({ id: BlockType.TALL_GRASS, name: 'Tall Grass', color: new THREE.Color(0x5a9e2a), hardness: 0.0, transparent: true, drops: BlockType.AIR, stackSize: 64, crossedQuad: true });
+register({ id: BlockType.FLOWER_RED, name: 'Red Flower', color: new THREE.Color(0xcc2222), topColor: new THREE.Color(0x22aa22), hardness: 0.0, transparent: true, drops: BlockType.FLOWER_RED, stackSize: 64, crossedQuad: true });
+register({ id: BlockType.FLOWER_YELLOW, name: 'Yellow Flower', color: new THREE.Color(0xddcc22), topColor: new THREE.Color(0x22aa22), hardness: 0.0, transparent: true, drops: BlockType.FLOWER_YELLOW, stackSize: 64, crossedQuad: true });
+register({ id: BlockType.MUSHROOM, name: 'Mushroom', color: new THREE.Color(0x9e6b4a), topColor: new THREE.Color(0xcc3333), hardness: 0.0, transparent: true, drops: BlockType.MUSHROOM, stackSize: 64, crossedQuad: true });
+register({ id: BlockType.DEAD_BUSH, name: 'Dead Bush', color: new THREE.Color(0x8b7355), hardness: 0.0, transparent: true, drops: BlockType.AIR, stackSize: 64, crossedQuad: true });
+register({ id: BlockType.LILY_PAD, name: 'Lily Pad', color: new THREE.Color(0x2d8a2d), hardness: 0.0, transparent: true, drops: BlockType.LILY_PAD, stackSize: 64, crossedQuad: true });
+register({ id: BlockType.FERN, name: 'Fern', color: new THREE.Color(0x3d7a1d), hardness: 0.0, transparent: true, drops: BlockType.AIR, stackSize: 64, crossedQuad: true });
+
+// Building blocks
+register({ id: BlockType.PLANKS, name: 'Planks', color: new THREE.Color(0xb8945a), hardness: 1.0, transparent: false, drops: BlockType.PLANKS, stackSize: 64 });
+register({ id: BlockType.GLASS, name: 'Glass', color: new THREE.Color(0xc8e8f8), hardness: 0.3, transparent: true, drops: BlockType.AIR, stackSize: 64 });
+register({ id: BlockType.STONE_BRICKS, name: 'Stone Bricks', color: new THREE.Color(0x7a7a7a), hardness: 1.5, transparent: false, drops: BlockType.STONE_BRICKS, stackSize: 64 });
+register({ id: BlockType.TORCH, name: 'Torch', color: new THREE.Color(0xffaa33), hardness: 0.0, transparent: true, drops: BlockType.TORCH, stackSize: 64, crossedQuad: true, emitsLight: true });
+register({ id: BlockType.BOOKSHELF, name: 'Bookshelf', color: new THREE.Color(0x8b6914), topColor: new THREE.Color(0xb8945a), hardness: 1.0, transparent: false, drops: BlockType.BOOKSHELF, stackSize: 64 });
+register({ id: BlockType.CLAY, name: 'Clay', color: new THREE.Color(0x9eabb0), hardness: 0.6, transparent: false, drops: BlockType.CLAY, stackSize: 64 });
+register({ id: BlockType.MUD, name: 'Mud', color: new THREE.Color(0x5c3d2e), hardness: 0.5, transparent: false, drops: BlockType.MUD, stackSize: 64 });
+
 export function getBlock(type: BlockType): BlockDefinition {
   return BLOCKS.get(type) ?? BLOCKS.get(BlockType.AIR)!;
 }
@@ -76,7 +113,11 @@ export function isTransparent(type: BlockType): boolean {
 }
 
 export function isSolid(type: BlockType): boolean {
-  return type !== BlockType.AIR && type !== BlockType.WATER;
+  return type !== BlockType.AIR && type !== BlockType.WATER && !getBlock(type).crossedQuad;
+}
+
+export function isCrossedQuad(type: BlockType): boolean {
+  return getBlock(type).crossedQuad === true;
 }
 
 export function getAllPlaceableBlocks(): BlockDefinition[] {
