@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { CHUNK_SIZE } from '../../utils/constants';
 import { getVoxelMaterial } from '../../core/voxel/VoxelShader';
 
