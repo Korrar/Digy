@@ -7,6 +7,7 @@ import { BlockType, getBlock, isSolid } from '../../core/voxel/BlockRegistry';
 import { soundManager } from '../../systems/SoundManager';
 import { spawnParticles } from './DiggingParticles';
 import { processGravity } from '../../systems/SandPhysics';
+import { useDevStore } from '../../stores/devStore';
 
 interface WorldInteractionProps {
   mode: 'mine' | 'build';
@@ -97,7 +98,8 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
 
           const def = getBlock(result.blockType);
           miningTimeRef.current += delta;
-          const progress = Math.min(miningTimeRef.current / Math.max(def.hardness, 0.1), 1);
+          const hardness = useDevStore.getState().fastMining ? 0.05 : def.hardness;
+          const progress = Math.min(miningTimeRef.current / Math.max(hardness, 0.05), 1);
           setMiningProgress(progress);
 
           // Play dig sound periodically while mining

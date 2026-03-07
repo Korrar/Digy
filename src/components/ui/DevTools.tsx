@@ -13,6 +13,8 @@ export function DevTools() {
   const open = useDevStore((s) => s.devToolsOpen);
   const fixedTime = useDevStore((s) => s.fixedTimeOfDay);
   const setFixedTime = useDevStore((s) => s.setFixedTimeOfDay);
+  const fastMining = useDevStore((s) => s.fastMining);
+  const toggleFastMining = useDevStore((s) => s.toggleFastMining);
 
   if (!open) return null;
 
@@ -50,6 +52,21 @@ export function DevTools() {
         <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>
           {fixedTime !== null ? `${Math.round(fixedTime * 24)}:00` : 'automatyczny cykl'}
         </div>
+      </div>
+
+      <div style={sectionStyle}>
+        <div style={labelStyle}>Kopanie</div>
+        <button
+          onClick={toggleFastMining}
+          style={{
+            ...presetBtn,
+            width: '100%',
+            padding: '6px 8px',
+            background: fastMining ? 'rgba(255,80,80,0.6)' : 'rgba(255,255,255,0.1)',
+          }}
+        >
+          {fastMining ? '⚡ Szybkie kopanie: ON' : '⛏ Szybkie kopanie: OFF'}
+        </button>
       </div>
     </div>
   );
