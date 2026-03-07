@@ -18,8 +18,6 @@ export function DiggingParticles() {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const particlesRef = useRef<Particle[]>([]);
   const dummy = useMemo(() => new THREE.Object3D(), []);
-  const colorArray = useMemo(() => new Float32Array(MAX_PARTICLES * 3), []);
-
   useFrame((_, delta) => {
     const mesh = meshRef.current;
     if (!mesh) return;
