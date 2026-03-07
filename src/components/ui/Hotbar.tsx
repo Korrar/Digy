@@ -81,7 +81,13 @@ export function Hotbar() {
                   backgroundColor: blockColor(slot.blockType),
                   borderRadius: 3,
                   border: '1px solid rgba(255,255,255,0.2)',
-                }} />
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 'clamp(10px, 3vw, 16px)',
+                }}>
+                  {getBlock(slot.blockType).emoji || ''}
+                </div>
                 <span style={{
                   position: 'absolute',
                   bottom: 1,

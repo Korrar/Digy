@@ -20,6 +20,15 @@ import { updateVoxelShaderUniforms } from '../core/voxel/VoxelShader';
 import { useFireflies, FIREFLY_COUNT } from '../components/3d/Fireflies';
 import { useAnimals, BIOME_ANIMALS } from '../components/3d/Animals';
 import { useWeather } from '../components/3d/Weather';
+import { TappablesRenderer } from '../components/3d/Tappables';
+import { EnemiesRenderer } from '../components/3d/Enemies';
+import { CraftingPanel } from '../components/ui/CraftingPanel';
+import { LootPopup } from '../components/ui/LootPopup';
+import { HealthBar } from '../components/ui/HealthBar';
+import { useTappablesStore } from '../stores/tappablesStore';
+import { useCombatStore } from '../stores/combatStore';
+import { useCraftingStore } from '../stores/craftingStore';
+import { ambientMusic } from '../systems/AmbientMusic';
 
 function getTimeEmoji(timeOfDay: number): string {
   // 0=midnight, 0.25=sunrise, 0.5=noon, 0.75=sunset
@@ -68,9 +77,14 @@ export function BiomeScene() {
     updateVoxelShaderUniforms({ fogColor: new THREE.Color(newSkyColor) });
   }, [biome.config.skyColor]);
 
+  const clearTappables = useTappablesStore((s) => s.clearTappables);
+  const resetCombat = useCombatStore((s) => s.resetCombat);
+
   useEffect(() => {
     generateWorld(biomeType, biomeSeed, 1);
     settleWorld();
+    // Start ambient music for biome
+    ambientMusic.start(biomeType as any);
     // Set shader uniforms for cave (static lighting, no DayNightCycle)
     if (biomeType === 'cave') {
       updateVoxelShaderUniforms({
@@ -82,16 +96,24 @@ export function BiomeScene() {
         fogColor: new THREE.Color(biome.config.skyColor),
       });
     }
-    return () => clearWorld();
-  }, [biomeType, biomeSeed, generateWorld, clearWorld, biome]);
+    return () => {
+      clearWorld();
+      clearTappables();
+      resetCombat();
+      ambientMusic.stop();
+    };
+  }, [biomeType, biomeSeed, generateWorld, clearWorld, biome, clearTappables, resetCombat]);
+
+  const toggleCrafting = useCraftingStore((s) => s.toggleCrafting);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'e' || e.key === 'E') toggleInventory();
+      if (e.key === 'c' || e.key === 'C') toggleCrafting();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [toggleInventory]);
+  }, [toggleInventory, toggleCrafting]);
 
   const chunkEntries = useMemo(() => {
     const result: { key: string; cx: number; cz: number; geometry: THREE.BufferGeometry }[] = [];
@@ -162,13 +184,18 @@ export function BiomeScene() {
           <AnimalRenderer biomeType={biomeType} center={[8, 8, 8]} />
         )}
         <WeatherRenderer biomeType={biomeType} center={[8, 8, 8]} />
+        <TappablesRenderer biomeType={biomeType} center={[8, 8, 8]} />
+        <EnemiesRenderer biomeType={biomeType} center={[8, 8, 8]} />
 
         <fog attach="fog" args={[skyColor, 30, 80]} />
       </Canvas>
 
       <HUD timeIndicator={biomeType !== 'cave' ? timeIndicator : undefined} />
+      <HealthBar />
       <Hotbar />
       <InventoryPanel />
+      <CraftingPanel />
+      <LootPopup />
       {isTouch && (
         <MobileControls
           onDigStart={handleDigStart}

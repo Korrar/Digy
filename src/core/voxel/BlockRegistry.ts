@@ -35,6 +35,27 @@ export enum BlockType {
   BOOKSHELF = 29,
   CLAY = 30,
   MUD = 31,
+  // Crafted items (non-placeable)
+  STICK = 32,
+  WOODEN_PICKAXE = 33,
+  STONE_PICKAXE = 34,
+  IRON_PICKAXE = 35,
+  DIAMOND_PICKAXE = 36,
+  WOODEN_SWORD = 37,
+  STONE_SWORD = 38,
+  IRON_SWORD = 39,
+  DIAMOND_SWORD = 40,
+  COAL = 41,
+  IRON_INGOT = 42,
+  GOLD_INGOT = 43,
+  DIAMOND = 44,
+  RUBY = 45,
+  APPLE = 46,
+  BREAD = 47,
+  RAW_MEAT = 48,
+  COOKED_MEAT = 49,
+  FURNACE = 50,
+  CRAFTING_TABLE = 51,
 }
 
 export interface BlockDefinition {
@@ -52,6 +73,18 @@ export interface BlockDefinition {
   crossedQuad?: boolean;
   /** Emits light (torch etc) */
   emitsLight?: boolean;
+  /** Non-placeable item (tool, ingot, food) */
+  isItem?: boolean;
+  /** Tool mining speed multiplier */
+  toolSpeed?: number;
+  /** Weapon damage */
+  damage?: number;
+  /** Food healing amount (half-hearts) */
+  healAmount?: number;
+  /** Tool/weapon durability */
+  durability?: number;
+  /** Item emoji for UI display */
+  emoji?: string;
 }
 
 const BLOCKS: Map<BlockType, BlockDefinition> = new Map();
@@ -98,6 +131,36 @@ register({ id: BlockType.BOOKSHELF, name: 'Bookshelf', color: new THREE.Color(0x
 register({ id: BlockType.CLAY, name: 'Clay', color: new THREE.Color(0x9eabb0), hardness: 0.6, transparent: false, drops: BlockType.CLAY, stackSize: 64 });
 register({ id: BlockType.MUD, name: 'Mud', color: new THREE.Color(0x5c3d2e), hardness: 0.5, transparent: false, drops: BlockType.MUD, stackSize: 64 });
 
+// Items (non-placeable)
+register({ id: BlockType.STICK, name: 'Stick', color: new THREE.Color(0x8b6914), hardness: 0, transparent: true, drops: BlockType.STICK, stackSize: 64, isItem: true, emoji: '/' });
+register({ id: BlockType.WOODEN_PICKAXE, name: 'Wooden Pickaxe', color: new THREE.Color(0xb8945a), hardness: 0, transparent: true, drops: BlockType.WOODEN_PICKAXE, stackSize: 1, isItem: true, toolSpeed: 1.5, durability: 60, emoji: '⛏' });
+register({ id: BlockType.STONE_PICKAXE, name: 'Stone Pickaxe', color: new THREE.Color(0x808080), hardness: 0, transparent: true, drops: BlockType.STONE_PICKAXE, stackSize: 1, isItem: true, toolSpeed: 2.5, durability: 132, emoji: '⛏' });
+register({ id: BlockType.IRON_PICKAXE, name: 'Iron Pickaxe', color: new THREE.Color(0xc8c8c8), hardness: 0, transparent: true, drops: BlockType.IRON_PICKAXE, stackSize: 1, isItem: true, toolSpeed: 4.0, durability: 250, emoji: '⛏' });
+register({ id: BlockType.DIAMOND_PICKAXE, name: 'Diamond Pickaxe', color: new THREE.Color(0x40e0d0), hardness: 0, transparent: true, drops: BlockType.DIAMOND_PICKAXE, stackSize: 1, isItem: true, toolSpeed: 6.0, durability: 1561, emoji: '⛏' });
+register({ id: BlockType.WOODEN_SWORD, name: 'Wooden Sword', color: new THREE.Color(0xb8945a), hardness: 0, transparent: true, drops: BlockType.WOODEN_SWORD, stackSize: 1, isItem: true, damage: 2, durability: 60, emoji: '🗡' });
+register({ id: BlockType.STONE_SWORD, name: 'Stone Sword', color: new THREE.Color(0x808080), hardness: 0, transparent: true, drops: BlockType.STONE_SWORD, stackSize: 1, isItem: true, damage: 3, durability: 132, emoji: '🗡' });
+register({ id: BlockType.IRON_SWORD, name: 'Iron Sword', color: new THREE.Color(0xc8c8c8), hardness: 0, transparent: true, drops: BlockType.IRON_SWORD, stackSize: 1, isItem: true, damage: 4, durability: 250, emoji: '🗡' });
+register({ id: BlockType.DIAMOND_SWORD, name: 'Diamond Sword', color: new THREE.Color(0x40e0d0), hardness: 0, transparent: true, drops: BlockType.DIAMOND_SWORD, stackSize: 1, isItem: true, damage: 6, durability: 1561, emoji: '🗡' });
+register({ id: BlockType.COAL, name: 'Coal', color: new THREE.Color(0x2a2a2a), hardness: 0, transparent: true, drops: BlockType.COAL, stackSize: 64, isItem: true, emoji: '●' });
+register({ id: BlockType.IRON_INGOT, name: 'Iron Ingot', color: new THREE.Color(0xd0d0d0), hardness: 0, transparent: true, drops: BlockType.IRON_INGOT, stackSize: 64, isItem: true, emoji: '▬' });
+register({ id: BlockType.GOLD_INGOT, name: 'Gold Ingot', color: new THREE.Color(0xffd700), hardness: 0, transparent: true, drops: BlockType.GOLD_INGOT, stackSize: 64, isItem: true, emoji: '▬' });
+register({ id: BlockType.DIAMOND, name: 'Diamond', color: new THREE.Color(0x40e0d0), hardness: 0, transparent: true, drops: BlockType.DIAMOND, stackSize: 64, isItem: true, emoji: '◆' });
+register({ id: BlockType.RUBY, name: 'Ruby', color: new THREE.Color(0xe0115f), hardness: 0, transparent: true, drops: BlockType.RUBY, stackSize: 64, isItem: true, emoji: '◆' });
+register({ id: BlockType.APPLE, name: 'Apple', color: new THREE.Color(0xcc2222), hardness: 0, transparent: true, drops: BlockType.APPLE, stackSize: 64, isItem: true, healAmount: 2, emoji: '🍎' });
+register({ id: BlockType.BREAD, name: 'Bread', color: new THREE.Color(0xd4a843), hardness: 0, transparent: true, drops: BlockType.BREAD, stackSize: 64, isItem: true, healAmount: 3, emoji: '🍞' });
+register({ id: BlockType.RAW_MEAT, name: 'Raw Meat', color: new THREE.Color(0xcc6666), hardness: 0, transparent: true, drops: BlockType.RAW_MEAT, stackSize: 64, isItem: true, healAmount: 1, emoji: '🥩' });
+register({ id: BlockType.COOKED_MEAT, name: 'Cooked Meat', color: new THREE.Color(0x8b4513), hardness: 0, transparent: true, drops: BlockType.COOKED_MEAT, stackSize: 64, isItem: true, healAmount: 4, emoji: '🍖' });
+register({ id: BlockType.FURNACE, name: 'Furnace', color: new THREE.Color(0x707070), hardness: 2.0, transparent: false, drops: BlockType.FURNACE, stackSize: 64, emoji: '🔥' });
+register({ id: BlockType.CRAFTING_TABLE, name: 'Crafting Table', color: new THREE.Color(0xb8945a), hardness: 1.0, transparent: false, drops: BlockType.CRAFTING_TABLE, stackSize: 64, emoji: '🔧' });
+
+// Update ore drops to drop raw materials
+BLOCKS.get(BlockType.COAL_ORE)!.drops = BlockType.COAL;
+BLOCKS.get(BlockType.DIAMOND_ORE)!.drops = BlockType.DIAMOND;
+
+// Leaves can drop apples
+const leavesDef = BLOCKS.get(BlockType.LEAVES)!;
+leavesDef.drops = BlockType.LEAVES; // we handle apple drop chance in code
+
 export function getBlock(type: BlockType): BlockDefinition {
   return BLOCKS.get(type) ?? BLOCKS.get(BlockType.AIR)!;
 }
@@ -121,5 +184,21 @@ export function isCrossedQuad(type: BlockType): boolean {
 }
 
 export function getAllPlaceableBlocks(): BlockDefinition[] {
-  return Array.from(BLOCKS.values()).filter(b => b.id !== BlockType.AIR && b.stackSize > 0);
+  return Array.from(BLOCKS.values()).filter(b => b.id !== BlockType.AIR && b.stackSize > 0 && !b.isItem);
+}
+
+export function isItemType(type: BlockType): boolean {
+  return getBlock(type).isItem === true;
+}
+
+export function isToolPickaxe(type: BlockType): boolean {
+  return [BlockType.WOODEN_PICKAXE, BlockType.STONE_PICKAXE, BlockType.IRON_PICKAXE, BlockType.DIAMOND_PICKAXE].includes(type);
+}
+
+export function isSword(type: BlockType): boolean {
+  return [BlockType.WOODEN_SWORD, BlockType.STONE_SWORD, BlockType.IRON_SWORD, BlockType.DIAMOND_SWORD].includes(type);
+}
+
+export function isFood(type: BlockType): boolean {
+  return (getBlock(type).healAmount ?? 0) > 0;
 }

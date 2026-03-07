@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { useGameStore } from '../../stores/gameStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
+import { useCraftingStore } from '../../stores/craftingStore';
 import { DevTools, DevToolsToggle } from './DevTools';
+import { ambientMusic } from '../../systems/AmbientMusic';
 
 interface HUDProps {
   mode?: 'mine' | 'build';
@@ -13,6 +16,8 @@ export function HUD({ mode, onModeToggle, timeIndicator }: HUDProps) {
   const returnToMenu = useGameStore((s) => s.returnToMenu);
   const biome = useGameStore((s) => s.currentBiome);
   const toggleInventory = useInventoryStore((s) => s.toggleInventory);
+  const toggleCrafting = useCraftingStore((s) => s.toggleCrafting);
+  const [musicOn, setMusicOn] = useState(ambientMusic.isEnabled());
 
   const biomeNames: Record<string, string> = {
     forest: 'Las',
@@ -60,6 +65,12 @@ export function HUD({ mode, onModeToggle, timeIndicator }: HUDProps) {
               {mode === 'mine' ? '⛏' : '🔨'}
             </button>
           )}
+          <button onClick={() => setMusicOn(ambientMusic.toggle())} style={btnStyle}>
+            {musicOn ? '🔊' : '🔇'}
+          </button>
+          <button onClick={toggleCrafting} style={btnStyle}>
+            🔧
+          </button>
           <DevToolsToggle />
           <button onClick={toggleInventory} style={btnStyle}>
             🎒
