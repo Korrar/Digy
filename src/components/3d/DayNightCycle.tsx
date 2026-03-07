@@ -25,7 +25,7 @@ export function DayNightCycle({ cycleDuration = 120, onTimeChange }: DayNightCyc
   const ambientRef = useRef<THREE.AmbientLight>(null);
   const timeRef = useRef(0.15); // Start at morning
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     const fixedTime = useDevStore.getState().fixedTimeOfDay;
 
     let t: number;
@@ -93,12 +93,23 @@ export function DayNightCycle({ cycleDuration = 120, onTimeChange }: DayNightCyc
 
     const lightDir = new THREE.Vector3(sunX, Math.max(5, sunHeight), 20).normalize();
 
+    // Moon - opposite to sun
+    const moonY = -sunY;
+    const moonIntensity = Math.max(0, moonY) * 0.15; // Subtle moon light
+    const moonX = -sunX;
+    const moonHeight = moonY * 30 + 5;
+    const moonDir = new THREE.Vector3(moonX, Math.max(5, moonHeight), -20).normalize();
+
     updateVoxelShaderUniforms({
       ambientColor,
       ambientIntensity,
       lightColor: sunColor,
       lightIntensity: directionalIntensity,
       lightDirection: lightDir,
+      moonColor: new THREE.Color(0x8899cc),
+      moonIntensity,
+      moonDirection: moonDir,
+      time: state.clock.elapsedTime,
     });
 
     onTimeChange?.(t, Math.max(0, sunY));

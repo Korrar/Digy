@@ -17,6 +17,7 @@ import { useInventoryStore } from '../stores/inventoryStore';
 import { CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE, CAMERA_MIN_POLAR, CAMERA_MAX_POLAR } from '../utils/constants';
 import { settleWorld } from '../systems/SandPhysics';
 import { updateVoxelShaderUniforms } from '../core/voxel/VoxelShader';
+import { useFireflies, FIREFLY_COUNT } from '../components/3d/Fireflies';
 
 function getTimeEmoji(timeOfDay: number): string {
   // 0=midnight, 0.25=sunrise, 0.5=noon, 0.75=sunset
@@ -54,7 +55,7 @@ export function BiomeScene() {
   }, [biome.config.skyColor]);
 
   useEffect(() => {
-    generateWorld(biomeType, biomeSeed, 2);
+    generateWorld(biomeType, biomeSeed, 1);
     settleWorld();
     // Set shader uniforms for cave (static lighting, no DayNightCycle)
     if (biomeType === 'cave') {
@@ -98,7 +99,7 @@ export function BiomeScene() {
     <div style={{ width: '100vw', height: '100vh' }}>
       <Canvas
         shadows
-        camera={{ position: [36, 30, 36], fov: 50, near: 0.1, far: 500 }}
+        camera={{ position: [24, 25, 24], fov: 50, near: 0.1, far: 500 }}
         style={{ background: skyColor }}
       >
         {/* Day/Night replaces static ambient + directional lights */}
@@ -119,12 +120,12 @@ export function BiomeScene() {
               shadow-camera-top={40}
               shadow-camera-bottom={-40}
             />
-            <pointLight position={[16, 20, 16]} intensity={0.5} color="#ff9944" distance={40} />
+            <pointLight position={[8, 20, 8]} intensity={0.5} color="#ff9944" distance={40} />
           </>
         )}
 
         <OrbitControls
-          target={[16, 8, 16]}
+          target={[8, 8, 8]}
           minDistance={CAMERA_MIN_DISTANCE}
           maxDistance={CAMERA_MAX_DISTANCE}
           minPolarAngle={CAMERA_MIN_POLAR}
@@ -140,6 +141,9 @@ export function BiomeScene() {
 
         <WorldInteraction mode="mine" />
         <ParticleSystem />
+        {(biomeType === 'forest' || biomeType === 'swamp') && (
+          <FirefliesRenderer center={[8, 0, 8]} />
+        )}
 
         <fog attach="fog" args={[skyColor, 30, 80]} />
       </Canvas>
@@ -156,5 +160,16 @@ export function BiomeScene() {
         />
       )}
     </div>
+  );
+}
+
+function FirefliesRenderer({ center }: { center: [number, number, number] }) {
+  const { meshRef, count } = useFireflies(center, true);
+  if (count === 0) return null;
+  return (
+    <instancedMesh ref={meshRef} args={[undefined, undefined, FIREFLY_COUNT]}>
+      <sphereGeometry args={[1, 6, 6]} />
+      <meshBasicMaterial color="#aaff44" transparent opacity={0.9} />
+    </instancedMesh>
   );
 }

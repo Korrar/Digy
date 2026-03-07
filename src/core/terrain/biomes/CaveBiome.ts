@@ -68,6 +68,24 @@ export class CaveBiome extends BiomeBase {
           const iron = this.noise.get3D(wx * 3 + 100, y * 3, wz * 3 + 100, 0.18);
           if (iron > 0.7) {
             chunk.setBlock(x, y, z, BlockType.IRON_ORE);
+            continue;
+          }
+
+          // Gold ore (deeper, rarer)
+          if (y < 12) {
+            const gold = this.noise.get3D(wx * 4 + 300, y * 4, wz * 4 + 300, 0.2);
+            if (gold > 0.75) {
+              chunk.setBlock(x, y, z, BlockType.GOLD_ORE);
+              continue;
+            }
+          }
+
+          // Diamond ore (deepest, rarest)
+          if (y < 8) {
+            const diamond = this.noise.get3D(wx * 5 + 500, y * 5, wz * 5 + 500, 0.22);
+            if (diamond > 0.8) {
+              chunk.setBlock(x, y, z, BlockType.DIAMOND_ORE);
+            }
           }
         }
       }

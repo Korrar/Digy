@@ -3,7 +3,7 @@ export const CHUNK_HEIGHT = 32;
 export const RENDER_DISTANCE = 3;
 
 // Biome "adventure" plate size (in blocks)
-export const BIOME_PLATE_SIZE = 32;
+export const BIOME_PLATE_SIZE = 16;
 export const BIOME_PLATE_HEIGHT = 24;
 
 // Camera

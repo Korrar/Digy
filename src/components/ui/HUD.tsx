@@ -19,6 +19,8 @@ export function HUD({ mode, onModeToggle, timeIndicator }: HUDProps) {
     desert: 'Pustynia',
     cave: 'Jaskinia',
     mountains: 'Góry',
+    swamp: 'Bagno',
+    tundra: 'Tundra',
   };
 
   return (

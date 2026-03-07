@@ -44,12 +44,19 @@ export class MountainBiome extends BiomeBase {
           }
         }
 
-        // Iron ore in mountains
+        // Ores in mountains
         for (let y = 2; y < Math.min(height - 2, 18); y++) {
           if (chunk.getBlock(x, y, z) !== BlockType.STONE) continue;
           const iron = this.noise.get3D(wx * 3 + 200, y * 3, wz * 3 + 200, 0.15);
           if (iron > 0.65) {
             chunk.setBlock(x, y, z, BlockType.IRON_ORE);
+            continue;
+          }
+          if (y < 10) {
+            const gold = this.noise.get3D(wx * 4 + 400, y * 4, wz * 4 + 400, 0.18);
+            if (gold > 0.75) {
+              chunk.setBlock(x, y, z, BlockType.GOLD_ORE);
+            }
           }
         }
       }
