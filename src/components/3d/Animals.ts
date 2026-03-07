@@ -4,19 +4,147 @@ import * as THREE from 'three';
 
 export interface AnimalConfig {
   count: number;
-  color: number;
+  bodyColor: number;
+  headColor: number;
+  legColor: number;
   size: number;
   speed: number;
   bounceHeight: number;
+  bodyScale: [number, number, number]; // w, h, d
+  headScale: [number, number, number];
+  headOffset: [number, number, number];
+  legLength: number;
 }
 
 const BIOME_ANIMALS: Record<string, AnimalConfig> = {
-  forest: { count: 6, color: 0xb8945a, size: 0.25, speed: 0.4, bounceHeight: 0.1 }, // rabbits
-  desert: { count: 4, color: 0x8b7355, size: 0.15, speed: 0.6, bounceHeight: 0.05 }, // lizards
-  mountains: { count: 4, color: 0xdedede, size: 0.3, speed: 0.3, bounceHeight: 0.15 }, // goats
-  swamp: { count: 5, color: 0x4a8a2d, size: 0.2, speed: 0.5, bounceHeight: 0.2 }, // frogs
-  tundra: { count: 3, color: 0xf0f0f0, size: 0.25, speed: 0.45, bounceHeight: 0.08 }, // arctic foxes
+  forest: {
+    // Rabbits - small body, round head, short legs
+    count: 6, bodyColor: 0xb8945a, headColor: 0xc9a56b, legColor: 0x8b7340,
+    size: 0.35, speed: 0.5, bounceHeight: 0.15,
+    bodyScale: [0.5, 0.45, 0.7], headScale: [0.35, 0.35, 0.3],
+    headOffset: [0, 0.25, 0.4], legLength: 0.2,
+  },
+  desert: {
+    // Lizards - flat body, small head, very short legs
+    count: 4, bodyColor: 0x8b7355, headColor: 0x9e8560, legColor: 0x6b5340,
+    size: 0.25, speed: 0.7, bounceHeight: 0.03,
+    bodyScale: [0.35, 0.15, 0.9], headScale: [0.2, 0.15, 0.25],
+    headOffset: [0, 0.02, 0.55], legLength: 0.1,
+  },
+  mountains: {
+    // Goats - stocky body, blocky head
+    count: 4, bodyColor: 0xd0d0d0, headColor: 0xc0b8a8, legColor: 0x8a8070,
+    size: 0.4, speed: 0.35, bounceHeight: 0.12,
+    bodyScale: [0.5, 0.55, 0.8], headScale: [0.3, 0.35, 0.35],
+    headOffset: [0, 0.15, 0.5], legLength: 0.35,
+  },
+  swamp: {
+    // Frogs - wide body, big head, tiny legs
+    count: 5, bodyColor: 0x4a8a2d, headColor: 0x5aaa3d, legColor: 0x3a6a1d,
+    size: 0.3, speed: 0.4, bounceHeight: 0.25,
+    bodyScale: [0.55, 0.3, 0.5], headScale: [0.45, 0.25, 0.3],
+    headOffset: [0, 0.05, 0.35], legLength: 0.15,
+  },
+  tundra: {
+    // Arctic foxes - sleek body, pointy head
+    count: 3, bodyColor: 0xf0ece0, headColor: 0xf5f0e8, legColor: 0xd0c8b8,
+    size: 0.35, speed: 0.5, bounceHeight: 0.08,
+    bodyScale: [0.4, 0.4, 0.75], headScale: [0.28, 0.28, 0.35],
+    headOffset: [0, 0.1, 0.48], legLength: 0.25,
+  },
 };
+
+/**
+ * Build a merged geometry for a voxel-style animal (body + head + 4 legs).
+ */
+function buildAnimalGeometry(config: AnimalConfig): THREE.BufferGeometry {
+  const parts: THREE.BoxGeometry[] = [];
+  const matrices: THREE.Matrix4[] = [];
+
+  // Body
+  const body = new THREE.BoxGeometry(config.bodyScale[0], config.bodyScale[1], config.bodyScale[2]);
+  const bodyMat = new THREE.Matrix4().makeTranslation(0, config.legLength + config.bodyScale[1] / 2, 0);
+  parts.push(body);
+  matrices.push(bodyMat);
+
+  // Head
+  const head = new THREE.BoxGeometry(config.headScale[0], config.headScale[1], config.headScale[2]);
+  const headMat = new THREE.Matrix4().makeTranslation(
+    config.headOffset[0],
+    config.legLength + config.bodyScale[1] / 2 + config.headOffset[1],
+    config.headOffset[2]
+  );
+  parts.push(head);
+  matrices.push(headMat);
+
+  // 4 Legs (corners of body)
+  const legGeo = new THREE.BoxGeometry(0.1, config.legLength, 0.1);
+  const offsets = [
+    [-config.bodyScale[0] * 0.35, 0, -config.bodyScale[2] * 0.3],
+    [config.bodyScale[0] * 0.35, 0, -config.bodyScale[2] * 0.3],
+    [-config.bodyScale[0] * 0.35, 0, config.bodyScale[2] * 0.3],
+    [config.bodyScale[0] * 0.35, 0, config.bodyScale[2] * 0.3],
+  ];
+  for (const off of offsets) {
+    const leg = legGeo.clone();
+    const legM = new THREE.Matrix4().makeTranslation(off[0], config.legLength / 2, off[2]);
+    parts.push(leg);
+    matrices.push(legM);
+  }
+
+  // Merge all parts
+  const merged = new THREE.BufferGeometry();
+  const allPositions: number[] = [];
+  const allNormals: number[] = [];
+  const allColors: number[] = [];
+  const allIndices: number[] = [];
+  let vertexOffset = 0;
+
+  const bodyCol = new THREE.Color(config.bodyColor);
+  const headCol = new THREE.Color(config.headColor);
+  const legCol = new THREE.Color(config.legColor);
+
+  for (let p = 0; p < parts.length; p++) {
+    const geo = parts[p].clone();
+    geo.applyMatrix4(matrices[p]);
+
+    const pos = geo.attributes.position;
+    const norm = geo.attributes.normal;
+    const idx = geo.index!;
+
+    const col = p === 0 ? bodyCol : p === 1 ? headCol : legCol;
+
+    for (let i = 0; i < pos.count; i++) {
+      allPositions.push(pos.getX(i), pos.getY(i), pos.getZ(i));
+      allNormals.push(norm.getX(i), norm.getY(i), norm.getZ(i));
+      // Per-vertex color with slight variation for texture feel
+      const variation = (Math.random() - 0.5) * 0.08;
+      allColors.push(
+        Math.max(0, Math.min(1, col.r + variation)),
+        Math.max(0, Math.min(1, col.g + variation)),
+        Math.max(0, Math.min(1, col.b + variation)),
+      );
+    }
+
+    for (let i = 0; i < idx.count; i++) {
+      allIndices.push(idx.getX(i) + vertexOffset);
+    }
+    vertexOffset += pos.count;
+
+    geo.dispose();
+  }
+
+  // Dispose originals
+  for (const g of parts) g.dispose();
+
+  merged.setAttribute('position', new THREE.Float32BufferAttribute(allPositions, 3));
+  merged.setAttribute('normal', new THREE.Float32BufferAttribute(allNormals, 3));
+  merged.setAttribute('color', new THREE.Float32BufferAttribute(allColors, 3));
+  merged.setIndex(allIndices);
+  merged.computeBoundingSphere();
+
+  return merged;
+}
 
 interface Animal {
   position: THREE.Vector3;
@@ -29,6 +157,11 @@ export function useAnimals(biomeType: string, center: [number, number, number]) 
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const config = BIOME_ANIMALS[biomeType];
+
+  const geometry = useMemo(() => {
+    if (!config) return null;
+    return buildAnimalGeometry(config);
+  }, [config]);
 
   const animals = useMemo(() => {
     if (!config) return [];
@@ -102,7 +235,7 @@ export function useAnimals(biomeType: string, center: [number, number, number]) 
     mesh.instanceMatrix.needsUpdate = true;
   });
 
-  return { meshRef, count: config?.count ?? 0, color: config?.color ?? 0xffffff };
+  return { meshRef, geometry, count: config?.count ?? 0 };
 }
 
 export function getAnimalName(biomeType: string): string {
