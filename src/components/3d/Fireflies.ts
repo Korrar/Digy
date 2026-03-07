@@ -12,8 +12,11 @@ interface Firefly {
   heightOffset: number;
 }
 
+const LIGHT_COUNT = 5;
+
 export function useFireflies(center: [number, number, number], enabled: boolean) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
+  const lightRefs = useRef<(THREE.PointLight | null)[]>(new Array(LIGHT_COUNT).fill(null));
   const dummy = useMemo(() => new THREE.Object3D(), []);
 
   const fireflies = useMemo(() => {
@@ -62,13 +65,22 @@ export function useFireflies(center: [number, number, number], enabled: boolean)
       // Yellow-green glow color
       color.setRGB(0.6 + glow * 0.4, 0.8 + glow * 0.2, 0.1);
       mesh.setColorAt(i, color);
+
+      // Update point lights for the first LIGHT_COUNT fireflies
+      if (i < LIGHT_COUNT) {
+        const light = lightRefs.current[i];
+        if (light) {
+          light.position.set(x, y, z);
+          light.intensity = glow * 0.6;
+        }
+      }
     }
 
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   });
 
-  return { meshRef, count: enabled ? FIREFLY_COUNT : 0 };
+  return { meshRef, lightRefs, count: enabled ? FIREFLY_COUNT : 0 };
 }
 
 export { FIREFLY_COUNT };
