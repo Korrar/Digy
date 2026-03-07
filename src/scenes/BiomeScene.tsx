@@ -164,12 +164,24 @@ export function BiomeScene() {
 }
 
 function FirefliesRenderer({ center }: { center: [number, number, number] }) {
-  const { meshRef, count } = useFireflies(center, true);
+  const { meshRef, lightRefs, count } = useFireflies(center, true);
   if (count === 0) return null;
   return (
-    <instancedMesh ref={meshRef} args={[undefined, undefined, FIREFLY_COUNT]}>
-      <sphereGeometry args={[1, 6, 6]} />
-      <meshBasicMaterial color="#aaff44" transparent opacity={0.9} />
-    </instancedMesh>
+    <>
+      <instancedMesh ref={meshRef} args={[undefined, undefined, FIREFLY_COUNT]}>
+        <sphereGeometry args={[1, 6, 6]} />
+        <meshBasicMaterial color="#aaff44" transparent opacity={0.9} />
+      </instancedMesh>
+      {Array.from({ length: 5 }, (_, i) => (
+        <pointLight
+          key={i}
+          ref={(el) => { lightRefs.current[i] = el; }}
+          color="#aaff44"
+          intensity={0}
+          distance={6}
+          decay={2}
+        />
+      ))}
+    </>
   );
 }

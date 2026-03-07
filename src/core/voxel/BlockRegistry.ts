@@ -32,6 +32,8 @@ export interface BlockDefinition {
   stackSize: number;
   /** Sparkle intensity for ores (0 = none, higher = more sparkle) */
   sparkle?: number;
+  /** Characteristic color for ore inclusions and sparkle tint */
+  oreColor?: THREE.Color;
 }
 
 const BLOCKS: Map<BlockType, BlockDefinition> = new Map();
@@ -48,7 +50,7 @@ register({ id: BlockType.SAND, name: 'Sand', color: new THREE.Color(0xdbc67b), h
 register({ id: BlockType.WOOD, name: 'Wood', color: new THREE.Color(0x6b4226), hardness: 2.0, transparent: false, drops: BlockType.WOOD, stackSize: 64 });
 register({ id: BlockType.LEAVES, name: 'Leaves', color: new THREE.Color(0x3a7d22), hardness: 0.2, transparent: true, drops: BlockType.AIR, stackSize: 64 });
 register({ id: BlockType.COAL_ORE, name: 'Coal Ore', color: new THREE.Color(0x4a4a4a), hardness: 3.0, transparent: false, drops: BlockType.COAL_ORE, stackSize: 64 });
-register({ id: BlockType.IRON_ORE, name: 'Iron Ore', color: new THREE.Color(0xa08060), hardness: 3.0, transparent: false, drops: BlockType.IRON_ORE, stackSize: 64, sparkle: 0.3 });
+register({ id: BlockType.IRON_ORE, name: 'Iron Ore', color: new THREE.Color(0x808080), hardness: 3.0, transparent: false, drops: BlockType.IRON_ORE, stackSize: 64, sparkle: 0.3, oreColor: new THREE.Color(0xc8956c) });
 register({ id: BlockType.SANDSTONE, name: 'Sandstone', color: new THREE.Color(0xd4b86a), hardness: 0.8, transparent: false, drops: BlockType.SANDSTONE, stackSize: 64 });
 register({ id: BlockType.SNOW, name: 'Snow', color: new THREE.Color(0xf0f0f0), hardness: 0.2, transparent: false, drops: BlockType.SNOW, stackSize: 64 });
 register({ id: BlockType.ICE, name: 'Ice', color: new THREE.Color(0xa0d0e0), hardness: 0.5, transparent: true, drops: BlockType.ICE, stackSize: 64 });
@@ -56,8 +58,8 @@ register({ id: BlockType.CACTUS, name: 'Cactus', color: new THREE.Color(0x2d6e1e
 register({ id: BlockType.WATER, name: 'Water', color: new THREE.Color(0x3060c0), hardness: Infinity, transparent: true, drops: BlockType.AIR, stackSize: 0 });
 register({ id: BlockType.GRAVEL, name: 'Gravel', color: new THREE.Color(0x909090), hardness: 0.6, transparent: false, drops: BlockType.GRAVEL, stackSize: 64 });
 register({ id: BlockType.COBBLESTONE, name: 'Cobblestone', color: new THREE.Color(0x707070), hardness: 2.0, transparent: false, drops: BlockType.COBBLESTONE, stackSize: 64 });
-register({ id: BlockType.GOLD_ORE, name: 'Gold Ore', color: new THREE.Color(0x808060), topColor: new THREE.Color(0xdaa520), hardness: 3.0, transparent: false, drops: BlockType.GOLD_ORE, stackSize: 64, sparkle: 0.6 });
-register({ id: BlockType.DIAMOND_ORE, name: 'Diamond Ore', color: new THREE.Color(0x607080), topColor: new THREE.Color(0x4dd9e8), hardness: 5.0, transparent: false, drops: BlockType.DIAMOND_ORE, stackSize: 64, sparkle: 0.9 });
+register({ id: BlockType.GOLD_ORE, name: 'Gold Ore', color: new THREE.Color(0x808080), topColor: new THREE.Color(0x808080), hardness: 3.0, transparent: false, drops: BlockType.GOLD_ORE, stackSize: 64, sparkle: 0.6, oreColor: new THREE.Color(0xffd700) });
+register({ id: BlockType.DIAMOND_ORE, name: 'Diamond Ore', color: new THREE.Color(0x808080), topColor: new THREE.Color(0x808080), hardness: 5.0, transparent: false, drops: BlockType.DIAMOND_ORE, stackSize: 64, sparkle: 0.9, oreColor: new THREE.Color(0x40e0d0) });
 
 export function getBlock(type: BlockType): BlockDefinition {
   return BLOCKS.get(type) ?? BLOCKS.get(BlockType.AIR)!;

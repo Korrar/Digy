@@ -2,17 +2,20 @@ import * as THREE from 'three';
 
 const vertexShader = /* glsl */ `
 attribute float aSparkle;
+attribute vec3 aOreColor;
 
 varying vec3 vColor;
 varying vec3 vNormal;
 varying vec3 vWorldPosition;
 varying float vFogDepth;
 varying float vSparkle;
+varying vec3 vOreColor;
 
 void main() {
   vColor = color;
   vNormal = normalize(normalMatrix * normal);
   vSparkle = aSparkle;
+  vOreColor = aOreColor;
 
   vec4 worldPos = modelMatrix * vec4(position, 1.0);
   vWorldPosition = worldPos.xyz;
@@ -45,6 +48,7 @@ varying vec3 vNormal;
 varying vec3 vWorldPosition;
 varying float vFogDepth;
 varying float vSparkle;
+varying vec3 vOreColor;
 
 // Hash for sparkle
 float hash(vec3 p) {
@@ -74,15 +78,21 @@ void main() {
 
   // Sparkle effect for ores
   if (vSparkle > 0.0) {
-    // Multiple sparkle points per block face
+    // Persistent subtle ore sheen (always visible, not animated)
+    vec3 sheenPos = floor(vWorldPosition * 6.0) * 0.167;
+    float sheenHash = hash(sheenPos);
+    float sheen = smoothstep(0.4, 0.8, sheenHash) * 0.15;
+    color += vOreColor * sheen * vSparkle;
+
+    // Animated sparkle points per block face
     vec3 sparklePos = floor(vWorldPosition * 4.0) * 0.25;
     float sparkleHash = hash(sparklePos);
-    // Animated sparkle using time
     float sparklePhase = sparkleHash * 6.28318 + uTime * 3.0;
     float sparkleBrightness = pow(max(0.0, sin(sparklePhase)), 16.0);
-    // Only some vertices sparkle at a time
     float sparkleThreshold = step(0.7, sparkleHash);
-    color += vec3(1.0, 0.95, 0.8) * sparkleBrightness * vSparkle * sparkleThreshold * 0.8;
+    // Tint sparkle with ore color (bright white core + colored halo)
+    vec3 sparkleColor = mix(vOreColor, vec3(1.0), 0.4);
+    color += sparkleColor * sparkleBrightness * vSparkle * sparkleThreshold * 0.8;
   }
 
   // Tone mapping (simple Reinhard)

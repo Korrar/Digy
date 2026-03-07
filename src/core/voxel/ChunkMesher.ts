@@ -109,6 +109,7 @@ export function buildChunkMesh(
   const colors: number[] = [];
   const uvs: number[] = [];
   const sparkles: number[] = [];
+  const oreColors: number[] = [];
   const indices: number[] = [];
   let vertexCount = 0;
 
@@ -126,6 +127,7 @@ export function buildChunkMesh(
         const variation = getTextureVariation(block);
         const blockDef = getBlock(block);
         const sparkle = blockDef.sparkle ?? 0;
+        const oreColor = blockDef.oreColor;
 
         for (const face of FACES) {
           const nx = x + face.dir[0];
@@ -168,14 +170,35 @@ export function buildChunkMesh(
             const texNoise = (noiseVal * 0.7 + noiseVal2 * 0.3) * variation;
 
             const brightness = faceBrightness * ao;
+            let cr = color.r * brightness + texNoise;
+            let cg = color.g * brightness + texNoise * 0.8;
+            let cb = color.b * brightness + texNoise * 0.6;
+
+            // Ore-colored speckles: blend ore color into some vertices
+            if (oreColor) {
+              const speckleNoise = hash3(wx * 7 + corner[0] * 31, (y + corner[1]) * 13 + 97, wz * 7 + corner[2] * 31);
+              if (speckleNoise > 0.45) {
+                const blend = (speckleNoise - 0.45) / 0.55; // 0..1
+                const t = blend * 0.7; // max 70% ore color blend
+                cr = cr * (1 - t) + oreColor.r * brightness * t;
+                cg = cg * (1 - t) + oreColor.g * brightness * t;
+                cb = cb * (1 - t) + oreColor.b * brightness * t;
+              }
+            }
+
             colors.push(
-              Math.max(0, Math.min(1, color.r * brightness + texNoise)),
-              Math.max(0, Math.min(1, color.g * brightness + texNoise * 0.8)),
-              Math.max(0, Math.min(1, color.b * brightness + texNoise * 0.6)),
+              Math.max(0, Math.min(1, cr)),
+              Math.max(0, Math.min(1, cg)),
+              Math.max(0, Math.min(1, cb)),
             );
 
             uvs.push(face.uvs[ci][0], face.uvs[ci][1]);
             sparkles.push(sparkle);
+            oreColors.push(
+              oreColor ? oreColor.r : 1.0,
+              oreColor ? oreColor.g : 0.95,
+              oreColor ? oreColor.b : 0.8,
+            );
           }
 
           indices.push(
@@ -194,6 +217,7 @@ export function buildChunkMesh(
   geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setAttribute('aSparkle', new THREE.Float32BufferAttribute(sparkles, 1));
+  geometry.setAttribute('aOreColor', new THREE.Float32BufferAttribute(oreColors, 3));
   geometry.setIndex(indices);
   geometry.computeBoundingSphere();
 
