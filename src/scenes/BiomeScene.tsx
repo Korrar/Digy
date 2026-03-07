@@ -7,9 +7,12 @@ import { useWorldStore } from '../stores/worldStore';
 import { createBiome } from '../core/terrain/biomes';
 import { ChunkMesh } from '../components/3d/ChunkMesh';
 import { WorldInteraction } from '../components/3d/WorldInteraction';
+import { MiningParticles } from '../components/3d/MiningParticles';
+import { DayNightCycle } from '../components/3d/DayNightCycle';
 import { Hotbar } from '../components/ui/Hotbar';
 import { HUD } from '../components/ui/HUD';
 import { InventoryPanel } from '../components/ui/InventoryPanel';
+import { MobileControls } from '../components/ui/MobileControls';
 import { useInventoryStore } from '../stores/inventoryStore';
 import { CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE, CAMERA_MIN_POLAR, CAMERA_MAX_POLAR } from '../utils/constants';
 
@@ -52,19 +55,7 @@ export function BiomeScene() {
         camera={{ position: [20, 25, 20], fov: 50, near: 0.1, far: 500 }}
         style={{ background: biome.config.skyColor }}
       >
-        <ambientLight intensity={biome.config.ambientLight} />
-        <directionalLight
-          position={[30, 40, 20]}
-          intensity={0.8}
-          castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
-          shadow-camera-far={100}
-          shadow-camera-left={-40}
-          shadow-camera-right={40}
-          shadow-camera-top={40}
-          shadow-camera-bottom={-40}
-        />
+        <DayNightCycle cycleDuration={120} baseAmbient={biome.config.ambientLight} />
 
         <OrbitControls
           target={[0, 8, 0]}
@@ -81,6 +72,7 @@ export function BiomeScene() {
         ))}
 
         <WorldInteraction mode="mine" />
+        <MiningParticles />
 
         <fog attach="fog" args={[biome.config.fogColor, 30, 80]} />
       </Canvas>
@@ -88,6 +80,7 @@ export function BiomeScene() {
       <HUD />
       <Hotbar />
       <InventoryPanel />
+      <MobileControls />
     </div>
   );
 }

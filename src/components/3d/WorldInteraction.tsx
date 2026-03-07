@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { BlockType, getBlock, isSolid } from '../../core/voxel/BlockRegistry';
+import { playMineSound, playPlaceSound } from '../../core/audio/SoundEngine';
+import { spawnParticles } from './MiningParticles';
 
 interface WorldInteractionProps {
   mode: 'mine' | 'build';
@@ -14,6 +16,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
   const miningTimeRef = useRef(0);
   const miningBlockRef = useRef<string | null>(null);
   const isPointerDownRef = useRef(false);
+  const lastMiningSoundRef = useRef(0);
   const [miningProgress, setMiningProgress] = useState(0);
 
   const { raycaster, pointer, camera, scene } = useThree();
@@ -62,7 +65,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
     };
   }, [raycaster, pointer, camera, scene, getBlockW]);
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     const result = raycast();
 
     if (highlightRef.current) {
@@ -95,8 +98,19 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
           const progress = Math.min(miningTimeRef.current / Math.max(def.hardness, 0.1), 1);
           setMiningProgress(progress);
 
+          // Play mining sound every 0.25s
+          const elapsed = state.clock.elapsedTime;
+          if (elapsed - lastMiningSoundRef.current > 0.25) {
+            playMineSound(result.blockType);
+            lastMiningSoundRef.current = elapsed;
+          }
+
           if (progress >= 1) {
             const [bx, by, bz] = result.blockPos;
+            // Spawn particles before removing block
+            spawnParticles(bx, by, bz, def.topColor ?? def.color);
+            playMineSound(result.blockType);
+
             setBlockW(bx, by, bz, BlockType.AIR);
             if (def.drops !== BlockType.AIR) {
               addBlock(def.drops, 1);
@@ -131,6 +145,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
       if (!isSolid(getBlockW(px, py, pz))) {
         setBlockW(px, py, pz, selectedBlock);
         removeBlock(selectedIdx, 1);
+        playPlaceSound();
       }
     }
   }, [mode, raycast, getSelectedBlock, getBlockW, setBlockW, removeBlock, selectedIdx]);

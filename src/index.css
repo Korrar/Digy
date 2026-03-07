@@ -11,6 +11,11 @@ html, body, #root {
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   background: #1a1a2e;
   color: #fff;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 canvas {
@@ -20,4 +25,11 @@ canvas {
 
 button {
   font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@supports (height: 100dvh) {
+  html, body, #root {
+    height: 100dvh;
+  }
 }

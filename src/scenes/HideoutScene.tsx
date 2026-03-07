@@ -6,9 +6,12 @@ import { useWorldStore } from '../stores/worldStore';
 import { useInventoryStore } from '../stores/inventoryStore';
 import { ChunkMesh } from '../components/3d/ChunkMesh';
 import { WorldInteraction } from '../components/3d/WorldInteraction';
+import { MiningParticles } from '../components/3d/MiningParticles';
+import { DayNightCycle } from '../components/3d/DayNightCycle';
 import { Hotbar } from '../components/ui/Hotbar';
 import { HUD } from '../components/ui/HUD';
 import { InventoryPanel } from '../components/ui/InventoryPanel';
+import { MobileControls } from '../components/ui/MobileControls';
 import { ChunkData, chunkKey } from '../core/voxel/ChunkData';
 import { buildChunkMesh } from '../core/voxel/ChunkMesher';
 import { BlockType } from '../core/voxel/BlockRegistry';
@@ -26,7 +29,6 @@ export function HideoutScene() {
   }, []);
 
   useEffect(() => {
-    // Generate flat hideout platform
     initHideout();
     return () => clearWorld();
   }, []);
@@ -76,19 +78,7 @@ export function HideoutScene() {
         camera={{ position: [15, 20, 15], fov: 50, near: 0.1, far: 300 }}
         style={{ background: '#2a3a4a' }}
       >
-        <ambientLight intensity={0.6} />
-        <directionalLight
-          position={[20, 30, 15]}
-          intensity={0.9}
-          castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
-          shadow-camera-far={80}
-          shadow-camera-left={-30}
-          shadow-camera-right={30}
-          shadow-camera-top={30}
-          shadow-camera-bottom={-30}
-        />
+        <DayNightCycle cycleDuration={120} baseAmbient={0.6} />
         <pointLight position={[0, 15, 0]} intensity={0.3} />
 
         <OrbitControls
@@ -106,8 +96,8 @@ export function HideoutScene() {
         ))}
 
         <WorldInteraction mode={mode} />
+        <MiningParticles />
 
-        {/* Grid helper for building area */}
         <gridHelper args={[HIDEOUT_SIZE, HIDEOUT_SIZE, '#334455', '#223344']} position={[HIDEOUT_SIZE / 2, 0, HIDEOUT_SIZE / 2]} />
 
         <fog attach="fog" args={['#2a3a4a', 40, 80]} />
@@ -116,6 +106,7 @@ export function HideoutScene() {
       <HUD mode={mode} onModeToggle={toggleMode} />
       <Hotbar />
       <InventoryPanel />
+      <MobileControls mode={mode} onModeToggle={toggleMode} />
     </div>
   );
 }
@@ -124,7 +115,6 @@ async function initHideout() {
   const store = useWorldStore.getState();
   store.clearWorld();
 
-  // Try loading saved hideout
   const saved = await loadHideout();
 
   if (saved && saved.length > 0) {
@@ -137,14 +127,12 @@ async function initHideout() {
     }
     useWorldStore.setState({ chunks });
   } else {
-    // Generate flat platform
-    const radius = 1; // 2x2 chunks = 32x32 blocks
+    const radius = 1;
     const newChunks = new Map();
 
     for (let cx = 0; cx <= radius; cx++) {
       for (let cz = 0; cz <= radius; cz++) {
         const chunk = new ChunkData(cx, cz);
-        // Flat stone floor at y=0
         for (let x = 0; x < 16; x++) {
           for (let z = 0; z < 16; z++) {
             chunk.setBlock(x, 0, z, BlockType.STONE);
