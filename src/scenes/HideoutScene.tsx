@@ -6,27 +6,47 @@ import { useWorldStore } from '../stores/worldStore';
 import { useInventoryStore } from '../stores/inventoryStore';
 import { ChunkMesh } from '../components/3d/ChunkMesh';
 import { WorldInteraction } from '../components/3d/WorldInteraction';
+import { ParticleSystem } from '../components/3d/DiggingParticles';
+import { DayNightCycle } from '../components/3d/DayNightCycle';
 import { Hotbar } from '../components/ui/Hotbar';
 import { HUD } from '../components/ui/HUD';
 import { InventoryPanel } from '../components/ui/InventoryPanel';
+import { MobileControls, useTouchDetect } from '../components/ui/MobileControls';
 import { ChunkData, chunkKey } from '../core/voxel/ChunkData';
 import { buildChunkMesh } from '../core/voxel/ChunkMesher';
 import { BlockType } from '../core/voxel/BlockRegistry';
 import { HIDEOUT_SIZE, CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE, CAMERA_MIN_POLAR, CAMERA_MAX_POLAR } from '../utils/constants';
 import { saveHideout, loadHideout } from '../utils/storage';
 
+function getTimeEmoji(timeOfDay: number): string {
+  if (timeOfDay > 0.2 && timeOfDay < 0.3) return '🌅';
+  if (timeOfDay >= 0.3 && timeOfDay < 0.7) return '☀️';
+  if (timeOfDay >= 0.7 && timeOfDay < 0.8) return '🌇';
+  return '🌙';
+}
+
 export function HideoutScene() {
   const [mode, setMode] = useState<'mine' | 'build'>('build');
   const chunks = useWorldStore((s) => s.chunks);
   const clearWorld = useWorldStore((s) => s.clearWorld);
   const toggleInventory = useInventoryStore((s) => s.toggleInventory);
+  const isTouch = useTouchDetect();
+  const [timeIndicator, setTimeIndicator] = useState('☀️');
+  const [skyColor, setSkyColor] = useState('#2a3a4a');
+
+  const handleTimeChange = useCallback((timeOfDay: number, sunIntensity: number) => {
+    setTimeIndicator(getTimeEmoji(timeOfDay));
+    const base = new THREE.Color(0x2a3a4a);
+    const night = new THREE.Color(0x0a0a1a);
+    const result = new THREE.Color().lerpColors(night, base, Math.max(0.1, sunIntensity));
+    setSkyColor('#' + result.getHexString());
+  }, []);
 
   const toggleMode = useCallback(() => {
     setMode((m) => m === 'mine' ? 'build' : 'mine');
   }, []);
 
   useEffect(() => {
-    // Generate flat hideout platform
     initHideout();
     return () => clearWorld();
   }, []);
@@ -69,26 +89,21 @@ export function HideoutScene() {
     return result;
   }, [chunks]);
 
+  const handleDigStart = useCallback(() => {
+    (window as any).__digyPointer?.startDig();
+  }, []);
+  const handleDigEnd = useCallback(() => {
+    (window as any).__digyPointer?.stopDig();
+  }, []);
+
   return (
     <div style={{ width: '100vw', height: '100vh' }}>
       <Canvas
         shadows
         camera={{ position: [15, 20, 15], fov: 50, near: 0.1, far: 300 }}
-        style={{ background: '#2a3a4a' }}
+        style={{ background: skyColor }}
       >
-        <ambientLight intensity={0.6} />
-        <directionalLight
-          position={[20, 30, 15]}
-          intensity={0.9}
-          castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
-          shadow-camera-far={80}
-          shadow-camera-left={-30}
-          shadow-camera-right={30}
-          shadow-camera-top={30}
-          shadow-camera-bottom={-30}
-        />
+        <DayNightCycle cycleDuration={120} onTimeChange={handleTimeChange} />
         <pointLight position={[0, 15, 0]} intensity={0.3} />
 
         <OrbitControls
@@ -99,6 +114,7 @@ export function HideoutScene() {
           maxPolarAngle={CAMERA_MAX_POLAR}
           enablePan={true}
           panSpeed={0.8}
+          touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
         />
 
         {chunkEntries.map((c) => (
@@ -106,16 +122,25 @@ export function HideoutScene() {
         ))}
 
         <WorldInteraction mode={mode} />
+        <ParticleSystem />
 
-        {/* Grid helper for building area */}
         <gridHelper args={[HIDEOUT_SIZE, HIDEOUT_SIZE, '#334455', '#223344']} position={[HIDEOUT_SIZE / 2, 0, HIDEOUT_SIZE / 2]} />
 
-        <fog attach="fog" args={['#2a3a4a', 40, 80]} />
+        <fog attach="fog" args={[skyColor, 40, 80]} />
       </Canvas>
 
-      <HUD mode={mode} onModeToggle={toggleMode} />
+      <HUD mode={mode} onModeToggle={toggleMode} timeIndicator={timeIndicator} />
       <Hotbar />
       <InventoryPanel />
+      {isTouch && (
+        <MobileControls
+          onDigStart={handleDigStart}
+          onDigEnd={handleDigEnd}
+          onInventoryToggle={toggleInventory}
+          onModeToggle={toggleMode}
+          mode={mode}
+        />
+      )}
     </div>
   );
 }
@@ -124,7 +149,6 @@ async function initHideout() {
   const store = useWorldStore.getState();
   store.clearWorld();
 
-  // Try loading saved hideout
   const saved = await loadHideout();
 
   if (saved && saved.length > 0) {
@@ -137,14 +161,12 @@ async function initHideout() {
     }
     useWorldStore.setState({ chunks });
   } else {
-    // Generate flat platform
-    const radius = 1; // 2x2 chunks = 32x32 blocks
+    const radius = 1;
     const newChunks = new Map();
 
     for (let cx = 0; cx <= radius; cx++) {
       for (let cz = 0; cz <= radius; cz++) {
         const chunk = new ChunkData(cx, cz);
-        // Flat stone floor at y=0
         for (let x = 0; x < 16; x++) {
           for (let z = 0; z < 16; z++) {
             chunk.setBlock(x, 0, z, BlockType.STONE);

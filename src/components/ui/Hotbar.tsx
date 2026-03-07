@@ -3,26 +3,6 @@ import { useInventoryStore } from '../../stores/inventoryStore';
 import { getBlock, BlockType } from '../../core/voxel/BlockRegistry';
 import { HOTBAR_SIZE } from '../../utils/constants';
 
-const slotStyle: React.CSSProperties = {
-  width: 48,
-  height: 48,
-  border: '2px solid #555',
-  borderRadius: 4,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  position: 'relative',
-  cursor: 'pointer',
-  userSelect: 'none',
-  backgroundColor: 'rgba(0,0,0,0.5)',
-};
-
-const selectedStyle: React.CSSProperties = {
-  ...slotStyle,
-  border: '2px solid #fff',
-  boxShadow: '0 0 8px rgba(255,255,255,0.5)',
-};
-
 function blockColor(type: BlockType): string {
   const def = getBlock(type);
   return '#' + (def.topColor ?? def.color).getHexString();
@@ -59,29 +39,45 @@ export function Hotbar() {
   return (
     <div style={{
       position: 'fixed',
-      bottom: 16,
+      bottom: 8,
       left: '50%',
       transform: 'translateX(-50%)',
       display: 'flex',
-      gap: 4,
-      padding: 6,
+      gap: 'clamp(2px, 0.5vw, 4px)',
+      padding: 'clamp(3px, 0.8vw, 6px)',
       background: 'rgba(0,0,0,0.6)',
       borderRadius: 8,
       zIndex: 100,
+      maxWidth: '94vw',
     }}>
       {Array.from({ length: HOTBAR_SIZE }, (_, i) => {
         const slot = slots[i];
+        const isSelected = i === selected;
         return (
           <div
             key={i}
-            style={i === selected ? selectedStyle : slotStyle}
+            style={{
+              width: 'clamp(36px, 9vw, 48px)',
+              height: 'clamp(36px, 9vw, 48px)',
+              border: isSelected ? '2px solid #fff' : '2px solid #555',
+              borderRadius: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+              cursor: 'pointer',
+              userSelect: 'none',
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              boxShadow: isSelected ? '0 0 8px rgba(255,255,255,0.5)' : 'none',
+              touchAction: 'none',
+            }}
             onClick={() => setSelected(i)}
           >
             {slot && (
               <>
                 <div style={{
-                  width: 32,
-                  height: 32,
+                  width: 'clamp(22px, 6vw, 32px)',
+                  height: 'clamp(22px, 6vw, 32px)',
                   backgroundColor: blockColor(slot.blockType),
                   borderRadius: 3,
                   border: '1px solid rgba(255,255,255,0.2)',
@@ -89,8 +85,8 @@ export function Hotbar() {
                 <span style={{
                   position: 'absolute',
                   bottom: 1,
-                  right: 3,
-                  fontSize: 11,
+                  right: 2,
+                  fontSize: 'clamp(8px, 2.2vw, 11px)',
                   color: '#fff',
                   fontWeight: 'bold',
                   textShadow: '1px 1px 2px black',
@@ -102,8 +98,8 @@ export function Hotbar() {
             <span style={{
               position: 'absolute',
               top: 1,
-              left: 3,
-              fontSize: 9,
+              left: 2,
+              fontSize: 'clamp(7px, 1.8vw, 9px)',
               color: '#888',
             }}>
               {i + 1}

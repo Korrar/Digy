@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { BlockType, getBlock, isSolid } from '../../core/voxel/BlockRegistry';
+import { soundManager } from '../../systems/SoundManager';
+import { spawnParticles } from './DiggingParticles';
 
 interface WorldInteractionProps {
   mode: 'mine' | 'build';
@@ -14,6 +16,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
   const miningTimeRef = useRef(0);
   const miningBlockRef = useRef<string | null>(null);
   const isPointerDownRef = useRef(false);
+  const lastSoundTimeRef = useRef(0);
   const [miningProgress, setMiningProgress] = useState(0);
 
   const { raycaster, pointer, camera, scene } = useThree();
@@ -62,8 +65,9 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
     };
   }, [raycaster, pointer, camera, scene, getBlockW]);
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     const result = raycast();
+    const now = state.clock.elapsedTime;
 
     if (highlightRef.current) {
       if (result) {
@@ -95,12 +99,23 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
           const progress = Math.min(miningTimeRef.current / Math.max(def.hardness, 0.1), 1);
           setMiningProgress(progress);
 
+          // Play dig sound periodically while mining
+          if (now - lastSoundTimeRef.current > 0.25) {
+            soundManager.playDigSound(result.blockType);
+            spawnParticles(result.blockPos, result.blockType, false);
+            lastSoundTimeRef.current = now;
+          }
+
           if (progress >= 1) {
             const [bx, by, bz] = result.blockPos;
             setBlockW(bx, by, bz, BlockType.AIR);
             if (def.drops !== BlockType.AIR) {
               addBlock(def.drops, 1);
             }
+            // Play break sound and emit burst particles
+            soundManager.playBreakSound(result.blockType);
+            spawnParticles(result.blockPos, result.blockType, true);
+
             miningTimeRef.current = 0;
             miningBlockRef.current = null;
             setMiningProgress(0);
@@ -131,6 +146,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
       if (!isSolid(getBlockW(px, py, pz))) {
         setBlockW(px, py, pz, selectedBlock);
         removeBlock(selectedIdx, 1);
+        soundManager.playPlaceSound();
       }
     }
   }, [mode, raycast, getSelectedBlock, getBlockW, setBlockW, removeBlock, selectedIdx]);
@@ -141,6 +157,17 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
     miningBlockRef.current = null;
     setMiningProgress(0);
   }, []);
+
+  // Expose pointer control for mobile
+  (window as any).__digyPointer = {
+    startDig: () => { isPointerDownRef.current = true; },
+    stopDig: () => {
+      isPointerDownRef.current = false;
+      miningTimeRef.current = 0;
+      miningBlockRef.current = null;
+      setMiningProgress(0);
+    },
+  };
 
   return (
     <>
