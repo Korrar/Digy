@@ -18,6 +18,8 @@ import { CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE, CAMERA_MIN_POLAR, CAMERA_MAX_
 import { settleWorld } from '../systems/SandPhysics';
 import { updateVoxelShaderUniforms } from '../core/voxel/VoxelShader';
 import { useFireflies, FIREFLY_COUNT } from '../components/3d/Fireflies';
+import { useAnimals, BIOME_ANIMALS } from '../components/3d/Animals';
+import { useWeather } from '../components/3d/Weather';
 
 function getTimeEmoji(timeOfDay: number): string {
   // 0=midnight, 0.25=sunrise, 0.5=noon, 0.75=sunset
@@ -144,6 +146,10 @@ export function BiomeScene() {
         {(biomeType === 'forest' || biomeType === 'swamp') && (
           <FirefliesRenderer center={[8, 0, 8]} />
         )}
+        {biomeType !== 'cave' && BIOME_ANIMALS[biomeType] && (
+          <AnimalRenderer biomeType={biomeType} center={[8, 8, 8]} />
+        )}
+        <WeatherRenderer biomeType={biomeType} center={[8, 8, 8]} />
 
         <fog attach="fog" args={[skyColor, 30, 80]} />
       </Canvas>
@@ -183,5 +189,39 @@ function FirefliesRenderer({ center }: { center: [number, number, number] }) {
         />
       ))}
     </>
+  );
+}
+
+function AnimalRenderer({ biomeType, center }: { biomeType: string; center: [number, number, number] }) {
+  const { meshRef, count, color } = useAnimals(biomeType, center);
+  if (count === 0) return null;
+  return (
+    <instancedMesh ref={meshRef} args={[undefined, undefined, count]}>
+      <boxGeometry args={[1, 0.7, 1.4]} />
+      <meshBasicMaterial color={color} />
+    </instancedMesh>
+  );
+}
+
+function WeatherRenderer({ biomeType, center }: { biomeType: string; center: [number, number, number] }) {
+  const { pointsRef, positionArray, config, count } = useWeather(biomeType, center);
+  if (count === 0 || !config || config.type === 'none') return null;
+  return (
+    <points ref={pointsRef}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          args={[positionArray, 3]}
+        />
+      </bufferGeometry>
+      <pointsMaterial
+        color={config.color}
+        size={config.size}
+        transparent
+        opacity={config.type === 'fog' ? 0.3 : 0.7}
+        depthWrite={false}
+        sizeAttenuation
+      />
+    </points>
   );
 }

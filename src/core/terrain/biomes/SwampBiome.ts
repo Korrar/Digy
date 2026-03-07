@@ -25,13 +25,17 @@ export class SwampBiome extends BiomeBase {
         const height = this.getIslandHeight(wx, wz, 6, 3, 0.03);
 
         if (height < WATER_LEVEL) {
-          // Shallow water with mud bottom
           for (let y = 0; y <= WATER_LEVEL; y++) {
             if (y <= height) {
-              chunk.setBlock(x, y, z, BlockType.DIRT);
+              chunk.setBlock(x, y, z, BlockType.MUD);
             } else {
               chunk.setBlock(x, y, z, BlockType.WATER);
             }
+          }
+          // Lily pads on water surface
+          const lilyNoise = this.noise.get2D(wx * 2.5, wz * 2.5, 0.5);
+          if (lilyNoise > 0.35 && height >= WATER_LEVEL - 2) {
+            chunk.setBlock(x, WATER_LEVEL + 1, z, BlockType.LILY_PAD);
           }
           continue;
         }
@@ -40,25 +44,36 @@ export class SwampBiome extends BiomeBase {
           if (y === height) {
             chunk.setBlock(x, y, z, BlockType.GRASS);
           } else if (y > height - 3) {
-            chunk.setBlock(x, y, z, BlockType.DIRT);
+            chunk.setBlock(x, y, z, BlockType.MUD);
           } else {
             chunk.setBlock(x, y, z, BlockType.STONE);
           }
         }
 
-        // Dead trees (sparse, short)
         const mask = this.getIslandMask(wx, wz);
+
+        // Dead trees
         if (mask > 0.3 && this.shouldPlaceTree(wx, wz) && height > WATER_LEVEL) {
           const treeH = 3 + Math.floor(Math.abs(this.noise.get2D(wx * 5, wz * 5, 1)) * 2);
           for (let ty = 1; ty <= treeH; ty++) {
             chunk.setBlock(x, height + ty, z, BlockType.WOOD);
           }
-          // Sparse leaves only at top
           chunk.setBlock(x, height + treeH + 1, z, BlockType.LEAVES);
           if (x > 0) chunk.setBlock(x - 1, height + treeH, z, BlockType.LEAVES);
           if (x < CHUNK_SIZE - 1) chunk.setBlock(x + 1, height + treeH, z, BlockType.LEAVES);
           if (z > 0) chunk.setBlock(x, height + treeH, z - 1, BlockType.LEAVES);
           if (z < CHUNK_SIZE - 1) chunk.setBlock(x, height + treeH, z + 1, BlockType.LEAVES);
+        }
+        // Swamp vegetation
+        else if (mask > 0.2 && height > WATER_LEVEL) {
+          const vegNoise = this.noise.get2D(wx * 2.9, wz * 2.9, 0.35);
+          if (vegNoise > 0.35) {
+            chunk.setBlock(x, height + 1, z, BlockType.TALL_GRASS);
+          } else if (vegNoise > 0.2) {
+            chunk.setBlock(x, height + 1, z, BlockType.MUSHROOM);
+          } else if (vegNoise < -0.3) {
+            chunk.setBlock(x, height + 1, z, BlockType.FERN);
+          }
         }
       }
     }

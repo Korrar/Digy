@@ -7,6 +7,7 @@ import { BlockType, getBlock, isSolid } from '../../core/voxel/BlockRegistry';
 import { soundManager } from '../../systems/SoundManager';
 import { spawnParticles } from './DiggingParticles';
 import { processGravity } from '../../systems/SandPhysics';
+import { checkWaterDrain } from '../../systems/WaterFlow';
 import { useDevStore } from '../../stores/devStore';
 
 interface WorldInteractionProps {
@@ -119,8 +120,9 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
             soundManager.playBreakSound(result.blockType);
             spawnParticles(result.blockPos, result.blockType, true);
 
-            // Trigger sand/gravel physics
+            // Trigger sand/gravel physics and water flow
             processGravity(bx, by, bz);
+            checkWaterDrain(bx, by, bz);
 
             miningTimeRef.current = 0;
             miningBlockRef.current = null;

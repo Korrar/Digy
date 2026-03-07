@@ -111,6 +111,7 @@ export function createVoxelMaterial(): THREE.ShaderMaterial {
     vertexShader,
     fragmentShader,
     vertexColors: true,
+    side: THREE.DoubleSide,
     uniforms: {
       ambientLightColor: { value: new THREE.Color(0xffffff) },
       ambientLightIntensity: { value: 0.6 },

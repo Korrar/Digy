@@ -17,6 +17,8 @@ export abstract class BiomeBase {
   protected noise: NoiseGenerator;
   abstract readonly config: BiomeConfig;
 
+  get noiseGen(): NoiseGenerator { return this.noise; }
+
   constructor(seed: number) {
     this.noise = new NoiseGenerator(seed);
   }
