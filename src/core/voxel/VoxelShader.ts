@@ -71,9 +71,11 @@ void main() {
 
   // Hemisphere-like fill from below (subtle)
   float hemi = dot(vNormal, vec3(0.0, -1.0, 0.0)) * 0.5 + 0.5;
-  vec3 hemiFill = vec3(0.05, 0.04, 0.06) * hemi;
+  vec3 hemiFill = vec3(0.06, 0.05, 0.08) * hemi;
 
+  // Minimum light floor to prevent pitch black
   vec3 totalLight = ambient + diffuse + moonLight + hemiFill;
+  totalLight = max(totalLight, vec3(0.08, 0.07, 0.12));
   vec3 color = vColor * totalLight;
 
   // Sparkle effect for ores

@@ -31,8 +31,20 @@ function getTimeEmoji(timeOfDay: number): string {
 
 function getSkyColor(baseSkyColor: string, sunIntensity: number): string {
   const base = new THREE.Color(baseSkyColor);
-  const nightSky = new THREE.Color(0x0a0a1a);
-  const result = new THREE.Color().lerpColors(nightSky, base, Math.max(0.05, sunIntensity));
+  // Brighter night sky (dark blue, not black)
+  const nightSky = new THREE.Color(0x0e1428);
+  // Golden hour tint
+  const goldenSky = new THREE.Color(0xffcc66);
+  // Use higher minimum so night is never fully black
+  const minBrightness = 0.12;
+  const result = new THREE.Color().lerpColors(nightSky, base, Math.max(minBrightness, sunIntensity));
+  // Add golden tint during sunrise/sunset (sunIntensity between 0.15-0.5)
+  if (sunIntensity > 0.1 && sunIntensity < 0.5) {
+    const goldenBlend = 1.0 - Math.abs(sunIntensity - 0.25) / 0.25;
+    if (goldenBlend > 0) {
+      result.lerp(goldenSky, goldenBlend * 0.35);
+    }
+  }
   return '#' + result.getHexString();
 }
 
@@ -193,12 +205,11 @@ function FirefliesRenderer({ center }: { center: [number, number, number] }) {
 }
 
 function AnimalRenderer({ biomeType, center }: { biomeType: string; center: [number, number, number] }) {
-  const { meshRef, count, color } = useAnimals(biomeType, center);
-  if (count === 0) return null;
+  const { meshRef, geometry, count } = useAnimals(biomeType, center);
+  if (count === 0 || !geometry) return null;
   return (
-    <instancedMesh ref={meshRef} args={[undefined, undefined, count]}>
-      <boxGeometry args={[1, 0.7, 1.4]} />
-      <meshBasicMaterial color={color} />
+    <instancedMesh ref={meshRef} args={[geometry, undefined, count]}>
+      <meshLambertMaterial vertexColors />
     </instancedMesh>
   );
 }
