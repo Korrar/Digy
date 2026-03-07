@@ -1,8 +1,6 @@
 import { create } from 'zustand';
 import { BlockType } from '../core/voxel/BlockRegistry';
 
-export type TappableRarity = 'common' | 'uncommon' | 'rare' | 'epic';
-
 export interface TappableItem {
   type: BlockType;
   count: number;
@@ -11,7 +9,6 @@ export interface TappableItem {
 export interface Tappable {
   id: string;
   type: 'chest' | 'crystal' | 'mushroom' | 'flower_patch' | 'ore_nugget';
-  rarity: TappableRarity;
   position: [number, number, number];
   collected: boolean;
   spawnTime: number;
@@ -32,32 +29,21 @@ interface TappablesState {
 
 let tappableId = 0;
 
-const RARITY_WEIGHTS: TappableRarity[] = [
-  'common', 'common', 'common', 'common', 'common',
-  'uncommon', 'uncommon', 'uncommon',
-  'rare', 'rare',
-  'epic',
-];
-
-const RARITY_COLORS: Record<TappableRarity, string> = {
-  common: '#aaaaaa',
-  uncommon: '#55cc55',
-  rare: '#5555ff',
-  epic: '#aa44cc',
-};
-
 const TAPPABLE_TYPES: Tappable['type'][] = ['chest', 'crystal', 'mushroom', 'flower_patch', 'ore_nugget'];
 
-function randomRarity(): TappableRarity {
-  return RARITY_WEIGHTS[Math.floor(Math.random() * RARITY_WEIGHTS.length)];
-}
+// Color per type for 3D rendering
+export const TAPPABLE_COLORS: Record<Tappable['type'], number> = {
+  chest: 0xb8945a,
+  crystal: 0x66aaff,
+  mushroom: 0xcc5544,
+  flower_patch: 0xffcc44,
+  ore_nugget: 0xaaaaaa,
+};
 
-function generateLoot(_type: Tappable['type'], rarity: TappableRarity, biome: string): TappableItem[] {
+function generateLoot(_type: Tappable['type'], biome: string): TappableItem[] {
   const loot: TappableItem[] = [];
-  const count = rarity === 'common' ? 1 : rarity === 'uncommon' ? 2 : rarity === 'rare' ? 2 : 3;
-  const rarityMult = rarity === 'common' ? 1 : rarity === 'uncommon' ? 2 : rarity === 'rare' ? 3 : 5;
+  const count = 1 + Math.floor(Math.random() * 2); // 1-2 items
 
-  // Biome-specific base loot
   const biomeLoot: Record<string, BlockType[]> = {
     forest: [BlockType.WOOD, BlockType.LEAVES, BlockType.APPLE, BlockType.STICK],
     desert: [BlockType.SAND, BlockType.SANDSTONE, BlockType.CACTUS, BlockType.GOLD_ORE],
@@ -71,18 +57,12 @@ function generateLoot(_type: Tappable['type'], rarity: TappableRarity, biome: st
 
   for (let i = 0; i < count; i++) {
     const itemType = pool[Math.floor(Math.random() * pool.length)];
-    loot.push({ type: itemType, count: Math.ceil(Math.random() * rarityMult) });
+    loot.push({ type: itemType, count: 1 + Math.floor(Math.random() * 2) });
   }
 
-  // Rare bonus: rubies
-  if (rarity === 'rare' && Math.random() < 0.3) {
-    loot.push({ type: BlockType.RUBY, count: 1 });
-  }
-  if (rarity === 'epic') {
-    loot.push({ type: BlockType.RUBY, count: 1 + Math.floor(Math.random() * 3) });
-    if (Math.random() < 0.3) {
-      loot.push({ type: BlockType.DIAMOND, count: 1 });
-    }
+  // Occasional diamond from any tappable
+  if (Math.random() < 0.08) {
+    loot.push({ type: BlockType.DIAMOND, count: 1 });
   }
 
   return loot;
@@ -96,18 +76,16 @@ export const useTappablesStore = create<TappablesState>((set, get) => ({
 
   spawnTappables: (biomeType, center) => {
     const tappables: Tappable[] = [];
-    const count = 5 + Math.floor(Math.random() * 4); // 5-8 tappables
+    const count = 5 + Math.floor(Math.random() * 4);
 
     for (let i = 0; i < count; i++) {
       const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
       const radius = 2 + Math.random() * 6;
-      const rarity = randomRarity();
       const type = TAPPABLE_TYPES[Math.floor(Math.random() * TAPPABLE_TYPES.length)];
 
       tappables.push({
         id: `tap_${tappableId++}`,
         type,
-        rarity,
         position: [
           center[0] + Math.cos(angle) * radius,
           center[1] + 1,
@@ -115,7 +93,7 @@ export const useTappablesStore = create<TappablesState>((set, get) => ({
         ],
         collected: false,
         spawnTime: Date.now(),
-        loot: generateLoot(type, rarity, biomeType),
+        loot: generateLoot(type, biomeType),
       });
     }
 
@@ -141,5 +119,3 @@ export const useTappablesStore = create<TappablesState>((set, get) => ({
 
   clearTappables: () => set({ tappables: [], showLootPopup: false, currentLoot: [] }),
 }));
-
-export { RARITY_COLORS };

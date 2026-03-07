@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { getBlock, BlockType } from '../../core/voxel/BlockRegistry';
 import { HOTBAR_SIZE } from '../../utils/constants';
+import { ItemIcon } from './Icons';
 
 function blockColor(type: BlockType): string {
   const def = getBlock(type);
@@ -84,9 +85,8 @@ export function Hotbar() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: 'clamp(10px, 3vw, 16px)',
                 }}>
-                  {getBlock(slot.blockType).emoji || ''}
+                  <ItemIcon iconId={getBlock(slot.blockType).icon} size="60%" color="#fff" />
                 </div>
                 <span style={{
                   position: 'absolute',

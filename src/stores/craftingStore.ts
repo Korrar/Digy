@@ -55,6 +55,9 @@ const ALL_RECIPES: CraftingRecipe[] = [
   // Food
   { id: 'bread', name: 'Bread', ingredients: [{ type: BlockType.SAND, count: 3 }], result: { type: BlockType.BREAD, count: 1 }, craftTime: 5, category: 'food' },
   { id: 'cooked_meat', name: 'Cooked Meat', ingredients: [{ type: BlockType.RAW_MEAT, count: 1 }, { type: BlockType.COAL, count: 1 }], result: { type: BlockType.COOKED_MEAT, count: 1 }, craftTime: 8, category: 'smelting' },
+  // Transport
+  { id: 'rail', name: 'Rail', ingredients: [{ type: BlockType.IRON_INGOT, count: 3 }, { type: BlockType.STICK, count: 1 }], result: { type: BlockType.RAIL, count: 8 }, craftTime: 8, category: 'blocks' },
+  { id: 'minecart', name: 'Minecart', ingredients: [{ type: BlockType.IRON_INGOT, count: 5 }], result: { type: BlockType.MINECART, count: 1 }, craftTime: 12, category: 'tools' },
 ];
 
 export const useCraftingStore = create<CraftingState>((set, get) => ({

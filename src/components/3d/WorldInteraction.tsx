@@ -12,7 +12,7 @@ import { useDevStore } from '../../stores/devStore';
 import { useCombatStore } from '../../stores/combatStore';
 
 interface WorldInteractionProps {
-  mode: 'mine' | 'build';
+  mode: 'mine' | 'build' | 'explore';
 }
 
 export function WorldInteraction({ mode }: WorldInteractionProps) {

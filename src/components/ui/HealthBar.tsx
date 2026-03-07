@@ -1,4 +1,5 @@
 import { useCombatStore } from '../../stores/combatStore';
+import { IconHeart, IconHeartEmpty, IconHeartHalf } from './Icons';
 
 export function HealthBar() {
   const hp = useCombatStore((s) => s.playerHp);
@@ -14,7 +15,6 @@ export function HealthBar() {
 
   return (
     <>
-      {/* Damage flash overlay */}
       {damageFlash && (
         <div style={{
           position: 'fixed',
@@ -25,7 +25,6 @@ export function HealthBar() {
         }} />
       )}
 
-      {/* Health and XP bar */}
       <div style={{
         position: 'fixed',
         top: 38,
@@ -39,17 +38,10 @@ export function HealthBar() {
         {/* Hearts row */}
         <div style={{ display: 'flex', gap: 1 }}>
           {Array.from({ length: hearts }, (_, i) => {
-            let emoji = '🖤'; // empty
-            if (i < fullHearts) emoji = '❤️';
-            else if (i === fullHearts && halfHeart) emoji = '💔';
-            return (
-              <span key={i} style={{
-                fontSize: 'clamp(10px, 2.5vw, 14px)',
-                filter: i < fullHearts ? 'none' : 'saturate(0.3)',
-              }}>
-                {emoji}
-              </span>
-            );
+            const sz = 'clamp(10px, 2.5vw, 14px)';
+            if (i < fullHearts) return <IconHeart key={i} size={sz} />;
+            if (i === fullHearts && halfHeart) return <IconHeartHalf key={i} size={sz} />;
+            return <IconHeartEmpty key={i} size={sz} />;
           })}
         </div>
 

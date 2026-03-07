@@ -29,13 +29,14 @@ import { useTappablesStore } from '../stores/tappablesStore';
 import { useCombatStore } from '../stores/combatStore';
 import { useCraftingStore } from '../stores/craftingStore';
 import { ambientMusic } from '../systems/AmbientMusic';
+import { MinecartRenderer } from '../components/3d/Minecarts';
+import { ModeToggle } from '../components/ui/ModeToggle';
 
-function getTimeEmoji(timeOfDay: number): string {
-  // 0=midnight, 0.25=sunrise, 0.5=noon, 0.75=sunset
-  if (timeOfDay > 0.2 && timeOfDay < 0.3) return '🌅';
-  if (timeOfDay >= 0.3 && timeOfDay < 0.7) return '☀️';
-  if (timeOfDay >= 0.7 && timeOfDay < 0.8) return '🌇';
-  return '🌙';
+function getTimeIndicator(timeOfDay: number): string {
+  if (timeOfDay > 0.2 && timeOfDay < 0.3) return 'sunrise';
+  if (timeOfDay >= 0.3 && timeOfDay < 0.7) return 'day';
+  if (timeOfDay >= 0.7 && timeOfDay < 0.8) return 'sunset';
+  return 'night';
 }
 
 function getSkyColor(baseSkyColor: string, sunIntensity: number): string {
@@ -67,11 +68,12 @@ export function BiomeScene() {
   const isTouch = useTouchDetect();
 
   const biome = useMemo(() => createBiome(biomeType, biomeSeed), [biomeType, biomeSeed]);
-  const [timeIndicator, setTimeIndicator] = useState('☀️');
+  const [timeIndicator, setTimeIndicator] = useState('day');
+  const [gameMode, setGameMode] = useState<'mine' | 'explore'>('mine');
   const [skyColor, setSkyColor] = useState(biome.config.skyColor);
 
   const handleTimeChange = useCallback((timeOfDay: number, sunIntensity: number) => {
-    setTimeIndicator(getTimeEmoji(timeOfDay));
+    setTimeIndicator(getTimeIndicator(timeOfDay));
     const newSkyColor = getSkyColor(biome.config.skyColor, sunIntensity);
     setSkyColor(newSkyColor);
     updateVoxelShaderUniforms({ fogColor: new THREE.Color(newSkyColor) });
@@ -110,6 +112,10 @@ export function BiomeScene() {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'e' || e.key === 'E') toggleInventory();
       if (e.key === 'c' || e.key === 'C') toggleCrafting();
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        setGameMode((m) => m === 'mine' ? 'explore' : 'mine');
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -175,7 +181,8 @@ export function BiomeScene() {
           <ChunkMesh key={c.key} cx={c.cx} cz={c.cz} geometry={c.geometry} />
         ))}
 
-        <WorldInteraction mode="mine" />
+        <WorldInteraction mode={gameMode} />
+        <MinecartRenderer center={[8, 8, 8]} />
         <ParticleSystem />
         {(biomeType === 'forest' || biomeType === 'swamp') && (
           <FirefliesRenderer center={[8, 0, 8]} />
@@ -190,8 +197,9 @@ export function BiomeScene() {
         <fog attach="fog" args={[skyColor, 30, 80]} />
       </Canvas>
 
-      <HUD timeIndicator={biomeType !== 'cave' ? timeIndicator : undefined} />
+      <HUD mode={gameMode} timeIndicator={biomeType !== 'cave' ? timeIndicator : undefined} />
       <HealthBar />
+      <ModeToggle mode={gameMode} onToggle={() => setGameMode((m) => m === 'mine' ? 'explore' : 'mine')} />
       <Hotbar />
       <InventoryPanel />
       <CraftingPanel />

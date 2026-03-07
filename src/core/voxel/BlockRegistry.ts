@@ -49,13 +49,14 @@ export enum BlockType {
   IRON_INGOT = 42,
   GOLD_INGOT = 43,
   DIAMOND = 44,
-  RUBY = 45,
   APPLE = 46,
   BREAD = 47,
   RAW_MEAT = 48,
   COOKED_MEAT = 49,
   FURNACE = 50,
   CRAFTING_TABLE = 51,
+  RAIL = 52,
+  MINECART = 53,
 }
 
 export interface BlockDefinition {
@@ -83,8 +84,8 @@ export interface BlockDefinition {
   healAmount?: number;
   /** Tool/weapon durability */
   durability?: number;
-  /** Item emoji for UI display */
-  emoji?: string;
+  /** Icon ID for SVG display in UI */
+  icon?: string;
 }
 
 const BLOCKS: Map<BlockType, BlockDefinition> = new Map();
@@ -132,26 +133,27 @@ register({ id: BlockType.CLAY, name: 'Clay', color: new THREE.Color(0x9eabb0), h
 register({ id: BlockType.MUD, name: 'Mud', color: new THREE.Color(0x5c3d2e), hardness: 0.5, transparent: false, drops: BlockType.MUD, stackSize: 64 });
 
 // Items (non-placeable)
-register({ id: BlockType.STICK, name: 'Stick', color: new THREE.Color(0x8b6914), hardness: 0, transparent: true, drops: BlockType.STICK, stackSize: 64, isItem: true, emoji: '/' });
-register({ id: BlockType.WOODEN_PICKAXE, name: 'Wooden Pickaxe', color: new THREE.Color(0xb8945a), hardness: 0, transparent: true, drops: BlockType.WOODEN_PICKAXE, stackSize: 1, isItem: true, toolSpeed: 1.5, durability: 60, emoji: '⛏' });
-register({ id: BlockType.STONE_PICKAXE, name: 'Stone Pickaxe', color: new THREE.Color(0x808080), hardness: 0, transparent: true, drops: BlockType.STONE_PICKAXE, stackSize: 1, isItem: true, toolSpeed: 2.5, durability: 132, emoji: '⛏' });
-register({ id: BlockType.IRON_PICKAXE, name: 'Iron Pickaxe', color: new THREE.Color(0xc8c8c8), hardness: 0, transparent: true, drops: BlockType.IRON_PICKAXE, stackSize: 1, isItem: true, toolSpeed: 4.0, durability: 250, emoji: '⛏' });
-register({ id: BlockType.DIAMOND_PICKAXE, name: 'Diamond Pickaxe', color: new THREE.Color(0x40e0d0), hardness: 0, transparent: true, drops: BlockType.DIAMOND_PICKAXE, stackSize: 1, isItem: true, toolSpeed: 6.0, durability: 1561, emoji: '⛏' });
-register({ id: BlockType.WOODEN_SWORD, name: 'Wooden Sword', color: new THREE.Color(0xb8945a), hardness: 0, transparent: true, drops: BlockType.WOODEN_SWORD, stackSize: 1, isItem: true, damage: 2, durability: 60, emoji: '🗡' });
-register({ id: BlockType.STONE_SWORD, name: 'Stone Sword', color: new THREE.Color(0x808080), hardness: 0, transparent: true, drops: BlockType.STONE_SWORD, stackSize: 1, isItem: true, damage: 3, durability: 132, emoji: '🗡' });
-register({ id: BlockType.IRON_SWORD, name: 'Iron Sword', color: new THREE.Color(0xc8c8c8), hardness: 0, transparent: true, drops: BlockType.IRON_SWORD, stackSize: 1, isItem: true, damage: 4, durability: 250, emoji: '🗡' });
-register({ id: BlockType.DIAMOND_SWORD, name: 'Diamond Sword', color: new THREE.Color(0x40e0d0), hardness: 0, transparent: true, drops: BlockType.DIAMOND_SWORD, stackSize: 1, isItem: true, damage: 6, durability: 1561, emoji: '🗡' });
-register({ id: BlockType.COAL, name: 'Coal', color: new THREE.Color(0x2a2a2a), hardness: 0, transparent: true, drops: BlockType.COAL, stackSize: 64, isItem: true, emoji: '●' });
-register({ id: BlockType.IRON_INGOT, name: 'Iron Ingot', color: new THREE.Color(0xd0d0d0), hardness: 0, transparent: true, drops: BlockType.IRON_INGOT, stackSize: 64, isItem: true, emoji: '▬' });
-register({ id: BlockType.GOLD_INGOT, name: 'Gold Ingot', color: new THREE.Color(0xffd700), hardness: 0, transparent: true, drops: BlockType.GOLD_INGOT, stackSize: 64, isItem: true, emoji: '▬' });
-register({ id: BlockType.DIAMOND, name: 'Diamond', color: new THREE.Color(0x40e0d0), hardness: 0, transparent: true, drops: BlockType.DIAMOND, stackSize: 64, isItem: true, emoji: '◆' });
-register({ id: BlockType.RUBY, name: 'Ruby', color: new THREE.Color(0xe0115f), hardness: 0, transparent: true, drops: BlockType.RUBY, stackSize: 64, isItem: true, emoji: '◆' });
-register({ id: BlockType.APPLE, name: 'Apple', color: new THREE.Color(0xcc2222), hardness: 0, transparent: true, drops: BlockType.APPLE, stackSize: 64, isItem: true, healAmount: 2, emoji: '🍎' });
-register({ id: BlockType.BREAD, name: 'Bread', color: new THREE.Color(0xd4a843), hardness: 0, transparent: true, drops: BlockType.BREAD, stackSize: 64, isItem: true, healAmount: 3, emoji: '🍞' });
-register({ id: BlockType.RAW_MEAT, name: 'Raw Meat', color: new THREE.Color(0xcc6666), hardness: 0, transparent: true, drops: BlockType.RAW_MEAT, stackSize: 64, isItem: true, healAmount: 1, emoji: '🥩' });
-register({ id: BlockType.COOKED_MEAT, name: 'Cooked Meat', color: new THREE.Color(0x8b4513), hardness: 0, transparent: true, drops: BlockType.COOKED_MEAT, stackSize: 64, isItem: true, healAmount: 4, emoji: '🍖' });
-register({ id: BlockType.FURNACE, name: 'Furnace', color: new THREE.Color(0x707070), hardness: 2.0, transparent: false, drops: BlockType.FURNACE, stackSize: 64, emoji: '🔥' });
-register({ id: BlockType.CRAFTING_TABLE, name: 'Crafting Table', color: new THREE.Color(0xb8945a), hardness: 1.0, transparent: false, drops: BlockType.CRAFTING_TABLE, stackSize: 64, emoji: '🔧' });
+register({ id: BlockType.STICK, name: 'Stick', color: new THREE.Color(0x8b6914), hardness: 0, transparent: true, drops: BlockType.STICK, stackSize: 64, isItem: true, icon: 'stick' });
+register({ id: BlockType.WOODEN_PICKAXE, name: 'Wooden Pickaxe', color: new THREE.Color(0xb8945a), hardness: 0, transparent: true, drops: BlockType.WOODEN_PICKAXE, stackSize: 1, isItem: true, toolSpeed: 1.5, durability: 60, icon: 'pickaxe' });
+register({ id: BlockType.STONE_PICKAXE, name: 'Stone Pickaxe', color: new THREE.Color(0x808080), hardness: 0, transparent: true, drops: BlockType.STONE_PICKAXE, stackSize: 1, isItem: true, toolSpeed: 2.5, durability: 132, icon: 'pickaxe' });
+register({ id: BlockType.IRON_PICKAXE, name: 'Iron Pickaxe', color: new THREE.Color(0xc8c8c8), hardness: 0, transparent: true, drops: BlockType.IRON_PICKAXE, stackSize: 1, isItem: true, toolSpeed: 4.0, durability: 250, icon: 'pickaxe' });
+register({ id: BlockType.DIAMOND_PICKAXE, name: 'Diamond Pickaxe', color: new THREE.Color(0x40e0d0), hardness: 0, transparent: true, drops: BlockType.DIAMOND_PICKAXE, stackSize: 1, isItem: true, toolSpeed: 6.0, durability: 1561, icon: 'pickaxe' });
+register({ id: BlockType.WOODEN_SWORD, name: 'Wooden Sword', color: new THREE.Color(0xb8945a), hardness: 0, transparent: true, drops: BlockType.WOODEN_SWORD, stackSize: 1, isItem: true, damage: 2, durability: 60, icon: 'sword' });
+register({ id: BlockType.STONE_SWORD, name: 'Stone Sword', color: new THREE.Color(0x808080), hardness: 0, transparent: true, drops: BlockType.STONE_SWORD, stackSize: 1, isItem: true, damage: 3, durability: 132, icon: 'sword' });
+register({ id: BlockType.IRON_SWORD, name: 'Iron Sword', color: new THREE.Color(0xc8c8c8), hardness: 0, transparent: true, drops: BlockType.IRON_SWORD, stackSize: 1, isItem: true, damage: 4, durability: 250, icon: 'sword' });
+register({ id: BlockType.DIAMOND_SWORD, name: 'Diamond Sword', color: new THREE.Color(0x40e0d0), hardness: 0, transparent: true, drops: BlockType.DIAMOND_SWORD, stackSize: 1, isItem: true, damage: 6, durability: 1561, icon: 'sword' });
+register({ id: BlockType.COAL, name: 'Coal', color: new THREE.Color(0x2a2a2a), hardness: 0, transparent: true, drops: BlockType.COAL, stackSize: 64, isItem: true, icon: 'circle' });
+register({ id: BlockType.IRON_INGOT, name: 'Iron Ingot', color: new THREE.Color(0xd0d0d0), hardness: 0, transparent: true, drops: BlockType.IRON_INGOT, stackSize: 64, isItem: true, icon: 'ingot' });
+register({ id: BlockType.GOLD_INGOT, name: 'Gold Ingot', color: new THREE.Color(0xffd700), hardness: 0, transparent: true, drops: BlockType.GOLD_INGOT, stackSize: 64, isItem: true, icon: 'ingot' });
+register({ id: BlockType.DIAMOND, name: 'Diamond', color: new THREE.Color(0x40e0d0), hardness: 0, transparent: true, drops: BlockType.DIAMOND, stackSize: 64, isItem: true, icon: 'gem' });
+register({ id: BlockType.APPLE, name: 'Apple', color: new THREE.Color(0xcc2222), hardness: 0, transparent: true, drops: BlockType.APPLE, stackSize: 64, isItem: true, healAmount: 2, icon: 'apple' });
+register({ id: BlockType.BREAD, name: 'Bread', color: new THREE.Color(0xd4a843), hardness: 0, transparent: true, drops: BlockType.BREAD, stackSize: 64, isItem: true, healAmount: 3, icon: 'bread' });
+register({ id: BlockType.RAW_MEAT, name: 'Raw Meat', color: new THREE.Color(0xcc6666), hardness: 0, transparent: true, drops: BlockType.RAW_MEAT, stackSize: 64, isItem: true, healAmount: 1, icon: 'meat_raw' });
+register({ id: BlockType.COOKED_MEAT, name: 'Cooked Meat', color: new THREE.Color(0x8b4513), hardness: 0, transparent: true, drops: BlockType.COOKED_MEAT, stackSize: 64, isItem: true, healAmount: 4, icon: 'meat_cooked' });
+register({ id: BlockType.FURNACE, name: 'Furnace', color: new THREE.Color(0x707070), hardness: 2.0, transparent: false, drops: BlockType.FURNACE, stackSize: 64, icon: 'furnace' });
+register({ id: BlockType.CRAFTING_TABLE, name: 'Crafting Table', color: new THREE.Color(0xb8945a), hardness: 1.0, transparent: false, drops: BlockType.CRAFTING_TABLE, stackSize: 64, icon: 'wrench' });
+register({ id: BlockType.RAIL, name: 'Rail', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: true, drops: BlockType.RAIL, stackSize: 64, icon: 'rail' });
+register({ id: BlockType.MINECART, name: 'Minecart', color: new THREE.Color(0x888888), hardness: 0.5, transparent: true, drops: BlockType.MINECART, stackSize: 1, isItem: true, icon: 'minecart' });
 
 // Update ore drops to drop raw materials
 BLOCKS.get(BlockType.COAL_ORE)!.drops = BlockType.COAL;

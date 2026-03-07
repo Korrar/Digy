@@ -3,16 +3,13 @@ import { useCraftingStore, type CraftingRecipe } from '../../stores/craftingStor
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { getBlock, BlockType } from '../../core/voxel/BlockRegistry';
 import { soundManager } from '../../systems/SoundManager';
+import { ItemIcon, IconClose } from './Icons';
 
 type Category = 'all' | 'tools' | 'weapons' | 'blocks' | 'food' | 'smelting';
 
 function itemColor(type: BlockType): string {
   const def = getBlock(type);
   return '#' + (def.topColor ?? def.color).getHexString();
-}
-
-function itemEmoji(type: BlockType): string {
-  return getBlock(type).emoji || '';
 }
 
 function canCraft(recipe: CraftingRecipe, slots: any[]): boolean {
@@ -54,7 +51,7 @@ function RecipeRow({ recipe, onCraft, craftable }: {
         fontSize: 16,
         flexShrink: 0,
       }}>
-        {itemEmoji(recipe.result.type)}
+        <ItemIcon iconId={getBlock(recipe.result.type).icon} size={14} color="#fff" />
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -135,7 +132,7 @@ function CraftingJobSlot({ job, onCollect }: {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 12,
       }}>
-        {itemEmoji(job.result.type)}
+        <ItemIcon iconId={getBlock(job.result.type).icon} size={12} color="#fff" />
       </div>
       <div style={{ flex: 1 }}>
         <div style={{
@@ -255,7 +252,7 @@ export function CraftingPanel() {
             cursor: 'pointer',
             fontSize: 14,
           }}>
-            ✕
+            <IconClose size={14} color="#fff" />
           </button>
         </div>
 

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useTappablesStore } from '../../stores/tappablesStore';
 import { getBlock, BlockType } from '../../core/voxel/BlockRegistry';
+import { ItemIcon } from './Icons';
 
 function itemColor(type: BlockType): string {
   const def = getBlock(type);
@@ -65,7 +66,7 @@ export function LootPopup() {
                   justifyContent: 'center',
                   fontSize: 12,
                 }}>
-                  {def.emoji || ''}
+                  <ItemIcon iconId={def.icon} size={12} color="#fff" />
                 </div>
                 <span style={{ color: '#ddd', fontSize: 12 }}>
                   {def.name}
