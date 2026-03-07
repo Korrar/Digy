@@ -2,7 +2,7 @@ import { ChunkData } from '../../voxel/ChunkData';
 import { NoiseGenerator } from '../NoiseGenerator';
 import { BIOME_PLATE_SIZE } from '../../../utils/constants';
 
-export type BiomeType = 'forest' | 'desert' | 'cave' | 'mountains';
+export type BiomeType = 'forest' | 'desert' | 'cave' | 'mountains' | 'swamp' | 'tundra';
 
 export interface BiomeConfig {
   type: BiomeType;

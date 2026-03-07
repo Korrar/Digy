@@ -3,6 +3,8 @@ import { ForestBiome } from './ForestBiome';
 import { DesertBiome } from './DesertBiome';
 import { CaveBiome } from './CaveBiome';
 import { MountainBiome } from './MountainBiome';
+import { SwampBiome } from './SwampBiome';
+import { TundraBiome } from './TundraBiome';
 
 export type { BiomeType, BiomeConfig } from './BiomeBase';
 
@@ -12,6 +14,8 @@ export function createBiome(type: BiomeType, seed: number = 42): BiomeBase {
     case 'desert': return new DesertBiome(seed);
     case 'cave': return new CaveBiome(seed);
     case 'mountains': return new MountainBiome(seed);
+    case 'swamp': return new SwampBiome(seed);
+    case 'tundra': return new TundraBiome(seed);
   }
 }
 
@@ -20,4 +24,6 @@ export const BIOME_LIST: { type: BiomeType; name: string; emoji: string }[] = [
   { type: 'desert', name: 'Pustynia', emoji: '🏜️' },
   { type: 'cave', name: 'Jaskinia', emoji: '🕳️' },
   { type: 'mountains', name: 'Góry', emoji: '⛰️' },
+  { type: 'swamp', name: 'Bagno', emoji: '🌿' },
+  { type: 'tundra', name: 'Tundra', emoji: '🧊' },
 ];

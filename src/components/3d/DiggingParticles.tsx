@@ -60,7 +60,7 @@ export function DiggingParticles() {
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, MAX_PARTICLES]}>
       <boxGeometry args={[1, 1, 1]} />
-      <meshLambertMaterial vertexColors={false} />
+      <meshBasicMaterial vertexColors={false} />
     </instancedMesh>
   );
 }
@@ -161,7 +161,7 @@ export function ParticleSystem() {
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, MAX_PARTICLES]}>
       <boxGeometry args={[1, 1, 1]} />
-      <meshLambertMaterial />
+      <meshBasicMaterial />
     </instancedMesh>
   );
 }

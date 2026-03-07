@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BlockType, getBlockColor, isTransparent } from './BlockRegistry';
+import { BlockType, getBlock, getBlockColor, isTransparent } from './BlockRegistry';
 import { ChunkData } from './ChunkData';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
 
@@ -41,6 +41,8 @@ function getTextureVariation(block: BlockType): number {
     case BlockType.LEAVES: return 0.14;
     case BlockType.COAL_ORE: return 0.20;
     case BlockType.IRON_ORE: return 0.18;
+    case BlockType.GOLD_ORE: return 0.15;
+    case BlockType.DIAMOND_ORE: return 0.12;
     case BlockType.ICE: return 0.06;
     case BlockType.CACTUS: return 0.10;
     case BlockType.WATER: return 0.05;
@@ -106,6 +108,7 @@ export function buildChunkMesh(
   const normals: number[] = [];
   const colors: number[] = [];
   const uvs: number[] = [];
+  const sparkles: number[] = [];
   const indices: number[] = [];
   let vertexCount = 0;
 
@@ -121,6 +124,8 @@ export function buildChunkMesh(
         const wx = ox + x;
         const wz = oz + z;
         const variation = getTextureVariation(block);
+        const blockDef = getBlock(block);
+        const sparkle = blockDef.sparkle ?? 0;
 
         for (const face of FACES) {
           const nx = x + face.dir[0];
@@ -170,6 +175,7 @@ export function buildChunkMesh(
             );
 
             uvs.push(face.uvs[ci][0], face.uvs[ci][1]);
+            sparkles.push(sparkle);
           }
 
           indices.push(
@@ -187,6 +193,7 @@ export function buildChunkMesh(
   geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
   geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setAttribute('aSparkle', new THREE.Float32BufferAttribute(sparkles, 1));
   geometry.setIndex(indices);
   geometry.computeBoundingSphere();
 
