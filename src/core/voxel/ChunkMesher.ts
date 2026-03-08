@@ -107,9 +107,69 @@ function computeAO(
 
 export type RailShape = 'ns' | 'ew' | 'curve_ne' | 'curve_nw' | 'curve_se' | 'curve_sw';
 
+/** Returns which directions a rail shape has exits toward */
+function getShapeExits(shape: RailShape): { north: boolean; south: boolean; east: boolean; west: boolean } {
+  switch (shape) {
+    case 'ns': return { north: true, south: true, east: false, west: false };
+    case 'ew': return { north: false, south: false, east: true, west: true };
+    case 'curve_ne': return { north: true, south: false, east: true, west: false };
+    case 'curve_nw': return { north: true, south: false, east: false, west: true };
+    case 'curve_se': return { north: false, south: true, east: true, west: false };
+    case 'curve_sw': return { north: false, south: true, east: false, west: true };
+  }
+}
+
 /**
- * Compute the rail shape for a block using Minecraft-style rules.
- * Uses simple neighbor detection: any adjacent rail block counts as connected.
+ * Compute a rail's shape using simple neighbor presence (no exit checking).
+ * Used internally to determine what shape a neighbor would have independently.
+ */
+function computeRailShapeSimple(
+  getBlockAt: (x: number, y: number, z: number) => BlockType,
+  x: number, y: number, z: number
+): RailShape | null {
+  const block = getBlockAt(x, y, z);
+  if (!isFlat(block)) return null;
+  const isPowered = block === BlockType.POWERED_RAIL;
+
+  const hasNorth = isFlat(getBlockAt(x, y, z - 1));
+  const hasSouth = isFlat(getBlockAt(x, y, z + 1));
+  const hasEast = isFlat(getBlockAt(x + 1, y, z));
+  const hasWest = isFlat(getBlockAt(x - 1, y, z));
+
+  if (isPowered) {
+    if ((hasEast || hasWest) && !hasNorth && !hasSouth) return 'ew';
+    return 'ns';
+  }
+
+  const count = (hasNorth ? 1 : 0) + (hasSouth ? 1 : 0) + (hasEast ? 1 : 0) + (hasWest ? 1 : 0);
+  if (count === 4) return 'curve_se';
+  if (count === 3) {
+    if (hasSouth && hasEast) return 'curve_se';
+    if (hasSouth && hasWest) return 'curve_sw';
+    if (hasNorth && hasEast) return 'curve_ne';
+    return 'curve_nw';
+  }
+  if (count === 2) {
+    if (hasNorth && hasSouth) return 'ns';
+    if (hasEast && hasWest) return 'ew';
+    if (hasSouth && hasEast) return 'curve_se';
+    if (hasSouth && hasWest) return 'curve_sw';
+    if (hasNorth && hasEast) return 'curve_ne';
+    return 'curve_nw';
+  }
+  if (count === 1) {
+    if (hasEast || hasWest) return 'ew';
+    return 'ns';
+  }
+  if (block === BlockType.RAIL_EW) return 'ew';
+  return 'ns';
+}
+
+/**
+ * Compute the rail shape for a block using Minecraft-style rules with exit-awareness.
+ * A neighbor rail only counts as connected if its exits actually point toward this rail.
+ * Neighbor shapes are computed independently (as if this rail didn't exist) to avoid
+ * counting curves that face away from us.
  *
  * Rules:
  * - 0 neighbors: use stored block type (RAIL → NS, RAIL_EW → EW)
@@ -130,15 +190,57 @@ export function computeRailShape(
   if (!isFlat(block)) return null;
   const isPowered = block === BlockType.POWERED_RAIL;
 
-  const hasNorth = isFlat(getBlockAt(x, y, z - 1));
-  const hasSouth = isFlat(getBlockAt(x, y, z + 1));
-  const hasEast = isFlat(getBlockAt(x + 1, y, z));
-  const hasWest = isFlat(getBlockAt(x - 1, y, z));
+  // Check raw neighbor presence
+  const rawNorth = isFlat(getBlockAt(x, y, z - 1));
+  const rawSouth = isFlat(getBlockAt(x, y, z + 1));
+  const rawEast = isFlat(getBlockAt(x + 1, y, z));
+  const rawWest = isFlat(getBlockAt(x - 1, y, z));
+
+  const rawCount = (rawNorth ? 1 : 0) + (rawSouth ? 1 : 0) + (rawEast ? 1 : 0) + (rawWest ? 1 : 0);
 
   // Powered rails: always straight, never curve
   if (isPowered) {
-    if ((hasEast || hasWest) && !hasNorth && !hasSouth) return 'ew';
+    if ((rawEast || rawWest) && !rawNorth && !rawSouth) return 'ew';
     return 'ns';
+  }
+
+  // For exit-aware logic: compute each neighbor's shape WITHOUT this rail,
+  // then check if the neighbor's exits point toward us.
+  // This prevents connecting to curves that face away.
+  const maskedGetBlock = (bx: number, by: number, bz: number): BlockType => {
+    if (bx === x && by === y && bz === z) return BlockType.AIR;
+    return getBlockAt(bx, by, bz);
+  };
+
+  let hasNorth = rawNorth;
+  let hasSouth = rawSouth;
+  let hasEast = rawEast;
+  let hasWest = rawWest;
+
+  // Only apply exit filtering when we have 2+ raw neighbors (avoids breaking simple cases).
+  // A neighbor is filtered out only if it has a definitive shape (2+ other connections
+  // excluding us) that doesn't exit toward us. Flexible neighbors (0-1 other connections)
+  // always count since they could orient to face us.
+  if (rawCount >= 2) {
+    const checkNeighborConnects = (nx: number, ny: number, nz: number, exitDir: 'north' | 'south' | 'east' | 'west'): boolean => {
+      const neighborShape = computeRailShapeSimple(maskedGetBlock, nx, ny, nz);
+      if (neighborShape === null) return false;
+      // Count how many neighbors this rail has (excluding us)
+      const nn = isFlat(maskedGetBlock(nx, ny, nz - 1));
+      const ns = isFlat(maskedGetBlock(nx, ny, nz + 1));
+      const ne = isFlat(maskedGetBlock(nx + 1, ny, nz));
+      const nw = isFlat(maskedGetBlock(nx - 1, ny, nz));
+      const neighborCount = (nn ? 1 : 0) + (ns ? 1 : 0) + (ne ? 1 : 0) + (nw ? 1 : 0);
+      // If neighbor has 0 other connections, it's flexible - always count it
+      if (neighborCount === 0) return true;
+      // If neighbor has 2+ other connections, check if its shape exits toward us
+      return getShapeExits(neighborShape)[exitDir];
+    };
+
+    if (rawNorth) hasNorth = checkNeighborConnects(x, y, z - 1, 'south');
+    if (rawSouth) hasSouth = checkNeighborConnects(x, y, z + 1, 'north');
+    if (rawEast) hasEast = checkNeighborConnects(x + 1, y, z, 'west');
+    if (rawWest) hasWest = checkNeighborConnects(x - 1, y, z, 'east');
   }
 
   const count = (hasNorth ? 1 : 0) + (hasSouth ? 1 : 0) + (hasEast ? 1 : 0) + (hasWest ? 1 : 0);
