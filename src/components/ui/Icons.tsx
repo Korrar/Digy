@@ -280,6 +280,15 @@ export const IconWarningLight = ({ size = 16, color = '#ffcc00', style }: IconPr
   </svg>
 );
 
+// Cable (electric wire)
+export const IconCable = ({ size = 16, color = '#4488ff', style }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" style={style} xmlns="http://www.w3.org/2000/svg">
+    <path d="M2 8H6C7 8 7 6 8 6C9 6 9 10 10 10C11 10 11 8 14 8" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <circle cx="2" cy="8" r="1.5" fill={color} />
+    <circle cx="14" cy="8" r="1.5" fill={color} />
+  </svg>
+);
+
 // Map of icon IDs to components for BlockRegistry
 const ICON_MAP: Record<string, React.FC<IconProps>> = {
   pickaxe: IconPickaxe,
@@ -302,6 +311,7 @@ const ICON_MAP: Record<string, React.FC<IconProps>> = {
   lever: IconLever,
   button: IconButton,
   warning_light: IconWarningLight,
+  cable: IconCable,
 };
 
 export function ItemIcon({ iconId, size = 16, color, style }: { iconId?: string; size?: number | string; color?: string; style?: React.CSSProperties }) {

@@ -32,6 +32,7 @@ import { useCraftingStore } from '../stores/craftingStore';
 import { ambientMusic } from '../systems/AmbientMusic';
 import { MinecartRenderer } from '../components/3d/Minecarts';
 import { BlockLights } from '../components/3d/BlockLights';
+import { StarrySky } from '../components/3d/StarrySky';
 import { ModeToggle } from '../components/ui/ModeToggle';
 
 function getTimeIndicator(timeOfDay: number): string {
@@ -73,10 +74,12 @@ export function BiomeScene() {
   const [timeIndicator, setTimeIndicator] = useState('day');
   const [gameMode, setGameMode] = useState<'mine' | 'explore'>('mine');
   const [skyColor, setSkyColor] = useState(biome.config.skyColor);
+  const [sunIntensity, setSunIntensity] = useState(1.0);
 
-  const handleTimeChange = useCallback((timeOfDay: number, sunIntensity: number) => {
+  const handleTimeChange = useCallback((timeOfDay: number, intensity: number) => {
     setTimeIndicator(getTimeIndicator(timeOfDay));
-    const newSkyColor = getSkyColor(biome.config.skyColor, sunIntensity);
+    setSunIntensity(intensity);
+    const newSkyColor = getSkyColor(biome.config.skyColor, intensity);
     setSkyColor(newSkyColor);
     updateVoxelShaderUniforms({ fogColor: new THREE.Color(newSkyColor) });
   }, [biome.config.skyColor]);
@@ -186,6 +189,7 @@ export function BiomeScene() {
         <WorldInteraction mode={gameMode} />
         <MinecartRenderer center={[8, 8, 8]} />
         <BlockLights />
+        {biomeType !== 'cave' && <StarrySky sunIntensity={sunIntensity} />}
         <ParticleSystem />
         {(biomeType === 'forest' || biomeType === 'swamp') && (
           <FirefliesRenderer center={[8, 0, 8]} />

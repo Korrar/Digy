@@ -100,6 +100,11 @@ export enum BlockType {
   LEVER = 82,
   LEVER_ON = 83,
   BUTTON = 84,
+  // Lava
+  LAVA = 85,
+  // Cables (electric wires)
+  CABLE = 86,
+  CABLE_POWERED = 87,
 }
 
 export interface BlockDefinition {
@@ -155,6 +160,12 @@ export interface BlockDefinition {
   leverOn?: boolean;
   /** Render as wall button */
   isButton?: boolean;
+  /** Render as lava (animated, emits light, damages) */
+  isLava?: boolean;
+  /** Render as thin cable wire */
+  isCable?: boolean;
+  /** Cable is in powered state (glowing bright) */
+  cablePowered?: boolean;
 }
 
 const BLOCKS: Map<BlockType, BlockDefinition> = new Map();
@@ -253,6 +264,13 @@ register({ id: BlockType.COBBLE_STAIRS_S, name: 'Cobble Stairs', color: new THRE
 register({ id: BlockType.COBBLE_STAIRS_E, name: 'Cobble Stairs', color: new THREE.Color(0x707070), hardness: 2.0, transparent: true, drops: BlockType.COBBLE_STAIRS, stackSize: 0, stairDir: 'e' });
 register({ id: BlockType.COBBLE_STAIRS_W, name: 'Cobble Stairs', color: new THREE.Color(0x707070), hardness: 2.0, transparent: true, drops: BlockType.COBBLE_STAIRS, stackSize: 0, stairDir: 'w' });
 
+// Lava
+register({ id: BlockType.LAVA, name: 'Lava', color: new THREE.Color(0xff4400), hardness: Infinity, transparent: true, drops: BlockType.AIR, stackSize: 0, emitsLight: true, isLava: true });
+
+// Cables (electric wires connecting levers to powered rails)
+register({ id: BlockType.CABLE, name: 'Cable', color: new THREE.Color(0x3366cc), hardness: 0.3, transparent: true, drops: BlockType.CABLE, stackSize: 64, isCable: true, icon: 'cable' });
+register({ id: BlockType.CABLE_POWERED, name: 'Cable', color: new THREE.Color(0x44aaff), hardness: 0.3, transparent: true, drops: BlockType.CABLE, stackSize: 0, isCable: true, cablePowered: true, emitsLight: true });
+
 // Warning light (siren/beacon for minecarts)
 register({ id: BlockType.WARNING_LIGHT, name: 'Warning Light', color: new THREE.Color(0xffcc00), hardness: 0, transparent: true, drops: BlockType.WARNING_LIGHT, stackSize: 1, isItem: true, isPlaceableItem: true, icon: 'warning_light' });
 
@@ -297,7 +315,7 @@ export function isTransparent(type: BlockType): boolean {
 
 export function isSolid(type: BlockType): boolean {
   const def = getBlock(type);
-  return type !== BlockType.AIR && type !== BlockType.WATER && !def.crossedQuad && !def.isFlat && !def.isTorch && !def.isLever && !def.isButton;
+  return type !== BlockType.AIR && type !== BlockType.WATER && type !== BlockType.LAVA && !def.crossedQuad && !def.isFlat && !def.isTorch && !def.isLever && !def.isButton && !def.isCable;
 }
 
 export function isCrossedQuad(type: BlockType): boolean {
@@ -368,6 +386,14 @@ export function isLever(type: BlockType): boolean {
 
 export function isButton(type: BlockType): boolean {
   return getBlock(type).isButton === true;
+}
+
+export function isCable(type: BlockType): boolean {
+  return getBlock(type).isCable === true;
+}
+
+export function isLava(type: BlockType): boolean {
+  return getBlock(type).isLava === true;
 }
 
 export function isDoorItem(type: BlockType): boolean {

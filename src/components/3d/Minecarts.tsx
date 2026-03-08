@@ -5,6 +5,7 @@ import { useWorldStore } from '../../stores/worldStore';
 import { BlockType, isFlat } from '../../core/voxel/BlockRegistry';
 import { computeRailShape } from '../../core/voxel/ChunkMesher';
 import { soundManager } from '../../systems/SoundManager';
+import { isPoweredRailActive } from '../../systems/CablePower';
 
 interface Minecart {
   id: number;
@@ -424,9 +425,16 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
         }
       }
 
-      // Powered rail boost
+      // Powered rail boost (only if rail is powered by cable or adjacent lever)
       const onPowered = isOnPoweredRail(cart.position.x, cart.position.y, cart.position.z);
-      if (onPowered && cart.velocity.lengthSq() > 0.00001) {
+      const railBx = Math.floor(cart.position.x);
+      const railBz = Math.floor(cart.position.z);
+      const railBy = Math.floor(cart.position.y);
+      const railActive = onPowered && (
+        isPoweredRailActive(railBx, railBy, railBz) ||
+        isPoweredRailActive(railBx, railBy - 1, railBz)
+      );
+      if (railActive && cart.velocity.lengthSq() > 0.00001) {
         const boostDir = cart.velocity.clone().normalize();
         cart.velocity.addScaledVector(boostDir, 0.04);
         // Cap max speed on powered rail

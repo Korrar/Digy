@@ -10,6 +10,7 @@ import { spawnParticles } from './DiggingParticles';
 import { processGravity } from '../../systems/SandPhysics';
 import { checkWaterDrain } from '../../systems/WaterFlow';
 import { useDevStore } from '../../stores/devStore';
+import { propagateCablePower } from '../../systems/CablePower';
 import { useCombatStore } from '../../stores/combatStore';
 import { useChestStore } from '../../stores/chestStore';
 
@@ -249,6 +250,8 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
           setBlockW(bx, by, bz, isOn ? BlockType.LEVER : BlockType.LEVER_ON);
           soundManager.playPlaceSound();
           // Emit event for powered rails and other systems
+          // Propagate power through cables
+          propagateCablePower(bx, by, bz, !isOn);
           window.dispatchEvent(new CustomEvent('digy:leverToggle', {
             detail: { x: bx, y: by, z: bz, on: !isOn }
           }));
