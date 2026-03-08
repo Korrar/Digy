@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { BlockType, getBlock, getBlockColor, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest } from './BlockRegistry';
 import { ChunkData } from './ChunkData';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
+import { getAtlasUV, getWhiteUV } from './TextureAtlas';
 
 interface Face {
   dir: [number, number, number];
@@ -323,7 +324,10 @@ export function buildChunkMesh(
                 Math.max(0, Math.min(1, col.b + v * 0.5)),
               );
 
-              uvs.push(ci % 2 === 0 ? 0 : 1, corner[1] > 0.5 ? 1 : 0);
+              const wuv = getWhiteUV();
+              const lu = ci % 2 === 0 ? 0 : 1;
+              const lv = corner[1] > 0.5 ? 1 : 0;
+              uvs.push(wuv.u0 + lu * (wuv.u1 - wuv.u0), wuv.v0 + lv * (wuv.v1 - wuv.v0));
               sparkles.push(0);
               oreColors.push(1.0, 0.95, 0.8);
             }
@@ -350,6 +354,7 @@ export function buildChunkMesh(
             normal: [number, number, number],
             col: THREE.Color
           ) => {
+            const railWhite = getWhiteUV();
             for (let ci = 0; ci < 4; ci++) {
               const c = corners[ci];
               positions.push(x + c[0], y + c[1], z + c[2]);
@@ -360,7 +365,9 @@ export function buildChunkMesh(
                 Math.max(0, Math.min(1, col.g + v)),
                 Math.max(0, Math.min(1, col.b + v)),
               );
-              uvs.push(ci % 2 === 0 ? 0 : 1, ci < 2 ? 0 : 1);
+              const lu = ci % 2 === 0 ? 0 : 1;
+              const lv = ci < 2 ? 0 : 1;
+              uvs.push(railWhite.u0 + lu * (railWhite.u1 - railWhite.u0), railWhite.v0 + lv * (railWhite.v1 - railWhite.v0));
               sparkles.push(0);
               oreColors.push(1.0, 0.95, 0.8);
             }
@@ -560,17 +567,16 @@ export function buildChunkMesh(
           ];
           for (const face of [...bottomFaces, ...lidFaces, ...latchFaces]) {
             const brightness = face.normal[1] > 0 ? 1.0 : face.normal[1] < 0 ? 0.7 : 0.85;
+            const chestFaceName: 'top' | 'side' | 'bottom' = face.normal[1] > 0 ? 'top' : face.normal[1] < 0 ? 'bottom' : 'side';
+            const chestAtlas = getAtlasUV(block, chestFaceName);
             for (let ci = 0; ci < 4; ci++) {
               const [cx, cy, cz] = face.corners[ci];
               positions.push(ox + x + cx, y + cy, oz + z + cz);
               normals.push(...face.normal);
-              const v = hash3(ox+x+ci*7, y+ci*13, oz+z+ci*19) * 0.06 - 0.03;
-              colors.push(
-                face.color.r * brightness + v,
-                face.color.g * brightness + v,
-                face.color.b * brightness + v
-              );
-              uvs.push(0, 0);
+              colors.push(brightness, brightness, brightness);
+              const lu = ci % 2 === 0 ? 0 : 1;
+              const lv = ci < 2 ? 0 : 1;
+              uvs.push(chestAtlas.u0 + lu * (chestAtlas.u1 - chestAtlas.u0), chestAtlas.v0 + lv * (chestAtlas.v1 - chestAtlas.v0));
               sparkles.push(0);
               oreColors.push(0, 0, 0);
             }
@@ -611,18 +617,15 @@ export function buildChunkMesh(
             if (neighborBlock === block) continue;
 
             const faceBrightness = face.faceName === 'top' ? 1.0 : face.faceName === 'side' ? 0.85 : 0.7;
+            const slabAtlas = getAtlasUV(block, face.faceName);
             for (let ci = 0; ci < 4; ci++) {
               const corner = face.corners[ci];
               positions.push(x + corner[0], y + corner[1], z + corner[2]);
               normals.push(face.dir[0], face.dir[1], face.dir[2]);
-              const noiseVal = (hash3(wx + corner[0], y + corner[1], wz + corner[2]) - 0.5) * 2;
-              const texNoise = noiseVal * variation;
-              colors.push(
-                Math.max(0, Math.min(1, slabColor.r * faceBrightness + texNoise)),
-                Math.max(0, Math.min(1, slabColor.g * faceBrightness + texNoise * 0.8)),
-                Math.max(0, Math.min(1, slabColor.b * faceBrightness + texNoise * 0.6)),
-              );
-              uvs.push(face.uvs[ci][0], face.uvs[ci][1]);
+              colors.push(faceBrightness, faceBrightness, faceBrightness);
+              const u = slabAtlas.u0 + face.uvs[ci][0] * (slabAtlas.u1 - slabAtlas.u0);
+              const v = slabAtlas.v0 + face.uvs[ci][1] * (slabAtlas.v1 - slabAtlas.v0);
+              uvs.push(u, v);
               sparkles.push(0);
               oreColors.push(1.0, 0.95, 0.8);
             }
@@ -652,17 +655,16 @@ export function buildChunkMesh(
               { corners: [[x0,y0,z0],[x0,y1,z0],[x1,y1,z0],[x1,y0,z0]], normal: [0,0,-1], brightness: 0.85 },
             ];
             for (const bf of boxFaces) {
+              const fName: 'top' | 'side' | 'bottom' = bf.normal[1] > 0 ? 'top' : bf.normal[1] < 0 ? 'bottom' : 'side';
+              const fAtlas = getAtlasUV(block, fName);
               for (let ci = 0; ci < 4; ci++) {
                 const c = bf.corners[ci];
                 positions.push(x + c[0], y + c[1], z + c[2]);
                 normals.push(bf.normal[0], bf.normal[1], bf.normal[2]);
-                const v = (hash3(wx * 5 + ci, y * 3 + c[1] * 10, wz * 5 + ci) - 0.5) * 0.08;
-                colors.push(
-                  Math.max(0, Math.min(1, col.r * bf.brightness + v)),
-                  Math.max(0, Math.min(1, col.g * bf.brightness + v)),
-                  Math.max(0, Math.min(1, col.b * bf.brightness + v)),
-                );
-                uvs.push(ci % 2 === 0 ? 0 : 1, ci < 2 ? 0 : 1);
+                colors.push(bf.brightness, bf.brightness, bf.brightness);
+                const lu = ci % 2 === 0 ? 0 : 1;
+                const lv = ci < 2 ? 0 : 1;
+                uvs.push(fAtlas.u0 + lu * (fAtlas.u1 - fAtlas.u0), fAtlas.v0 + lv * (fAtlas.v1 - fAtlas.v0));
                 sparkles.push(0);
                 oreColors.push(1.0, 0.95, 0.8);
               }
@@ -732,17 +734,16 @@ export function buildChunkMesh(
               { corners: [[x0,y0,z0],[x0,y1,z0],[x1,y1,z0],[x1,y0,z0]], normal: [0,0,-1], brightness: 0.85 },
             ];
             for (const bf of boxFaces) {
+              const fName: 'top' | 'side' | 'bottom' = bf.normal[1] > 0 ? 'top' : bf.normal[1] < 0 ? 'bottom' : 'side';
+              const fAtlas = getAtlasUV(block, fName);
               for (let ci = 0; ci < 4; ci++) {
                 const c = bf.corners[ci];
                 positions.push(x + c[0], y + c[1], z + c[2]);
                 normals.push(bf.normal[0], bf.normal[1], bf.normal[2]);
-                const v = (hash3(wx * 5 + ci, y * 3 + c[1] * 10, wz * 5 + ci) - 0.5) * 0.08;
-                colors.push(
-                  Math.max(0, Math.min(1, col.r * bf.brightness + v)),
-                  Math.max(0, Math.min(1, col.g * bf.brightness + v)),
-                  Math.max(0, Math.min(1, col.b * bf.brightness + v)),
-                );
-                uvs.push(ci % 2 === 0 ? 0 : 1, ci < 2 ? 0 : 1);
+                colors.push(bf.brightness, bf.brightness, bf.brightness);
+                const lu = ci % 2 === 0 ? 0 : 1;
+                const lv = ci < 2 ? 0 : 1;
+                uvs.push(fAtlas.u0 + lu * (fAtlas.u1 - fAtlas.u0), fAtlas.v0 + lv * (fAtlas.v1 - fAtlas.v0));
                 sparkles.push(0);
                 oreColors.push(1.0, 0.95, 0.8);
               }
@@ -783,17 +784,16 @@ export function buildChunkMesh(
               { corners: [[x0,y0,z0],[x0,y1,z0],[x1,y1,z0],[x1,y0,z0]], normal: [0,0,-1], brightness: 0.9 },
             ];
             for (const bf of boxFaces) {
+              const fName: 'top' | 'side' | 'bottom' = bf.normal[1] > 0 ? 'top' : bf.normal[1] < 0 ? 'bottom' : 'side';
+              const fAtlas = getAtlasUV(block, fName);
               for (let ci = 0; ci < 4; ci++) {
                 const c = bf.corners[ci];
                 positions.push(x + c[0], y + c[1], z + c[2]);
                 normals.push(bf.normal[0], bf.normal[1], bf.normal[2]);
-                const v = (hash3(wx * 5 + ci, y * 3 + c[1] * 10, wz * 5 + ci) - 0.5) * 0.06;
-                colors.push(
-                  Math.max(0, Math.min(1, col.r * bf.brightness + v)),
-                  Math.max(0, Math.min(1, col.g * bf.brightness + v)),
-                  Math.max(0, Math.min(1, col.b * bf.brightness + v)),
-                );
-                uvs.push(ci % 2 === 0 ? 0 : 1, ci < 2 ? 0 : 1);
+                colors.push(bf.brightness, bf.brightness, bf.brightness);
+                const lu = ci % 2 === 0 ? 0 : 1;
+                const lv = ci < 2 ? 0 : 1;
+                uvs.push(fAtlas.u0 + lu * (fAtlas.u1 - fAtlas.u0), fAtlas.v0 + lv * (fAtlas.v1 - fAtlas.v0));
                 sparkles.push(0);
                 oreColors.push(1.0, 0.95, 0.8);
               }
@@ -832,8 +832,8 @@ export function buildChunkMesh(
           if (!isTransparent(neighborBlock) && neighborBlock !== BlockType.AIR) continue;
           if (neighborBlock === block) continue;
 
-          const color = getBlockColor(block, face.faceName);
           const faceBrightness = face.faceName === 'top' ? 1.0 : face.faceName === 'side' ? 0.85 : 0.7;
+          const atlas = getAtlasUV(block, face.faceName);
 
           for (let ci = 0; ci < face.corners.length; ci++) {
             const corner = face.corners[ci];
@@ -845,34 +845,15 @@ export function buildChunkMesh(
             normals.push(face.dir[0], face.dir[1], face.dir[2]);
 
             const ao = computeAO(chunk, x, y, z, face, ci, ox, oz, getNeighborBlock);
-
-            const noiseVal = (hash3(wx + corner[0], y + corner[1], wz + corner[2]) - 0.5) * 2;
-            const noiseVal2 = (hash3(wx * 3 + 7, (y + corner[1]) * 3 + 13, wz * 3 + 19) - 0.5) * 2;
-            const texNoise = (noiseVal * 0.7 + noiseVal2 * 0.3) * variation;
-
             const brightness = faceBrightness * ao;
-            let cr = color.r * brightness + texNoise;
-            let cg = color.g * brightness + texNoise * 0.8;
-            let cb = color.b * brightness + texNoise * 0.6;
 
-            if (oreColor) {
-              const speckleNoise = hash3(wx * 7 + corner[0] * 31, (y + corner[1]) * 13 + 97, wz * 7 + corner[2] * 31);
-              if (speckleNoise > 0.45) {
-                const blend = (speckleNoise - 0.45) / 0.55;
-                const t = blend * 0.7;
-                cr = cr * (1 - t) + oreColor.r * brightness * t;
-                cg = cg * (1 - t) + oreColor.g * brightness * t;
-                cb = cb * (1 - t) + oreColor.b * brightness * t;
-              }
-            }
+            // Store brightness as vertex color - texture provides the actual color
+            colors.push(brightness, brightness, brightness);
 
-            colors.push(
-              Math.max(0, Math.min(1, cr)),
-              Math.max(0, Math.min(1, cg)),
-              Math.max(0, Math.min(1, cb)),
-            );
-
-            uvs.push(face.uvs[ci][0], face.uvs[ci][1]);
+            // Map face UVs [0,1] into atlas sub-rectangle
+            const u = atlas.u0 + face.uvs[ci][0] * (atlas.u1 - atlas.u0);
+            const v = atlas.v0 + face.uvs[ci][1] * (atlas.v1 - atlas.v0);
+            uvs.push(u, v);
             sparkles.push(sparkle);
             oreColors.push(
               oreColor ? oreColor.r : 1.0,
