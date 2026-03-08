@@ -348,11 +348,12 @@ export function buildChunkMesh(
           const fy0 = sh;
           const fy1 = sh + fh;
 
-          // Helper to add a box face
+          // Helper to add a box face (isFlame marks flame vertices for shader animation)
           const addTorchFace = (
             corners: [number, number, number][],
             normal: [number, number, number],
-            col: THREE.Color
+            col: THREE.Color,
+            isFlame = false
           ) => {
             for (let ci = 0; ci < 4; ci++) {
               const c = corners[ci];
@@ -362,7 +363,8 @@ export function buildChunkMesh(
               const lu = ci % 2 === 0 ? 0 : 1;
               const lv = ci < 2 ? 0 : 1;
               uvs.push(wuv.u0 + lu * (wuv.u1 - wuv.u0), wuv.v0 + lv * (wuv.v1 - wuv.v0));
-              sparkles.push(0);
+              // Use sparkle = -1.0 to mark flame vertices (shader detects this)
+              sparkles.push(isFlame ? -1.0 : 0);
               waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
               oreColors.push(1.0, 0.95, 0.8);
             }
@@ -380,13 +382,13 @@ export function buildChunkMesh(
           addTorchFace([[sx1,sy0,sz0],[sx1,sy0,sz1],[sx1,sy1,sz1],[sx1,sy1,sz0]], [1,0,0], stickColor);
           addTorchFace([[sx0,sy1,sz0],[sx1,sy1,sz0],[sx1,sy1,sz1],[sx0,sy1,sz1]], [0,1,0], stickColor);
 
-          // Flame: 2 crossed quads (X shape) for glow effect
+          // Flame: 2 crossed quads (X shape) for glow effect - marked as flame for shader animation
           // Crossed quad 1
-          addTorchFace([[fx0,fy0,fz0],[fx1,fy0,fz1],[fx1,fy1,fz1],[fx0,fy1,fz0]], [-0.707,0,0.707], flameColor);
-          addTorchFace([[fx1,fy0,fz1],[fx0,fy0,fz0],[fx0,fy1,fz0],[fx1,fy1,fz1]], [0.707,0,-0.707], flameColor);
+          addTorchFace([[fx0,fy0,fz0],[fx1,fy0,fz1],[fx1,fy1,fz1],[fx0,fy1,fz0]], [-0.707,0,0.707], flameColor, true);
+          addTorchFace([[fx1,fy0,fz1],[fx0,fy0,fz0],[fx0,fy1,fz0],[fx1,fy1,fz1]], [0.707,0,-0.707], flameColor, true);
           // Crossed quad 2
-          addTorchFace([[fx1,fy0,fz0],[fx0,fy0,fz1],[fx0,fy1,fz1],[fx1,fy1,fz0]], [0.707,0,0.707], flameTopColor);
-          addTorchFace([[fx0,fy0,fz1],[fx1,fy0,fz0],[fx1,fy1,fz0],[fx0,fy1,fz1]], [-0.707,0,-0.707], flameTopColor);
+          addTorchFace([[fx1,fy0,fz0],[fx0,fy0,fz1],[fx0,fy1,fz1],[fx1,fy1,fz0]], [0.707,0,0.707], flameTopColor, true);
+          addTorchFace([[fx0,fy0,fz1],[fx1,fy0,fz0],[fx1,fy1,fz0],[fx0,fy1,fz1]], [-0.707,0,-0.707], flameTopColor, true);
 
           continue;
         }
@@ -955,7 +957,7 @@ export function buildChunkMesh(
           continue;
         }
 
-        // Cable rendering (thin blue wire along bottom of block space)
+        // Cable rendering - redstone-style dashed wire with center dot
         if (isCable(block)) {
           const cDef = getBlock(block);
           const cCol = cDef.color;
@@ -977,50 +979,77 @@ export function buildChunkMesh(
             } else {
               nBlock = BlockType.AIR;
             }
-            // Connect to other cables, levers, or powered rails
             const nDef = getBlock(nBlock);
             connected.push(nDef.isCable === true || nDef.isLever === true || nBlock === BlockType.POWERED_RAIL);
           }
 
-          // Center hub (always drawn)
-          const hw = 0.08; // half-width of wire
-          const cy0 = 0.01, cy1 = 0.06; // wire height (sits on floor)
-          const cx0 = 0.5 - hw, cx1 = 0.5 + hw;
-          const cz0 = 0.5 - hw, cz1 = 0.5 + hw;
+          const cy0 = 0.005, cy1 = 0.04; // very flat, sits on floor
+          const hw = 0.06; // half-width of wire (thinner)
 
-          // Draw wire segments to connected neighbors
-          const segments: [number, number, number, number, number, number][] = [
-            [cx0, cy0, cz0, cx1, cy1, cz1], // center hub
-          ];
-          // +X
-          if (connected[0]) segments.push([cx1, cy0, cz0, 1.0, cy1, cz1]);
-          // -X
-          if (connected[1]) segments.push([0.0, cy0, cz0, cx0, cy1, cz1]);
-          // +Z
-          if (connected[2]) segments.push([cx0, cy0, cz1, cx1, cy1, 1.0]);
-          // -Z
-          if (connected[3]) segments.push([cx0, cy0, 0.0, cx1, cy1, cz0]);
-
-          for (const [sx0, sy0, sz0, sx1, sy1, sz1] of segments) {
-            const segFaces: { c: [number,number,number][]; n: [number,number,number]; b: number }[] = [
-              { c: [[sx0,sy1,sz1],[sx1,sy1,sz1],[sx1,sy1,sz0],[sx0,sy1,sz0]], n: [0,1,0], b: 1.0 },
-              { c: [[sx1,sy0,sz0],[sx1,sy1,sz0],[sx1,sy1,sz1],[sx1,sy0,sz1]], n: [1,0,0], b: 0.85 },
-              { c: [[sx0,sy0,sz1],[sx0,sy1,sz1],[sx0,sy1,sz0],[sx0,sy0,sz0]], n: [-1,0,0], b: 0.85 },
-              { c: [[sx1,sy0,sz1],[sx1,sy1,sz1],[sx0,sy1,sz1],[sx0,sy0,sz1]], n: [0,0,1], b: 0.9 },
-              { c: [[sx0,sy0,sz0],[sx0,sy1,sz0],[sx1,sy1,sz0],[sx1,sy0,sz0]], n: [0,0,-1], b: 0.9 },
+          // Helper: push a flat box segment
+          const pushCableSeg = (sx0: number, sz0: number, sx1: number, sz1: number, b: number) => {
+            // Top face only (flat on floor, no need for side faces)
+            const corners: [number, number, number][] = [
+              [sx0, cy1, sz1], [sx1, cy1, sz1], [sx1, cy1, sz0], [sx0, cy1, sz0],
             ];
-            for (const f of segFaces) {
-              for (let ci = 0; ci < 4; ci++) {
-                positions.push(x + f.c[ci][0], y + f.c[ci][1], z + f.c[ci][2]);
-                normals.push(f.n[0], f.n[1], f.n[2]);
-                colors.push(cCol.r * f.b * brightness, cCol.g * f.b * brightness, cCol.b * f.b * brightness);
-                uvs.push(whiteUV.u0, whiteUV.v0);
-                sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(cableVal); oreColors.push(1, 0.95, 0.8);
-              }
-              indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
-              vertexCount += 4;
+            for (let ci = 0; ci < 4; ci++) {
+              positions.push(x + corners[ci][0], y + corners[ci][1], z + corners[ci][2]);
+              normals.push(0, 1, 0);
+              colors.push(cCol.r * b * brightness, cCol.g * b * brightness, cCol.b * b * brightness);
+              uvs.push(whiteUV.u0, whiteUV.v0);
+              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(cableVal); oreColors.push(1, 0.95, 0.8);
             }
+            indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+            vertexCount += 4;
+            // Bottom face (visible from below if cable is on glass etc.)
+            const cornersB: [number, number, number][] = [
+              [sx0, cy0, sz0], [sx1, cy0, sz0], [sx1, cy0, sz1], [sx0, cy0, sz1],
+            ];
+            for (let ci = 0; ci < 4; ci++) {
+              positions.push(x + cornersB[ci][0], y + cornersB[ci][1], z + cornersB[ci][2]);
+              normals.push(0, -1, 0);
+              colors.push(cCol.r * b * brightness * 0.7, cCol.g * b * brightness * 0.7, cCol.b * b * brightness * 0.7);
+              uvs.push(whiteUV.u0, whiteUV.v0);
+              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(cableVal); oreColors.push(1, 0.95, 0.8);
+            }
+            indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+            vertexCount += 4;
+          };
+
+          // Center dot (larger, like redstone dust center)
+          const dotR = 0.1;
+          pushCableSeg(0.5 - dotR, 0.5 - dotR, 0.5 + dotR, 0.5 + dotR, 1.0);
+
+          // Dashed segments toward connected neighbors
+          // Each arm: 2 dashes with a gap between
+          const dashLen = 0.12;
+          const gapLen = 0.06;
+
+          // +X direction: dashes from center toward x=1
+          if (connected[0]) {
+            const start = 0.5 + dotR;
+            pushCableSeg(start, 0.5 - hw, start + dashLen, 0.5 + hw, 0.9);
+            pushCableSeg(start + dashLen + gapLen, 0.5 - hw, 1.0, 0.5 + hw, 0.85);
           }
+          // -X direction: dashes from center toward x=0
+          if (connected[1]) {
+            const end = 0.5 - dotR;
+            pushCableSeg(end - dashLen, 0.5 - hw, end, 0.5 + hw, 0.9);
+            pushCableSeg(0.0, 0.5 - hw, end - dashLen - gapLen, 0.5 + hw, 0.85);
+          }
+          // +Z direction: dashes from center toward z=1
+          if (connected[2]) {
+            const start = 0.5 + dotR;
+            pushCableSeg(0.5 - hw, start, 0.5 + hw, start + dashLen, 0.9);
+            pushCableSeg(0.5 - hw, start + dashLen + gapLen, 0.5 + hw, 1.0, 0.85);
+          }
+          // -Z direction: dashes from center toward z=0
+          if (connected[3]) {
+            const end = 0.5 - dotR;
+            pushCableSeg(0.5 - hw, end - dashLen, 0.5 + hw, end, 0.9);
+            pushCableSeg(0.5 - hw, 0.0, 0.5 + hw, end - dashLen - gapLen, 0.85);
+          }
+
           continue;
         }
 

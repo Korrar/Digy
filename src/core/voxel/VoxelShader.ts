@@ -43,6 +43,16 @@ void main() {
     worldPos.y += wave1 + wave2 + wave3 - 0.1;
   }
 
+  // Animated torch flame: sway vertices side to side
+  if (aSparkle < -0.5) {
+    float sway = sin(worldPos.x * 10.0 + uTime * 6.0) * 0.02 + sin(uTime * 8.0 + worldPos.z * 8.0) * 0.015;
+    worldPos.x += sway;
+    worldPos.z += sway * 0.7;
+    // Stretch flame upward slightly
+    float flicker = sin(uTime * 12.0 + worldPos.x * 5.0) * 0.02;
+    worldPos.y += flicker;
+  }
+
   // Animated lava: slower, thicker waves
   if (aIsLava > 0.5 && normal.y > 0.5) {
     float lwave1 = sin(worldPos.x * 1.2 + uTime * 0.6) * 0.05;
@@ -192,8 +202,15 @@ void main() {
     }
   }
 
-  // Animated torch flame: add extra glow near torch position
-  // (torch is identified by bright orange vertex color from mesher)
+  // Animated torch flame: flickering glow (sparkle < -0.5 marks flame vertices)
+  if (vSparkle < -0.5) {
+    float flicker = 0.8 + 0.2 * sin(uTime * 10.0 + vWorldPosition.x * 7.0) * sin(uTime * 13.0 + vWorldPosition.z * 5.0);
+    float pulse = 0.9 + 0.1 * sin(uTime * 6.0);
+    // Make flame emissive (self-illuminating)
+    color = baseColor * 2.0 * flicker * pulse;
+    // Add bright core
+    color += vec3(0.3, 0.15, 0.0) * flicker;
+  }
 
   // Tone mapping (simple Reinhard)
   color = color / (color + vec3(1.0));

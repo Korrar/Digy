@@ -17,6 +17,15 @@ interface Minecart {
 
 let cartIdCounter = 0;
 
+// Expose minecart positions globally so BlockLights can add warning light illumination
+export interface MinecartLightInfo {
+  x: number;
+  y: number;
+  z: number;
+  hasWarningLight: boolean;
+}
+export const minecartLightsRef: { current: MinecartLightInfo[] } = { current: [] };
+
 export function buildMinecartGeometry(): THREE.BufferGeometry {
   const allPos: number[] = [];
   const allNorm: number[] = [];
@@ -536,6 +545,14 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
       soundManager.stopMinecartRiding();
     }
     wasRidingRef.current = anyRiding;
+
+    // Update global minecart lights for BlockLights shader integration
+    minecartLightsRef.current = cartsRef.current.map((c) => ({
+      x: c.position.x,
+      y: c.position.y,
+      z: c.position.z,
+      hasWarningLight: c.hasWarningLight,
+    }));
   });
 
   // Cleanup riding sound on unmount
