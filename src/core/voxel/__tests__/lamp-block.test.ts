@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { BlockType, getBlock, isTransparent, isSolid } from '../BlockRegistry';
+import { BlockType, getBlock, isSolid } from '../BlockRegistry';
 import { ChunkData } from '../ChunkData';
 import { buildChunkMesh } from '../ChunkMesher';
 

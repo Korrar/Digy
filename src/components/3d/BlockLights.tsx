@@ -23,7 +23,6 @@ export function BlockLights() {
             if (!def.emitsLight) continue;
 
             const color = block === BlockType.LAMP ? '#ffdd88' : '#ffaa33';
-            const intensity = block === BlockType.LAMP ? 1.2 : 0.6;
             result.push({
               x: ox + x + 0.5,
               y: y + 0.5,
@@ -40,7 +39,7 @@ export function BlockLights() {
 
   return (
     <>
-      {lights.map((light, i) => (
+      {lights.map((light) => (
         <pointLight
           key={`${light.x}-${light.y}-${light.z}`}
           position={[light.x, light.y, light.z]}
