@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { BlockType, getBlock, isItemType, isSolid } from '../BlockRegistry';
+import { BlockType, getBlock, isSolid } from '../BlockRegistry';
 
 describe('Lever block registration', () => {
   it('should have LEVER defined in BlockType enum', () => {
