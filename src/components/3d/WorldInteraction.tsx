@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat } from '../../core/voxel/BlockRegistry';
+import { computeRailBlockType } from '../../core/voxel/ChunkMesher';
 import { soundManager } from '../../systems/SoundManager';
 import { spawnParticles } from './DiggingParticles';
 import { processGravity } from '../../systems/SandPhysics';
@@ -154,6 +155,23 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
             processGravity(bx, by, bz);
             checkWaterDrain(bx, by, bz);
 
+            // If a rail was broken, update neighboring rails
+            if (isFlat(result.blockType)) {
+              const neighbors: [number, number, number][] = [
+                [bx, by, bz - 1], [bx, by, bz + 1],
+                [bx + 1, by, bz], [bx - 1, by, bz],
+              ];
+              for (const [nx, ny, nz] of neighbors) {
+                const nBlock = getBlockW(nx, ny, nz);
+                if (isFlat(nBlock) && nBlock !== BlockType.POWERED_RAIL) {
+                  const newType = computeRailBlockType(getBlockW, nx, ny, nz);
+                  if (newType !== nBlock) {
+                    setBlockW(nx, ny, nz, newType);
+                  }
+                }
+              }
+            }
+
             miningTimeRef.current = 0;
             miningBlockRef.current = null;
             setMiningProgress(0);
@@ -280,7 +298,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
       const pz = bz + hit.normal[2];
 
       if (!isSolid(getBlockW(px, py, pz)) && !(isFlat(getBlockW(px, py, pz)) && selectedBlock === BlockType.RAIL)) {
-        // Rail placement: orient based on camera direction when no neighbors
+        // Rail placement: compute and store correct shape, then update neighbors
         if (selectedBlock === BlockType.RAIL) {
           const hasRailN = isFlat(getBlockW(px, py, pz - 1));
           const hasRailS = isFlat(getBlockW(px, py, pz + 1));
@@ -297,7 +315,25 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
               setBlockW(px, py, pz, BlockType.RAIL);
             }
           } else {
+            // Place as RAIL first, then compute correct type with neighbors
             setBlockW(px, py, pz, BlockType.RAIL);
+            const correctType = computeRailBlockType(getBlockW, px, py, pz);
+            if (correctType !== BlockType.RAIL) {
+              setBlockW(px, py, pz, correctType);
+            }
+            // Update neighboring rails (they may need to curve toward this new rail)
+            const neighbors: [number, number, number][] = [
+              [px, py, pz - 1], [px, py, pz + 1],
+              [px + 1, py, pz], [px - 1, py, pz],
+            ];
+            for (const [nx, ny, nz] of neighbors) {
+              if (isFlat(getBlockW(nx, ny, nz)) && getBlockW(nx, ny, nz) !== BlockType.POWERED_RAIL) {
+                const newType = computeRailBlockType(getBlockW, nx, ny, nz);
+                if (newType !== getBlockW(nx, ny, nz)) {
+                  setBlockW(nx, ny, nz, newType);
+                }
+              }
+            }
           }
           removeBlock(selectedIdx, 1);
           soundManager.playPlaceSound();

@@ -163,9 +163,9 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
     // Check at cart level and one below (rail is flat, cart sits just above it)
     const by = Math.floor(y);
     const block = getBlock(bx, by, bz);
-    if (block === BlockType.RAIL || block === BlockType.POWERED_RAIL) return true;
+    if (isFlat(block)) return true;
     const blockBelow = getBlock(bx, by - 1, bz);
-    return blockBelow === BlockType.RAIL || blockBelow === BlockType.POWERED_RAIL;
+    return isFlat(blockBelow);
   }, [getBlock]);
 
   // Check if position is on a powered rail
@@ -238,7 +238,7 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
         // Find the rail block (at cart level or one below)
         let by = Math.floor(cart.position.y);
         const blk = getBlock(bx, by, bz);
-        if (blk !== BlockType.RAIL && blk !== BlockType.POWERED_RAIL) by -= 1;
+        if (!isFlat(blk)) by -= 1;
         const shape = getRailShape(bx, by, bz);
         const speed = Math.sqrt(cart.velocity.x * cart.velocity.x + cart.velocity.z * cart.velocity.z);
 
