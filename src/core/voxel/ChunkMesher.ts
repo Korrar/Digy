@@ -321,22 +321,23 @@ export function buildChunkMesh(
 
             const CURVE_SEGMENTS = 5;
 
-            // Curved ties
+            // Curved ties - extend radially to connect both rails
             for (let s = 0; s < CURVE_SEGMENTS; s++) {
               const t = (s + 0.5) / CURVE_SEGMENTS;
               const angle = startAngle + t * angleSpan;
               const cx = pivotX + Math.cos(angle) * 0.5;
               const cz = pivotZ + Math.sin(angle) * 0.5;
-              // Tie perpendicular to curve direction
-              const tx = -Math.sin(angle) * 0.45;
-              const tz = Math.cos(angle) * 0.45;
-              const tw = Math.cos(angle) * 0.06;
-              const th = Math.sin(angle) * 0.06;
+              // Tie extends radially (from inner rail to outer rail)
+              const rx = Math.cos(angle) * 0.35;
+              const rz = Math.sin(angle) * 0.35;
+              // Tie width along tangent direction
+              const tw = -Math.sin(angle) * 0.06;
+              const th = Math.cos(angle) * 0.06;
               addQuad(
-                [[cx - tx + tw, tieHeight, cz - tz + th],
-                 [cx + tx + tw, tieHeight, cz + tz + th],
-                 [cx + tx - tw, tieHeight, cz + tz - th],
-                 [cx - tx - tw, tieHeight, cz - tz - th]],
+                [[cx - rx + tw, tieHeight, cz - rz + th],
+                 [cx + rx + tw, tieHeight, cz + rz + th],
+                 [cx + rx - tw, tieHeight, cz + rz - th],
+                 [cx - rx - tw, tieHeight, cz - rz - th]],
                 [0, 1, 0], tieColor
               );
             }
@@ -374,14 +375,6 @@ export function buildChunkMesh(
               }
             }
           }
-
-          // Bottom face (same for all shapes)
-          addQuad(
-            [[0.05, 0, 0.05], [0.95, 0, 0.05],
-             [0.95, 0, 0.95], [0.05, 0, 0.95]],
-            [0, -1, 0],
-            new THREE.Color(tieColor.r * 0.6, tieColor.g * 0.6, tieColor.b * 0.6)
-          );
 
           continue;
         }
