@@ -1,4 +1,4 @@
-import { useRef, useMemo, useCallback } from 'react';
+import { useRef, useMemo, useCallback, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
@@ -125,39 +125,25 @@ function MinecartMesh({ cart, onPush }: { cart: Minecart; onPush: (id: number) =
   );
 }
 
-// Simple rail rendering - just a flat colored plane on top of RAIL blocks
-function RailBlock({ x, y, z, powered }: { x: number; y: number; z: number; powered?: boolean }) {
-  return (
-    <mesh position={[x + 0.5, y + 0.05, z + 0.5]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[0.9, 0.9]} />
-      <meshLambertMaterial color={powered ? '#cc4444' : '#8b6914'} emissive={powered ? '#441111' : '#000000'} />
-    </mesh>
-  );
-}
-
 export function MinecartRenderer({ center }: { center: [number, number, number] }) {
   const cartsRef = useRef<Minecart[]>([]);
   const getBlock = useWorldStore((s) => s.getBlock);
   const { camera } = useThree();
 
-  // Find rail blocks for rendering
-  const railBlocks = useMemo(() => {
-    const rails: { x: number; y: number; z: number; powered: boolean }[] = [];
-    // Scan the area for rail blocks
-    for (let x = -2; x < 18; x++) {
-      for (let z = -2; z < 18; z++) {
-        for (let y = 0; y < 24; y++) {
-          const block = getBlock(x, y, z);
-          if (block === BlockType.RAIL) {
-            rails.push({ x, y, z, powered: false });
-          } else if (block === BlockType.POWERED_RAIL) {
-            rails.push({ x, y, z, powered: true });
-          }
-        }
-      }
-    }
-    return rails;
-  }, [getBlock]);
+  // Listen for minecart spawn events from WorldInteraction
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      cartsRef.current.push({
+        id: cartIdCounter++,
+        position: new THREE.Vector3(detail.x, detail.y, detail.z),
+        velocity: new THREE.Vector3(0, 0, 0),
+        onRail: detail.onRail ?? false,
+      });
+    };
+    window.addEventListener('digy:spawnMinecart', handler);
+    return () => window.removeEventListener('digy:spawnMinecart', handler);
+  }, []);
 
   // Check if position is on a rail (regular or powered)
   const isOnRail = useCallback((x: number, y: number, z: number) => {
@@ -289,10 +275,6 @@ export function MinecartRenderer({ center }: { center: [number, number, number] 
 
   return (
     <group>
-      {/* Render rail blocks */}
-      {railBlocks.map((r, i) => (
-        <RailBlock key={`rail_${i}`} x={r.x} y={r.y} z={r.z} powered={r.powered} />
-      ))}
       {/* Render minecarts */}
       {cartsRef.current.map((cart) => (
         <MinecartMesh key={cart.id} cart={cart} onPush={handlePush} />
