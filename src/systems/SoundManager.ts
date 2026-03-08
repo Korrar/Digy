@@ -20,9 +20,10 @@ const blockSoundMap: Partial<Record<BlockType, SoundCategory>> = {
 };
 
 // Procedural sound generation using Web Audio API
-class SoundManager {
+export class SoundManager {
   private ctx: AudioContext | null = null;
   private initialized = false;
+  private minecartNodes: { sources: OscillatorNode[]; gains: GainNode[] } | null = null;
 
   private getCtx(): AudioContext {
     if (!this.ctx) {
@@ -173,6 +174,78 @@ class SoundManager {
     const pitchVar = 0.9 + Math.random() * 0.2;
     this.tone(300 * pitchVar, 0.08, 0.1, 'triangle');
     this.noise(0.06, 0.1, 800, 2);
+  }
+
+  playMinecartRiding(speed: number = 1): void {
+    this.init();
+    if (this.minecartNodes) return; // already playing
+
+    const ctx = this.getCtx();
+    const sources: OscillatorNode[] = [];
+    const gains: GainNode[] = [];
+    const masterGain = ctx.createGain();
+    masterGain.gain.value = 0.06;
+    masterGain.connect(ctx.destination);
+
+    // Metallic rattling - low frequency rumble
+    const rumble = ctx.createOscillator();
+    rumble.type = 'sawtooth';
+    rumble.frequency.value = 40 * speed;
+    const rumbleGain = ctx.createGain();
+    rumbleGain.gain.value = 0.4;
+    const rumbleFilter = ctx.createBiquadFilter();
+    rumbleFilter.type = 'lowpass';
+    rumbleFilter.frequency.value = 200;
+    rumble.connect(rumbleFilter).connect(rumbleGain).connect(masterGain);
+    rumble.start();
+    sources.push(rumble);
+    gains.push(rumbleGain);
+
+    // Clickety-clack oscillation (simulates rail joints)
+    const clack = ctx.createOscillator();
+    clack.type = 'square';
+    clack.frequency.value = 8 * speed; // clicks per second
+    const clackGain = ctx.createGain();
+    clackGain.gain.value = 0.15;
+    const clackFilter = ctx.createBiquadFilter();
+    clackFilter.type = 'bandpass';
+    clackFilter.frequency.value = 800;
+    clackFilter.Q.value = 2;
+    clack.connect(clackFilter).connect(clackGain).connect(masterGain);
+    clack.start();
+    sources.push(clack);
+    gains.push(clackGain);
+
+    // High metallic whine
+    const whine = ctx.createOscillator();
+    whine.type = 'sine';
+    whine.frequency.value = 600 * speed;
+    const whineGain = ctx.createGain();
+    whineGain.gain.value = 0.08;
+    whine.connect(whineGain).connect(masterGain);
+    whine.start();
+    sources.push(whine);
+    gains.push(whineGain);
+
+    this.minecartNodes = { sources, gains };
+  }
+
+  stopMinecartRiding(): void {
+    if (!this.minecartNodes) return;
+    const ctx = this.ctx;
+    if (!ctx) return;
+
+    // Fade out
+    for (const gain of this.minecartNodes.gains) {
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    }
+    const nodes = this.minecartNodes;
+    setTimeout(() => {
+      for (const source of nodes.sources) {
+        try { source.stop(); } catch { /* already stopped */ }
+      }
+    }, 350);
+    this.minecartNodes = null;
   }
 }
 
