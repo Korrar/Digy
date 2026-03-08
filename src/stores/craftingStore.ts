@@ -73,6 +73,11 @@ const ALL_RECIPES: CraftingRecipe[] = [
   { id: 'door_oak', name: 'Oak Door', ingredients: [{ type: BlockType.PLANKS, count: 6 }], result: { type: BlockType.DOOR_OAK, count: 3 }, craftTime: 5, category: 'blocks' },
   // Chest
   { id: 'chest', name: 'Chest', ingredients: [{ type: BlockType.PLANKS, count: 8 }], result: { type: BlockType.CHEST, count: 1 }, craftTime: 6, category: 'blocks' },
+  // Lever & Button
+  { id: 'lever', name: 'Lever', ingredients: [{ type: BlockType.COBBLESTONE, count: 1 }, { type: BlockType.STICK, count: 1 }], result: { type: BlockType.LEVER, count: 1 }, craftTime: 3, category: 'blocks' },
+  { id: 'button', name: 'Button', ingredients: [{ type: BlockType.STONE, count: 1 }], result: { type: BlockType.BUTTON, count: 1 }, craftTime: 3, category: 'blocks' },
+  // Warning Light
+  { id: 'warning_light', name: 'Warning Light', ingredients: [{ type: BlockType.GOLD_INGOT, count: 2 }, { type: BlockType.TORCH, count: 1 }], result: { type: BlockType.WARNING_LIGHT, count: 1 }, craftTime: 8, category: 'blocks' },
 ];
 
 export const useCraftingStore = create<CraftingState>((set, get) => ({

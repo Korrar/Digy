@@ -248,6 +248,23 @@ export const IconChest = ({ size = 16, color = '#b8945a', style }: IconProps) =>
   </svg>
 );
 
+// Lever
+export const IconLever = ({ size = 16, color = '#8b6914', style }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" style={style} xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="11" width="8" height="3" rx="1" fill="#666" />
+    <line x1="8" y1="11" x2="5" y2="4" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <circle cx="5" cy="4" r="1.5" fill={color} />
+  </svg>
+);
+
+// Button
+export const IconButton = ({ size = 16, color = '#808080', style }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" style={style} xmlns="http://www.w3.org/2000/svg">
+    <rect x="3" y="4" width="10" height="8" rx="1" fill="#555" />
+    <rect x="5" y="6" width="6" height="4" rx="1" fill={color} />
+  </svg>
+);
+
 // Warning Light / Siren
 export const IconWarningLight = ({ size = 16, color = '#ffcc00', style }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 16 16" fill="none" style={style} xmlns="http://www.w3.org/2000/svg">
@@ -282,6 +299,8 @@ const ICON_MAP: Record<string, React.FC<IconProps>> = {
   powered_rail: IconPoweredRail,
   torch: IconTorch,
   chest: IconChest,
+  lever: IconLever,
+  button: IconButton,
   warning_light: IconWarningLight,
 };
 
