@@ -376,14 +376,6 @@ export function buildChunkMesh(
             }
           }
 
-          // Bottom face (same for all shapes)
-          addQuad(
-            [[0.05, 0, 0.05], [0.95, 0, 0.05],
-             [0.95, 0, 0.95], [0.05, 0, 0.95]],
-            [0, -1, 0],
-            new THREE.Color(tieColor.r * 0.6, tieColor.g * 0.6, tieColor.b * 0.6)
-          );
-
           continue;
         }
 

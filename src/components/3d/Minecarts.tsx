@@ -158,27 +158,35 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
   // Check if position is on a rail (regular or powered)
   const isOnRail = useCallback((x: number, y: number, z: number) => {
     const bx = Math.floor(x);
-    const by = Math.floor(y - 0.3); // check below cart
     const bz = Math.floor(z);
+    // Check at cart level and one below (rail is flat, cart sits just above it)
+    const by = Math.floor(y);
     const block = getBlock(bx, by, bz);
-    return block === BlockType.RAIL || block === BlockType.POWERED_RAIL;
+    if (block === BlockType.RAIL || block === BlockType.POWERED_RAIL) return true;
+    const blockBelow = getBlock(bx, by - 1, bz);
+    return blockBelow === BlockType.RAIL || blockBelow === BlockType.POWERED_RAIL;
   }, [getBlock]);
 
   // Check if position is on a powered rail
   const isOnPoweredRail = useCallback((x: number, y: number, z: number) => {
     const bx = Math.floor(x);
-    const by = Math.floor(y - 0.3);
     const bz = Math.floor(z);
-    return getBlock(bx, by, bz) === BlockType.POWERED_RAIL;
+    const by = Math.floor(y);
+    if (getBlock(bx, by, bz) === BlockType.POWERED_RAIL) return true;
+    return getBlock(bx, by - 1, bz) === BlockType.POWERED_RAIL;
   }, [getBlock]);
 
-  // Get terrain height at position
+  // Get terrain height at position (rails are flat, not full blocks)
   const getTerrainHeight = useCallback((x: number, z: number): number => {
     const bx = Math.floor(x);
     const bz = Math.floor(z);
     for (let y = 24; y >= 0; y--) {
       const block = getBlock(bx, y, bz);
       if (block !== BlockType.AIR && block !== BlockType.WATER) {
+        // Rail blocks are flat - return rail surface height, not full block top
+        if (isFlat(block)) {
+          return y + 0.14; // rail surface height
+        }
         return y + 1;
       }
     }
@@ -241,8 +249,11 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
       // Rail steering: constrain velocity direction based on rail shape
       if (onRail && cart.velocity.lengthSq() > 0.00001) {
         const bx = Math.floor(cart.position.x);
-        const by = Math.floor(cart.position.y - 0.3);
         const bz = Math.floor(cart.position.z);
+        // Find the rail block (at cart level or one below)
+        let by = Math.floor(cart.position.y);
+        const blk = getBlock(bx, by, bz);
+        if (blk !== BlockType.RAIL && blk !== BlockType.POWERED_RAIL) by -= 1;
         const shape = getRailShape(bx, by, bz);
         const speed = Math.sqrt(cart.velocity.x * cart.velocity.x + cart.velocity.z * cart.velocity.z);
 
