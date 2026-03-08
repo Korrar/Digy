@@ -57,6 +57,7 @@ export enum BlockType {
   CRAFTING_TABLE = 51,
   RAIL = 52,
   MINECART = 53,
+  POWERED_RAIL = 54,
 }
 
 export interface BlockDefinition {
@@ -154,6 +155,7 @@ register({ id: BlockType.FURNACE, name: 'Furnace', color: new THREE.Color(0x7070
 register({ id: BlockType.CRAFTING_TABLE, name: 'Crafting Table', color: new THREE.Color(0xb8945a), hardness: 1.0, transparent: false, drops: BlockType.CRAFTING_TABLE, stackSize: 64, icon: 'wrench' });
 register({ id: BlockType.RAIL, name: 'Rail', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: true, drops: BlockType.RAIL, stackSize: 64, icon: 'rail' });
 register({ id: BlockType.MINECART, name: 'Minecart', color: new THREE.Color(0x888888), hardness: 0.5, transparent: true, drops: BlockType.MINECART, stackSize: 1, isItem: true, icon: 'minecart' });
+register({ id: BlockType.POWERED_RAIL, name: 'Powered Rail', color: new THREE.Color(0xcc4444), hardness: 0.5, transparent: true, drops: BlockType.POWERED_RAIL, stackSize: 64, icon: 'powered_rail' });
 
 // Update ore drops to drop raw materials
 BLOCKS.get(BlockType.COAL_ORE)!.drops = BlockType.COAL;

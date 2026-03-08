@@ -58,6 +58,7 @@ const ALL_RECIPES: CraftingRecipe[] = [
   // Transport
   { id: 'rail', name: 'Rail', ingredients: [{ type: BlockType.IRON_INGOT, count: 3 }, { type: BlockType.STICK, count: 1 }], result: { type: BlockType.RAIL, count: 8 }, craftTime: 8, category: 'blocks' },
   { id: 'minecart', name: 'Minecart', ingredients: [{ type: BlockType.IRON_INGOT, count: 5 }], result: { type: BlockType.MINECART, count: 1 }, craftTime: 12, category: 'tools' },
+  { id: 'powered_rail', name: 'Powered Rail', ingredients: [{ type: BlockType.GOLD_INGOT, count: 1 }, { type: BlockType.IRON_INGOT, count: 1 }, { type: BlockType.STICK, count: 1 }], result: { type: BlockType.POWERED_RAIL, count: 4 }, craftTime: 10, category: 'blocks' },
 ];
 
 export const useCraftingStore = create<CraftingState>((set, get) => ({

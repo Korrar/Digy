@@ -188,6 +188,15 @@ export const IconRail = ({ size = 16, color = '#888', style }: IconProps) => (
   </svg>
 );
 
+// Powered Rail
+export const IconPoweredRail = ({ size = 16, color = '#cc4444', style }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" style={style} xmlns="http://www.w3.org/2000/svg">
+    <path d="M4 2V14M12 2V14" stroke={color} strokeWidth="1.5" />
+    <path d="M4 4H12M4 8H12M4 12H12" stroke={color} strokeWidth="1" />
+    <path d="M7 6L9 8L7 10" stroke="#ffcc00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 // Sun
 export const IconSun = ({ size = 16, color = '#ffcc44', style }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 16 16" fill={color} style={style} xmlns="http://www.w3.org/2000/svg">
@@ -237,6 +246,7 @@ const ICON_MAP: Record<string, React.FC<IconProps>> = {
   wrench: IconWrench,
   minecart: IconMinecart,
   rail: IconRail,
+  powered_rail: IconPoweredRail,
 };
 
 export function ItemIcon({ iconId, size = 16, color, style }: { iconId?: string; size?: number | string; color?: string; style?: React.CSSProperties }) {
