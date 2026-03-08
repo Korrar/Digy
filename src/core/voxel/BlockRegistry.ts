@@ -94,6 +94,8 @@ export enum BlockType {
   RAIL_CURVE_SW = 79,
   // Chest
   CHEST = 80,
+  // Warning light (placeable on minecart)
+  WARNING_LIGHT = 81,
 }
 
 export interface BlockDefinition {
@@ -240,6 +242,9 @@ register({ id: BlockType.COBBLE_STAIRS_N, name: 'Cobble Stairs', color: new THRE
 register({ id: BlockType.COBBLE_STAIRS_S, name: 'Cobble Stairs', color: new THREE.Color(0x707070), hardness: 2.0, transparent: true, drops: BlockType.COBBLE_STAIRS, stackSize: 0, stairDir: 's' });
 register({ id: BlockType.COBBLE_STAIRS_E, name: 'Cobble Stairs', color: new THREE.Color(0x707070), hardness: 2.0, transparent: true, drops: BlockType.COBBLE_STAIRS, stackSize: 0, stairDir: 'e' });
 register({ id: BlockType.COBBLE_STAIRS_W, name: 'Cobble Stairs', color: new THREE.Color(0x707070), hardness: 2.0, transparent: true, drops: BlockType.COBBLE_STAIRS, stackSize: 0, stairDir: 'w' });
+
+// Warning light (siren/beacon for minecarts)
+register({ id: BlockType.WARNING_LIGHT, name: 'Warning Light', color: new THREE.Color(0xffcc00), hardness: 0, transparent: true, drops: BlockType.WARNING_LIGHT, stackSize: 1, isItem: true, isPlaceableItem: true, icon: 'warning_light' });
 
 // Chest
 register({ id: BlockType.CHEST, name: 'Chest', color: new THREE.Color(0xb8945a), hardness: 1.5, transparent: true, drops: BlockType.CHEST, stackSize: 64, isChest: true, icon: 'chest' });
