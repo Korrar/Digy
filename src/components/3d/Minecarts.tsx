@@ -126,11 +126,11 @@ function MinecartMesh({ cart, onPush }: { cart: Minecart; onPush: (id: number) =
 }
 
 // Simple rail rendering - just a flat colored plane on top of RAIL blocks
-function RailBlock({ x, y, z }: { x: number; y: number; z: number }) {
+function RailBlock({ x, y, z, powered }: { x: number; y: number; z: number; powered?: boolean }) {
   return (
     <mesh position={[x + 0.5, y + 0.05, z + 0.5]} rotation={[-Math.PI / 2, 0, 0]}>
       <planeGeometry args={[0.9, 0.9]} />
-      <meshLambertMaterial color="#8b6914" />
+      <meshLambertMaterial color={powered ? '#cc4444' : '#8b6914'} emissive={powered ? '#441111' : '#000000'} />
     </mesh>
   );
 }
@@ -142,13 +142,16 @@ export function MinecartRenderer({ center }: { center: [number, number, number] 
 
   // Find rail blocks for rendering
   const railBlocks = useMemo(() => {
-    const rails: { x: number; y: number; z: number }[] = [];
+    const rails: { x: number; y: number; z: number; powered: boolean }[] = [];
     // Scan the area for rail blocks
     for (let x = -2; x < 18; x++) {
       for (let z = -2; z < 18; z++) {
         for (let y = 0; y < 24; y++) {
-          if (getBlock(x, y, z) === BlockType.RAIL) {
-            rails.push({ x, y, z });
+          const block = getBlock(x, y, z);
+          if (block === BlockType.RAIL) {
+            rails.push({ x, y, z, powered: false });
+          } else if (block === BlockType.POWERED_RAIL) {
+            rails.push({ x, y, z, powered: true });
           }
         }
       }
@@ -156,12 +159,21 @@ export function MinecartRenderer({ center }: { center: [number, number, number] 
     return rails;
   }, [getBlock]);
 
-  // Check if position is on a rail
+  // Check if position is on a rail (regular or powered)
   const isOnRail = useCallback((x: number, y: number, z: number) => {
     const bx = Math.floor(x);
     const by = Math.floor(y - 0.3); // check below cart
     const bz = Math.floor(z);
-    return getBlock(bx, by, bz) === BlockType.RAIL;
+    const block = getBlock(bx, by, bz);
+    return block === BlockType.RAIL || block === BlockType.POWERED_RAIL;
+  }, [getBlock]);
+
+  // Check if position is on a powered rail
+  const isOnPoweredRail = useCallback((x: number, y: number, z: number) => {
+    const bx = Math.floor(x);
+    const by = Math.floor(y - 0.3);
+    const bz = Math.floor(z);
+    return getBlock(bx, by, bz) === BlockType.POWERED_RAIL;
   }, [getBlock]);
 
   // Get terrain height at position
@@ -205,6 +217,19 @@ export function MinecartRenderer({ center }: { center: [number, number, number] 
       const f = onRail ? railFriction : friction;
       cart.velocity.x *= f;
       cart.velocity.z *= f;
+
+      // Powered rail boost
+      const onPowered = isOnPoweredRail(cart.position.x, cart.position.y, cart.position.z);
+      if (onPowered && cart.velocity.lengthSq() > 0.00001) {
+        const boostDir = cart.velocity.clone().normalize();
+        cart.velocity.addScaledVector(boostDir, 0.04);
+        // Cap max speed on powered rail
+        const speed = Math.sqrt(cart.velocity.x * cart.velocity.x + cart.velocity.z * cart.velocity.z);
+        if (speed > 0.35) {
+          cart.velocity.x = (cart.velocity.x / speed) * 0.35;
+          cart.velocity.z = (cart.velocity.z / speed) * 0.35;
+        }
+      }
 
       // Apply slope gravity
       const terrainAhead = getTerrainHeight(
@@ -266,7 +291,7 @@ export function MinecartRenderer({ center }: { center: [number, number, number] 
     <group>
       {/* Render rail blocks */}
       {railBlocks.map((r, i) => (
-        <RailBlock key={`rail_${i}`} x={r.x} y={r.y} z={r.z} />
+        <RailBlock key={`rail_${i}`} x={r.x} y={r.y} z={r.z} powered={r.powered} />
       ))}
       {/* Render minecarts */}
       {cartsRef.current.map((cart) => (

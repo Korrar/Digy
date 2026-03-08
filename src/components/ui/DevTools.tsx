@@ -1,4 +1,6 @@
 import { useDevStore } from '../../stores/devStore';
+import { useInventoryStore } from '../../stores/inventoryStore';
+import { BlockType } from '../../core/voxel/BlockRegistry';
 
 const TIME_PRESETS = [
   { label: 'Auto', value: null },
@@ -15,6 +17,7 @@ export function DevTools() {
   const setFixedTime = useDevStore((s) => s.setFixedTimeOfDay);
   const fastMining = useDevStore((s) => s.fastMining);
   const toggleFastMining = useDevStore((s) => s.toggleFastMining);
+  const addBlock = useInventoryStore((s) => s.addBlock);
 
   if (!open) return null;
 
@@ -67,6 +70,36 @@ export function DevTools() {
         >
           {fastMining ? '⚡ Szybkie kopanie: ON' : '⛏ Szybkie kopanie: OFF'}
         </button>
+      </div>
+
+      <div style={sectionStyle}>
+        <div style={labelStyle}>Transport</div>
+        <div style={presetsRow}>
+          <button onClick={() => addBlock(BlockType.RAIL, 16)} style={{ ...presetBtn, padding: '4px 8px' }}>
+            +16 Rail
+          </button>
+          <button onClick={() => addBlock(BlockType.POWERED_RAIL, 8)} style={{ ...presetBtn, padding: '4px 8px' }}>
+            +8 P.Rail
+          </button>
+          <button onClick={() => addBlock(BlockType.MINECART, 1)} style={{ ...presetBtn, padding: '4px 8px' }}>
+            +1 Minecart
+          </button>
+        </div>
+      </div>
+
+      <div style={sectionStyle}>
+        <div style={labelStyle}>Zasoby</div>
+        <div style={presetsRow}>
+          <button onClick={() => addBlock(BlockType.IRON_INGOT, 16)} style={{ ...presetBtn, padding: '4px 8px' }}>
+            +16 Iron
+          </button>
+          <button onClick={() => addBlock(BlockType.DIAMOND, 8)} style={{ ...presetBtn, padding: '4px 8px' }}>
+            +8 Diamond
+          </button>
+          <button onClick={() => addBlock(BlockType.COAL, 16)} style={{ ...presetBtn, padding: '4px 8px' }}>
+            +16 Coal
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -1,9 +1,13 @@
 import { useGameStore } from '../stores/gameStore';
 import { BIOME_LIST, type BiomeType } from '../core/terrain/biomes';
+import { useCraftingStore } from '../stores/craftingStore';
+import { CraftingPanel } from '../components/ui/CraftingPanel';
+import { IconWrench } from '../components/ui/Icons';
 
 export function MenuScene() {
   const enterBiome = useGameStore((s) => s.enterBiome);
   const enterHideout = useGameStore((s) => s.enterHideout);
+  const toggleCrafting = useCraftingStore((s) => s.toggleCrafting);
 
   return (
     <div style={{
@@ -96,6 +100,40 @@ export function MenuScene() {
       >
         Kryjówka
       </button>
+
+      <button
+        onClick={toggleCrafting}
+        style={{
+          marginTop: 10,
+          padding: 'clamp(10px, 2.5vh, 14px) clamp(24px, 8vw, 40px)',
+          border: '2px solid rgba(200,160,80,0.3)',
+          borderRadius: 12,
+          background: 'rgba(120,80,30,0.4)',
+          color: '#ffcc88',
+          fontSize: 'clamp(14px, 4vw, 16px)',
+          fontWeight: 700,
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          letterSpacing: 1,
+          transition: 'all 0.2s',
+          width: '100%',
+          maxWidth: 280,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(120,80,30,0.7)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'rgba(120,80,30,0.4)';
+        }}
+      >
+        <IconWrench size={18} color="#ffcc88" /> Crafting
+      </button>
+
+      <CraftingPanel />
 
       <div style={{
         marginTop: 'clamp(16px, 4vh, 40px)',
