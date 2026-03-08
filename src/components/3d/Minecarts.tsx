@@ -1,4 +1,4 @@
-import { useRef, useMemo, useCallback, useEffect } from 'react';
+import { useRef, useMemo, useCallback, useEffect, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
@@ -14,7 +14,7 @@ interface Minecart {
 
 let cartIdCounter = 0;
 
-function buildMinecartGeometry(): THREE.BufferGeometry {
+export function buildMinecartGeometry(): THREE.BufferGeometry {
   const allPos: number[] = [];
   const allNorm: number[] = [];
   const allCol: number[] = [];
@@ -127,6 +127,7 @@ function MinecartMesh({ cart, onPush }: { cart: Minecart; onPush: (id: number) =
 
 export function MinecartRenderer({ center }: { center: [number, number, number] }) {
   const cartsRef = useRef<Minecart[]>([]);
+  const [, setCartVersion] = useState(0);
   const getBlock = useWorldStore((s) => s.getBlock);
   const { camera } = useThree();
 
@@ -140,6 +141,7 @@ export function MinecartRenderer({ center }: { center: [number, number, number] 
         velocity: new THREE.Vector3(0, 0, 0),
         onRail: detail.onRail ?? false,
       });
+      setCartVersion((v) => v + 1);
     };
     window.addEventListener('digy:spawnMinecart', handler);
     return () => window.removeEventListener('digy:spawnMinecart', handler);
@@ -261,17 +263,19 @@ export function MinecartRenderer({ center }: { center: [number, number, number] 
     }
   });
 
-  // Spawn a minecart when player places one (check inventory for MINECART usage)
-  // For now, spawn one test cart in the center
-  if (cartsRef.current.length === 0) {
-    const terrainY = getTerrainHeight(center[0], center[2]);
-    cartsRef.current.push({
-      id: cartIdCounter++,
-      position: new THREE.Vector3(center[0], terrainY + 0.05, center[2]),
-      velocity: new THREE.Vector3(0, 0, 0),
-      onRail: false,
-    });
-  }
+  // Spawn an initial test cart
+  useEffect(() => {
+    if (cartsRef.current.length === 0) {
+      const terrainY = getTerrainHeight(center[0], center[2]);
+      cartsRef.current.push({
+        id: cartIdCounter++,
+        position: new THREE.Vector3(center[0], terrainY + 0.05, center[2]),
+        velocity: new THREE.Vector3(0, 0, 0),
+        onRail: false,
+      });
+      setCartVersion((v) => v + 1);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <group>

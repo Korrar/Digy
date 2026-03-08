@@ -167,77 +167,80 @@ export function buildChunkMesh(
           continue;
         }
 
-        // Flat block rendering (rails) - thin top-only surface
+        // Flat block rendering (rails) - 3D track with ties and raised rails
         if (isFlat(block)) {
-          const flatHeight = 0.1; // thin slab
-          const railColor = blockDef.color;
           const isPowered = block === BlockType.POWERED_RAIL;
+          const tieColor = new THREE.Color(isPowered ? 0x8b4444 : 0x6b4226);
+          const metalColor = new THREE.Color(isPowered ? 0xcc3333 : 0x888888);
+          const tieHeight = 0.06;
+          const railHeight = 0.14;
 
-          // Top face of the flat rail
-          const topCorners: [number, number, number][] = [
-            [0.05, flatHeight, 0.95],
-            [0.95, flatHeight, 0.95],
-            [0.95, flatHeight, 0.05],
-            [0.05, flatHeight, 0.05],
-          ];
-
-          for (let ci = 0; ci < 4; ci++) {
-            const corner = topCorners[ci];
-            positions.push(x + corner[0], y + corner[1], z + corner[2]);
-            normals.push(0, 1, 0);
-
-            const v = (hash3(wx * 5 + ci, y * 3, wz * 5 + ci) - 0.5) * 0.1;
-            // Rail pattern: two darker stripes along Z axis
-            const lx = corner[0]; // local x within block
-            const isRailStripe = (lx > 0.15 && lx < 0.35) || (lx > 0.65 && lx < 0.85);
-            const stripeColor = isRailStripe
-              ? new THREE.Color(isPowered ? 0x992222 : 0x555555) // metal rail color
-              : new THREE.Color(isPowered ? 0xcc4444 : 0x8b6914); // tie/base color
-
-            colors.push(
-              Math.max(0, Math.min(1, stripeColor.r + v)),
-              Math.max(0, Math.min(1, stripeColor.g + v)),
-              Math.max(0, Math.min(1, stripeColor.b + v)),
+          const addQuad = (
+            corners: [number, number, number][],
+            normal: [number, number, number],
+            col: THREE.Color
+          ) => {
+            for (let ci = 0; ci < 4; ci++) {
+              const c = corners[ci];
+              positions.push(x + c[0], y + c[1], z + c[2]);
+              normals.push(normal[0], normal[1], normal[2]);
+              const v = (hash3(wx * 5 + ci, y * 3 + c[1] * 10, wz * 5 + ci) - 0.5) * 0.08;
+              colors.push(
+                Math.max(0, Math.min(1, col.r + v)),
+                Math.max(0, Math.min(1, col.g + v)),
+                Math.max(0, Math.min(1, col.b + v)),
+              );
+              uvs.push(ci % 2 === 0 ? 0 : 1, ci < 2 ? 0 : 1);
+              sparkles.push(0);
+              oreColors.push(1.0, 0.95, 0.8);
+            }
+            indices.push(
+              vertexCount, vertexCount + 1, vertexCount + 2,
+              vertexCount, vertexCount + 2, vertexCount + 3
             );
-            uvs.push(ci % 2 === 0 ? 0 : 1, ci < 2 ? 0 : 1);
-            sparkles.push(0);
-            oreColors.push(1.0, 0.95, 0.8);
+            vertexCount += 4;
+          };
+
+          // Cross ties (wooden sleepers)
+          const tieZPositions = [0.1, 0.3, 0.5, 0.7, 0.9];
+          for (const tz of tieZPositions) {
+            addQuad(
+              [[0.05, tieHeight, tz - 0.06], [0.95, tieHeight, tz - 0.06],
+               [0.95, tieHeight, tz + 0.06], [0.05, tieHeight, tz + 0.06]],
+              [0, 1, 0], tieColor
+            );
           }
 
-          indices.push(
-            vertexCount, vertexCount + 1, vertexCount + 2,
-            vertexCount, vertexCount + 2, vertexCount + 3
-          );
-          vertexCount += 4;
-
-          // Bottom face (visible from below)
-          const bottomCorners: [number, number, number][] = [
-            [0.05, 0, 0.05],
-            [0.95, 0, 0.05],
-            [0.95, 0, 0.95],
-            [0.05, 0, 0.95],
+          // Two raised metal rails along Z
+          const railXRanges = [
+            { x1: 0.18, x2: 0.30 },
+            { x1: 0.70, x2: 0.82 },
           ];
-
-          for (let ci = 0; ci < 4; ci++) {
-            const corner = bottomCorners[ci];
-            positions.push(x + corner[0], y + corner[1], z + corner[2]);
-            normals.push(0, -1, 0);
-
-            colors.push(
-              Math.max(0, Math.min(1, railColor.r * 0.7)),
-              Math.max(0, Math.min(1, railColor.g * 0.7)),
-              Math.max(0, Math.min(1, railColor.b * 0.7)),
+          for (const rp of railXRanges) {
+            // Top face
+            addQuad(
+              [[rp.x1, railHeight, 0.02], [rp.x2, railHeight, 0.02],
+               [rp.x2, railHeight, 0.98], [rp.x1, railHeight, 0.98]],
+              [0, 1, 0], metalColor
             );
-            uvs.push(ci % 2 === 0 ? 0 : 1, ci < 2 ? 0 : 1);
-            sparkles.push(0);
-            oreColors.push(1.0, 0.95, 0.8);
+            // Inner side face
+            const innerX = rp.x1 < 0.5 ? rp.x2 : rp.x1;
+            const sideNx = rp.x1 < 0.5 ? 1 : -1;
+            addQuad(
+              [[innerX, tieHeight, 0.02], [innerX, railHeight, 0.02],
+               [innerX, railHeight, 0.98], [innerX, tieHeight, 0.98]],
+              [sideNx, 0, 0],
+              new THREE.Color(metalColor.r * 0.8, metalColor.g * 0.8, metalColor.b * 0.8)
+            );
           }
 
-          indices.push(
-            vertexCount, vertexCount + 1, vertexCount + 2,
-            vertexCount, vertexCount + 2, vertexCount + 3
+          // Bottom face
+          addQuad(
+            [[0.05, 0, 0.05], [0.95, 0, 0.05],
+             [0.95, 0, 0.95], [0.05, 0, 0.95]],
+            [0, -1, 0],
+            new THREE.Color(tieColor.r * 0.6, tieColor.g * 0.6, tieColor.b * 0.6)
           );
-          vertexCount += 4;
 
           continue;
         }

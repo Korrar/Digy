@@ -30,6 +30,7 @@ import { useCombatStore } from '../stores/combatStore';
 import { useCraftingStore } from '../stores/craftingStore';
 import { ambientMusic } from '../systems/AmbientMusic';
 import { MinecartRenderer } from '../components/3d/Minecarts';
+import { BlockLights } from '../components/3d/BlockLights';
 import { ModeToggle } from '../components/ui/ModeToggle';
 
 function getTimeIndicator(timeOfDay: number): string {
@@ -183,6 +184,7 @@ export function BiomeScene() {
 
         <WorldInteraction mode={gameMode} />
         <MinecartRenderer center={[8, 8, 8]} />
+        <BlockLights />
         <ParticleSystem />
         {(biomeType === 'forest' || biomeType === 'swamp') && (
           <FirefliesRenderer center={[8, 0, 8]} />
