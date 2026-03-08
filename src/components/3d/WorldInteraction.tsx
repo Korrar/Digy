@@ -3,7 +3,7 @@ import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
-import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, canPlaceMinecart } from '../../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest } from '../../core/voxel/BlockRegistry';
 import { computeRailBlockType, shouldRailUpdate } from '../../core/voxel/ChunkMesher';
 import { soundManager } from '../../systems/SoundManager';
 import { spawnParticles } from './DiggingParticles';
