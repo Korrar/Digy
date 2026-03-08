@@ -207,7 +207,7 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
     cart.velocity.addScaledVector(dir, 0.12);
   }, [camera]);
 
-  // Get rail shape at block position for steering
+  // Get rail shape at block position for steering (Minecraft-style rules)
   const getRailShape = useCallback((bx: number, by: number, bz: number): 'ns' | 'ew' | 'curve_ne' | 'curve_nw' | 'curve_se' | 'curve_sw' => {
     const block = getBlock(bx, by, bz);
     const isPowered = block === BlockType.POWERED_RAIL;
@@ -218,10 +218,27 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
     const hasW = isFlat(getBlock(bx - 1, by, bz));
 
     if (!isPowered) {
-      if (hasN && hasE && !hasS && !hasW) return 'curve_ne';
-      if (hasN && hasW && !hasS && !hasE) return 'curve_nw';
-      if (hasS && hasE && !hasN && !hasW) return 'curve_se';
-      if (hasS && hasW && !hasN && !hasE) return 'curve_sw';
+      const count = (hasN ? 1 : 0) + (hasS ? 1 : 0) + (hasE ? 1 : 0) + (hasW ? 1 : 0);
+
+      if (count === 4) return 'curve_se';
+      if (count === 3) {
+        if (hasS && hasE) return 'curve_se';
+        if (hasS && hasW) return 'curve_sw';
+        if (hasN && hasE) return 'curve_ne';
+        if (hasN && hasW) return 'curve_nw';
+      }
+      if (count === 2) {
+        if (hasN && hasS) return 'ns';
+        if (hasE && hasW) return 'ew';
+        if (hasS && hasE) return 'curve_se';
+        if (hasS && hasW) return 'curve_sw';
+        if (hasN && hasE) return 'curve_ne';
+        if (hasN && hasW) return 'curve_nw';
+      }
+      if (count === 1) {
+        if (hasE || hasW) return 'ew';
+        return 'ns';
+      }
     }
 
     if ((hasE || hasW) && !hasN && !hasS) return 'ew';
@@ -370,6 +387,44 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
       // Keep in reasonable bounds (multi-chunk world)
       cart.position.x = Math.max(-64, Math.min(128, cart.position.x));
       cart.position.z = Math.max(-64, Math.min(128, cart.position.z));
+    }
+
+    // Cart-to-cart collisions: elastic bounce
+    const carts = cartsRef.current;
+    for (let i = 0; i < carts.length; i++) {
+      for (let j = i + 1; j < carts.length; j++) {
+        const a = carts[i];
+        const b = carts[j];
+        const dx = b.position.x - a.position.x;
+        const dz = b.position.z - a.position.z;
+        const dy = b.position.y - a.position.y;
+        const distSq = dx * dx + dz * dz;
+        const minDist = 0.8; // cart collision radius
+        if (distSq < minDist * minDist && distSq > 0.0001 && Math.abs(dy) < 0.5) {
+          const dist = Math.sqrt(distSq);
+          const nx = dx / dist;
+          const nz = dz / dist;
+
+          // Separate overlapping carts
+          const overlap = (minDist - dist) * 0.5;
+          a.position.x -= nx * overlap;
+          a.position.z -= nz * overlap;
+          b.position.x += nx * overlap;
+          b.position.z += nz * overlap;
+
+          // Elastic collision: swap velocity components along collision normal
+          const relVelN = (a.velocity.x - b.velocity.x) * nx + (a.velocity.z - b.velocity.z) * nz;
+          if (relVelN > 0) {
+            // Equal mass elastic collision
+            a.velocity.x -= relVelN * nx;
+            a.velocity.z -= relVelN * nz;
+            b.velocity.x += relVelN * nx;
+            b.velocity.z += relVelN * nz;
+
+            soundManager.playDigSound(BlockType.IRON_ORE);
+          }
+        }
+      }
     }
 
     // Minecart riding sound: play when any cart moves on rails
