@@ -13,7 +13,8 @@ function chunkGetter(chunk: ChunkData) {
   };
 }
 
-describe('Rail shape computation - Minecraft rules', () => {
+describe('Rail shape computation - pure Minecraft rules', () => {
+  // === 0 neighbors: stored block type determines orientation ===
   it('0 neighbors: RAIL defaults to NS', () => {
     const chunk = new ChunkData(0, 0);
     chunk.setBlock(5, 6, 5, BlockType.RAIL);
@@ -26,10 +27,18 @@ describe('Rail shape computation - Minecraft rules', () => {
     expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('ew');
   });
 
+  // === 1 neighbor: extend toward that neighbor ===
   it('1 neighbor to north: extends NS', () => {
     const chunk = new ChunkData(0, 0);
     chunk.setBlock(5, 6, 5, BlockType.RAIL);
     chunk.setBlock(5, 6, 4, BlockType.RAIL);
+    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('ns');
+  });
+
+  it('1 neighbor to south: extends NS', () => {
+    const chunk = new ChunkData(0, 0);
+    chunk.setBlock(5, 6, 5, BlockType.RAIL);
+    chunk.setBlock(5, 6, 6, BlockType.RAIL);
     expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('ns');
   });
 
@@ -40,6 +49,14 @@ describe('Rail shape computation - Minecraft rules', () => {
     expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('ew');
   });
 
+  it('1 neighbor to west: extends EW', () => {
+    const chunk = new ChunkData(0, 0);
+    chunk.setBlock(5, 6, 5, BlockType.RAIL);
+    chunk.setBlock(4, 6, 5, BlockType.RAIL);
+    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('ew');
+  });
+
+  // === 2 opposite neighbors: always straight ===
   it('2 opposite neighbors (N+S): straight NS', () => {
     const chunk = new ChunkData(0, 0);
     chunk.setBlock(5, 6, 5, BlockType.RAIL);
@@ -56,41 +73,78 @@ describe('Rail shape computation - Minecraft rules', () => {
     expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('ew');
   });
 
-  it('2 adjacent neighbors (S+E), neither is line: curves SE', () => {
+  // === 2 perpendicular neighbors: always curve ===
+  it('2 perpendicular (N+E): curve_ne', () => {
     const chunk = new ChunkData(0, 0);
     chunk.setBlock(5, 6, 5, BlockType.RAIL);
-    chunk.setBlock(5, 6, 6, BlockType.RAIL); // S - lone rail, not part of a line
-    chunk.setBlock(6, 6, 5, BlockType.RAIL); // E - lone rail, not part of a line
-    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('curve_se');
+    chunk.setBlock(5, 6, 4, BlockType.RAIL); // N
+    chunk.setBlock(6, 6, 5, BlockType.RAIL); // E
+    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('curve_ne');
   });
 
-  it('2 adjacent neighbors (N+W), neither is line: curves NW', () => {
+  it('2 perpendicular (N+W): curve_nw', () => {
     const chunk = new ChunkData(0, 0);
     chunk.setBlock(5, 6, 5, BlockType.RAIL);
-    chunk.setBlock(5, 6, 4, BlockType.RAIL); // N - lone rail
-    chunk.setBlock(4, 6, 5, BlockType.RAIL); // W - lone rail
+    chunk.setBlock(5, 6, 4, BlockType.RAIL); // N
+    chunk.setBlock(4, 6, 5, BlockType.RAIL); // W
     expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('curve_nw');
   });
 
-  it('3 neighbors (T-junction): south-east rule', () => {
+  it('2 perpendicular (S+E): curve_se', () => {
     const chunk = new ChunkData(0, 0);
     chunk.setBlock(5, 6, 5, BlockType.RAIL);
-    chunk.setBlock(5, 6, 4, BlockType.RAIL); // N
     chunk.setBlock(5, 6, 6, BlockType.RAIL); // S
     chunk.setBlock(6, 6, 5, BlockType.RAIL); // E
     expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('curve_se');
   });
 
-  it('3 neighbors without S or E: curves SW', () => {
+  it('2 perpendicular (S+W): curve_sw', () => {
     const chunk = new ChunkData(0, 0);
     chunk.setBlock(5, 6, 5, BlockType.RAIL);
-    chunk.setBlock(5, 6, 4, BlockType.RAIL); // N
-    chunk.setBlock(4, 6, 5, BlockType.RAIL); // W
     chunk.setBlock(5, 6, 6, BlockType.RAIL); // S
+    chunk.setBlock(4, 6, 5, BlockType.RAIL); // W
     expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('curve_sw');
   });
 
-  it('4 neighbors: always curve SE', () => {
+  // === 3 neighbors (T-junction): south-east priority ===
+  it('T-junction N+S+E: curve_se (SE rule)', () => {
+    const chunk = new ChunkData(0, 0);
+    chunk.setBlock(5, 6, 5, BlockType.RAIL);
+    chunk.setBlock(5, 6, 4, BlockType.RAIL); // N
+    chunk.setBlock(5, 6, 6, BlockType.RAIL); // S
+    chunk.setBlock(6, 6, 5, BlockType.RAIL); // E
+    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('curve_se');
+  });
+
+  it('T-junction N+S+W: curve_sw', () => {
+    const chunk = new ChunkData(0, 0);
+    chunk.setBlock(5, 6, 5, BlockType.RAIL);
+    chunk.setBlock(5, 6, 4, BlockType.RAIL); // N
+    chunk.setBlock(5, 6, 6, BlockType.RAIL); // S
+    chunk.setBlock(4, 6, 5, BlockType.RAIL); // W
+    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('curve_sw');
+  });
+
+  it('T-junction N+E+W: curve_ne (SE rule - has E)', () => {
+    const chunk = new ChunkData(0, 0);
+    chunk.setBlock(5, 6, 5, BlockType.RAIL);
+    chunk.setBlock(5, 6, 4, BlockType.RAIL); // N
+    chunk.setBlock(6, 6, 5, BlockType.RAIL); // E
+    chunk.setBlock(4, 6, 5, BlockType.RAIL); // W
+    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('curve_ne');
+  });
+
+  it('T-junction S+E+W: curve_se (SE rule - has S+E)', () => {
+    const chunk = new ChunkData(0, 0);
+    chunk.setBlock(5, 6, 5, BlockType.RAIL);
+    chunk.setBlock(5, 6, 6, BlockType.RAIL); // S
+    chunk.setBlock(6, 6, 5, BlockType.RAIL); // E
+    chunk.setBlock(4, 6, 5, BlockType.RAIL); // W
+    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('curve_se');
+  });
+
+  // === 4 neighbors: always curve_se ===
+  it('4 neighbors: always curve_se', () => {
     const chunk = new ChunkData(0, 0);
     chunk.setBlock(5, 6, 5, BlockType.RAIL);
     chunk.setBlock(5, 6, 4, BlockType.RAIL); // N
@@ -100,7 +154,8 @@ describe('Rail shape computation - Minecraft rules', () => {
     expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('curve_se');
   });
 
-  it('powered rail: always straight, never curves', () => {
+  // === Powered rails: always straight ===
+  it('powered rail with perpendicular neighbors: stays straight NS', () => {
     const chunk = new ChunkData(0, 0);
     chunk.setBlock(5, 6, 5, BlockType.POWERED_RAIL);
     chunk.setBlock(5, 6, 6, BlockType.RAIL); // S
@@ -116,80 +171,63 @@ describe('Rail shape computation - Minecraft rules', () => {
     expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('ew');
   });
 
-  it('RAIL_EW with 1 neighbor overrides stored orientation', () => {
+  // === Stored type override ===
+  it('RAIL_EW with 1 neighbor: neighbor wins over stored type', () => {
     const chunk = new ChunkData(0, 0);
-    chunk.setBlock(5, 6, 5, BlockType.RAIL_EW);
-    chunk.setBlock(5, 6, 4, BlockType.RAIL);
+    chunk.setBlock(5, 6, 5, BlockType.RAIL_EW); // stored as EW
+    chunk.setBlock(5, 6, 4, BlockType.RAIL); // north neighbor
     expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('ns');
   });
-});
 
-describe('Rail line-extension priority', () => {
-  it('NS line + lone E neighbor: extends NS (line wins over lone rail)', () => {
+  // === Non-rail blocks are not neighbors ===
+  it('non-rail neighbors are ignored', () => {
     const chunk = new ChunkData(0, 0);
+    chunk.setBlock(5, 6, 5, BlockType.RAIL);
+    chunk.setBlock(5, 6, 4, BlockType.STONE); // N is stone, not rail
+    chunk.setBlock(6, 6, 5, BlockType.RAIL);  // E is rail
+    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('ew');
+  });
+
+  it('non-flat block returns null', () => {
+    const chunk = new ChunkData(0, 0);
+    chunk.setBlock(5, 6, 5, BlockType.STONE);
+    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBeNull();
+  });
+
+  // === Practical scenarios ===
+  it('rail between two curves (E+W): straight EW connecting them', () => {
+    // curve_se at west, curve_sw at east, rail between them
+    const chunk = new ChunkData(0, 0);
+    chunk.setBlock(4, 6, 5, BlockType.RAIL); // W - part of a curve
+    chunk.setBlock(4, 6, 6, BlockType.RAIL); // S of W - makes W a curve
     chunk.setBlock(5, 6, 5, BlockType.RAIL); // rail under test
+    chunk.setBlock(6, 6, 5, BlockType.RAIL); // E - part of a curve
+    chunk.setBlock(6, 6, 6, BlockType.RAIL); // S of E - makes E a curve
+    // (5,6,5) has E+W neighbors → opposite → straight EW
+    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('ew');
+  });
+
+  it('rail between two curves (N+S): straight NS connecting them', () => {
+    // curve at north, curve at south, rail between them
+    const chunk = new ChunkData(0, 0);
+    chunk.setBlock(5, 6, 4, BlockType.RAIL); // N - part of a curve
+    chunk.setBlock(6, 6, 4, BlockType.RAIL); // E of N - makes N a curve
+    chunk.setBlock(5, 6, 5, BlockType.RAIL); // rail under test
+    chunk.setBlock(5, 6, 6, BlockType.RAIL); // S - part of a curve
+    chunk.setBlock(6, 6, 6, BlockType.RAIL); // E of S - makes S a curve
+    // (5,6,5) has N+S neighbors → opposite → straight NS
+    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('ns');
+  });
+
+  it('straight line: middle rail stays straight despite nearby rails', () => {
+    // Long NS line with a side rail
+    const chunk = new ChunkData(0, 0);
+    chunk.setBlock(5, 6, 3, BlockType.RAIL); // part of NS line
     chunk.setBlock(5, 6, 4, BlockType.RAIL); // N neighbor
-    chunk.setBlock(5, 6, 3, BlockType.RAIL); // beyond N → makes N part of NS line
-    chunk.setBlock(6, 6, 5, BlockType.RAIL); // E neighbor (lone, no continuation)
-    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('ns');
-  });
-
-  it('EW line + lone S neighbor: extends EW (line wins over lone rail)', () => {
-    const chunk = new ChunkData(0, 0);
     chunk.setBlock(5, 6, 5, BlockType.RAIL); // rail under test
-    chunk.setBlock(6, 6, 5, BlockType.RAIL); // E neighbor
-    chunk.setBlock(7, 6, 5, BlockType.RAIL); // beyond E → makes E part of EW line
-    chunk.setBlock(5, 6, 6, BlockType.RAIL); // S neighbor (lone)
-    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('ew');
-  });
-
-  it('NS line + lone W neighbor: extends NS', () => {
-    const chunk = new ChunkData(0, 0);
-    chunk.setBlock(5, 6, 5, BlockType.RAIL);
     chunk.setBlock(5, 6, 6, BlockType.RAIL); // S neighbor
-    chunk.setBlock(5, 6, 7, BlockType.RAIL); // beyond S → NS line
-    chunk.setBlock(4, 6, 5, BlockType.RAIL); // W neighbor (lone)
+    chunk.setBlock(5, 6, 7, BlockType.RAIL); // part of NS line
+    // (5,6,5) has N+S → opposite → NS, even if other rails exist nearby
     expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('ns');
-  });
-
-  it('both neighbors are lines: camera hint (RAIL=NS) breaks tie', () => {
-    const chunk = new ChunkData(0, 0);
-    chunk.setBlock(5, 6, 5, BlockType.RAIL); // NS hint
-    chunk.setBlock(5, 6, 4, BlockType.RAIL); // N
-    chunk.setBlock(5, 6, 3, BlockType.RAIL); // beyond N → NS line
-    chunk.setBlock(6, 6, 5, BlockType.RAIL); // E
-    chunk.setBlock(7, 6, 5, BlockType.RAIL); // beyond E → EW line
-    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('ns');
-  });
-
-  it('both neighbors are lines: camera hint (RAIL_EW) breaks tie', () => {
-    const chunk = new ChunkData(0, 0);
-    chunk.setBlock(5, 6, 5, BlockType.RAIL_EW); // EW hint
-    chunk.setBlock(5, 6, 4, BlockType.RAIL); // N
-    chunk.setBlock(5, 6, 3, BlockType.RAIL); // beyond N → NS line
-    chunk.setBlock(6, 6, 5, BlockType.RAIL); // E
-    chunk.setBlock(7, 6, 5, BlockType.RAIL); // beyond E → EW line
-    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('ew');
-  });
-
-  it('practical: rail next to curve and straight line, prefers the line', () => {
-    // Straight NS line going north + curve_se to the east
-    const chunk = new ChunkData(0, 0);
-    chunk.setBlock(5, 6, 5, BlockType.RAIL); // rail under test
-    chunk.setBlock(5, 6, 4, BlockType.RAIL); // N neighbor (part of NS line)
-    chunk.setBlock(5, 6, 3, BlockType.RAIL); // continuation of NS line
-    chunk.setBlock(6, 6, 5, BlockType.RAIL); // E neighbor (start of a curve)
-    chunk.setBlock(6, 6, 6, BlockType.RAIL); // S of E neighbor → E becomes curve_se
-    // E neighbor is lone (no continuation beyond east), NS has a line → prefer NS
-    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('ns');
-  });
-
-  it('neither neighbor is a line: curves normally', () => {
-    const chunk = new ChunkData(0, 0);
-    chunk.setBlock(5, 6, 5, BlockType.RAIL);
-    chunk.setBlock(5, 6, 4, BlockType.RAIL); // N (lone)
-    chunk.setBlock(6, 6, 5, BlockType.RAIL); // E (lone)
-    // Neither has a continuation → normal curve
-    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('curve_ne');
   });
 });
