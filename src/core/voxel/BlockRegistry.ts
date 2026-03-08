@@ -105,6 +105,36 @@ export enum BlockType {
   // Cables (electric wires)
   CABLE = 86,
   CABLE_POWERED = 87,
+
+  // Piston
+  PISTON = 88,
+  PISTON_HEAD = 89,
+  PISTON_EXTENDED = 90,
+
+  // Sign
+  SIGN = 91,
+
+  // Biome-specific blocks
+  JUNGLE_WOOD = 92,
+  JUNGLE_LEAVES = 93,
+  VINE = 94,
+  BAMBOO = 95,
+  MYCELIUM = 96,
+  MUSHROOM_BLOCK_RED = 97,
+  MUSHROOM_BLOCK_BROWN = 98,
+  GIANT_MUSHROOM_STEM = 99,
+  BASALT = 100,
+  OBSIDIAN = 101,
+  MAGMA = 102,
+  CHERRY_WOOD = 103,
+  CHERRY_LEAVES = 104,
+  CHERRY_PETALS = 105,
+  SAVANNA_GRASS = 106,
+  ACACIA_WOOD = 107,
+  ACACIA_LEAVES = 108,
+  FLOWER_BLUE = 109,
+  FLOWER_ORCHID = 110,
+  MOSS = 111,
 }
 
 export interface BlockDefinition {
@@ -166,6 +196,14 @@ export interface BlockDefinition {
   isCable?: boolean;
   /** Cable is in powered state (glowing bright) */
   cablePowered?: boolean;
+  /** Render as piston block */
+  isPiston?: boolean;
+  /** Piston is in extended state */
+  pistonExtended?: boolean;
+  /** Render as piston head (thin plate with rod) */
+  isPistonHead?: boolean;
+  /** Render as sign (thin flat panel on post) */
+  isSign?: boolean;
 }
 
 const BLOCKS: Map<BlockType, BlockDefinition> = new Map();
@@ -291,6 +329,36 @@ register({ id: BlockType.DOOR_OAK_TOP, name: 'Oak Door', color: new THREE.Color(
 register({ id: BlockType.DOOR_OAK_BOTTOM_OPEN, name: 'Oak Door', color: new THREE.Color(0x8b6914), hardness: 1.0, transparent: true, drops: BlockType.DOOR_OAK, stackSize: 0, isDoor: true, doorOpen: true, doorUpper: false });
 register({ id: BlockType.DOOR_OAK_TOP_OPEN, name: 'Oak Door', color: new THREE.Color(0x6b4226), hardness: 1.0, transparent: true, drops: BlockType.AIR, stackSize: 0, isDoor: true, doorOpen: true, doorUpper: true });
 
+// Piston
+register({ id: BlockType.PISTON, name: 'Piston', color: new THREE.Color(0xb8945a), hardness: 1.5, transparent: true, drops: BlockType.PISTON, stackSize: 64, isPiston: true, icon: 'piston' });
+register({ id: BlockType.PISTON_HEAD, name: 'Piston Head', color: new THREE.Color(0x8b6914), hardness: 1.5, transparent: true, drops: BlockType.AIR, stackSize: 0, isPistonHead: true });
+register({ id: BlockType.PISTON_EXTENDED, name: 'Piston', color: new THREE.Color(0xb8945a), hardness: 1.5, transparent: true, drops: BlockType.PISTON, stackSize: 0, isPiston: true, pistonExtended: true });
+
+// Sign
+register({ id: BlockType.SIGN, name: 'Sign', color: new THREE.Color(0xb8945a), hardness: 1.0, transparent: true, drops: BlockType.SIGN, stackSize: 16, isSign: true, icon: 'sign' });
+
+// Biome-specific blocks
+register({ id: BlockType.JUNGLE_WOOD, name: 'Jungle Wood', color: new THREE.Color(0x5a3a1a), hardness: 2.0, transparent: false, drops: BlockType.JUNGLE_WOOD, stackSize: 64 });
+register({ id: BlockType.JUNGLE_LEAVES, name: 'Jungle Leaves', color: new THREE.Color(0x1a6e1a), hardness: 0.2, transparent: true, drops: BlockType.AIR, stackSize: 64 });
+register({ id: BlockType.VINE, name: 'Vine', color: new THREE.Color(0x2a6e2a), hardness: 0.2, transparent: true, drops: BlockType.VINE, stackSize: 64, crossedQuad: true });
+register({ id: BlockType.BAMBOO, name: 'Bamboo', color: new THREE.Color(0x6eb84a), hardness: 1.0, transparent: true, drops: BlockType.BAMBOO, stackSize: 64, crossedQuad: true });
+register({ id: BlockType.MYCELIUM, name: 'Mycelium', color: new THREE.Color(0x6b5a7a), topColor: new THREE.Color(0x8b7a9a), hardness: 0.6, transparent: false, drops: BlockType.DIRT, stackSize: 64 });
+register({ id: BlockType.MUSHROOM_BLOCK_RED, name: 'Red Mushroom Block', color: new THREE.Color(0xcc3333), hardness: 0.2, transparent: false, drops: BlockType.MUSHROOM, stackSize: 64 });
+register({ id: BlockType.MUSHROOM_BLOCK_BROWN, name: 'Brown Mushroom Block', color: new THREE.Color(0x8b6e4a), hardness: 0.2, transparent: false, drops: BlockType.MUSHROOM, stackSize: 64 });
+register({ id: BlockType.GIANT_MUSHROOM_STEM, name: 'Mushroom Stem', color: new THREE.Color(0xd4c8b8), hardness: 0.2, transparent: false, drops: BlockType.AIR, stackSize: 64 });
+register({ id: BlockType.BASALT, name: 'Basalt', color: new THREE.Color(0x3a3a3a), hardness: 2.5, transparent: false, drops: BlockType.BASALT, stackSize: 64 });
+register({ id: BlockType.OBSIDIAN, name: 'Obsidian', color: new THREE.Color(0x1a0a2a), hardness: 10.0, transparent: false, drops: BlockType.OBSIDIAN, stackSize: 64 });
+register({ id: BlockType.MAGMA, name: 'Magma', color: new THREE.Color(0x8b2500), hardness: 0.5, transparent: false, drops: BlockType.MAGMA, stackSize: 64, emitsLight: true });
+register({ id: BlockType.CHERRY_WOOD, name: 'Cherry Wood', color: new THREE.Color(0x9a5a5a), hardness: 2.0, transparent: false, drops: BlockType.CHERRY_WOOD, stackSize: 64 });
+register({ id: BlockType.CHERRY_LEAVES, name: 'Cherry Leaves', color: new THREE.Color(0xffaacc), hardness: 0.2, transparent: true, drops: BlockType.AIR, stackSize: 64 });
+register({ id: BlockType.CHERRY_PETALS, name: 'Cherry Petals', color: new THREE.Color(0xff88aa), hardness: 0.0, transparent: true, drops: BlockType.CHERRY_PETALS, stackSize: 64, crossedQuad: true });
+register({ id: BlockType.SAVANNA_GRASS, name: 'Savanna Grass', color: new THREE.Color(0x9e8a3a), topColor: new THREE.Color(0xb8a84a), hardness: 0.6, transparent: false, drops: BlockType.DIRT, stackSize: 64 });
+register({ id: BlockType.ACACIA_WOOD, name: 'Acacia Wood', color: new THREE.Color(0x6b3a2a), hardness: 2.0, transparent: false, drops: BlockType.ACACIA_WOOD, stackSize: 64 });
+register({ id: BlockType.ACACIA_LEAVES, name: 'Acacia Leaves', color: new THREE.Color(0x5a8a2a), hardness: 0.2, transparent: true, drops: BlockType.AIR, stackSize: 64 });
+register({ id: BlockType.FLOWER_BLUE, name: 'Blue Flower', color: new THREE.Color(0x4466cc), topColor: new THREE.Color(0x22aa22), hardness: 0.0, transparent: true, drops: BlockType.FLOWER_BLUE, stackSize: 64, crossedQuad: true });
+register({ id: BlockType.FLOWER_ORCHID, name: 'Orchid', color: new THREE.Color(0xcc44cc), topColor: new THREE.Color(0x22aa22), hardness: 0.0, transparent: true, drops: BlockType.FLOWER_ORCHID, stackSize: 64, crossedQuad: true });
+register({ id: BlockType.MOSS, name: 'Moss', color: new THREE.Color(0x4a7a3a), hardness: 0.3, transparent: false, drops: BlockType.MOSS, stackSize: 64 });
+
 // Update ore drops to drop raw materials
 BLOCKS.get(BlockType.COAL_ORE)!.drops = BlockType.COAL;
 BLOCKS.get(BlockType.DIAMOND_ORE)!.drops = BlockType.DIAMOND;
@@ -315,7 +383,7 @@ export function isTransparent(type: BlockType): boolean {
 
 export function isSolid(type: BlockType): boolean {
   const def = getBlock(type);
-  return type !== BlockType.AIR && type !== BlockType.WATER && type !== BlockType.LAVA && !def.crossedQuad && !def.isFlat && !def.isTorch && !def.isLever && !def.isButton && !def.isCable;
+  return type !== BlockType.AIR && type !== BlockType.WATER && type !== BlockType.LAVA && !def.crossedQuad && !def.isFlat && !def.isTorch && !def.isLever && !def.isButton && !def.isCable && !def.isPistonHead && !def.isSign;
 }
 
 export function isCrossedQuad(type: BlockType): boolean {
@@ -394,6 +462,18 @@ export function isCable(type: BlockType): boolean {
 
 export function isLava(type: BlockType): boolean {
   return getBlock(type).isLava === true;
+}
+
+export function isPiston(type: BlockType): boolean {
+  return getBlock(type).isPiston === true;
+}
+
+export function isPistonHead(type: BlockType): boolean {
+  return getBlock(type).isPistonHead === true;
+}
+
+export function isSign(type: BlockType): boolean {
+  return getBlock(type).isSign === true;
 }
 
 export function isDoorItem(type: BlockType): boolean {

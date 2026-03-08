@@ -1,7 +1,7 @@
 // Procedural ambient music & sound system using Web Audio API
 // Generates biome-specific ambient sounds and background music
 
-type BiomeAmbience = 'forest' | 'desert' | 'cave' | 'mountains' | 'swamp' | 'tundra';
+type BiomeAmbience = 'forest' | 'desert' | 'cave' | 'mountains' | 'swamp' | 'tundra' | 'jungle' | 'mushroom' | 'volcanic' | 'savanna' | 'cherry';
 
 interface AmbientLayer {
   type: 'tone' | 'noise' | 'chirp';
@@ -125,6 +125,42 @@ class AmbientMusicSystem {
           { type: 'tone', interval: 20000, lastPlayed: now, params: { freq: 100, duration: 3, volume: 0.015, type: 'sine' } }, // distant howl
         ];
         break;
+      case 'jungle':
+        this.layers = [
+          { type: 'chirp', interval: 2000, lastPlayed: now, params: { freqBase: 1800, freqRange: 1200, duration: 0.12, count: 4 } }, // exotic birds
+          { type: 'chirp', interval: 3500, lastPlayed: now + 1000, params: { freqBase: 800, freqRange: 400, duration: 0.2, count: 2 } }, // parrots
+          { type: 'noise', interval: 6000, lastPlayed: now, params: { freq: 300, q: 0.4, duration: 3, volume: 0.03 } }, // rustling leaves
+          { type: 'chirp', interval: 5000, lastPlayed: now + 2500, params: { freqBase: 400, freqRange: 200, duration: 0.4, count: 1 } }, // monkey calls
+        ];
+        break;
+      case 'mushroom':
+        this.layers = [
+          { type: 'tone', interval: 4000, lastPlayed: now, params: { freq: 180, duration: 2, volume: 0.02, type: 'sine' } }, // deep hum
+          { type: 'chirp', interval: 6000, lastPlayed: now + 2000, params: { freqBase: 500, freqRange: 300, duration: 0.3, count: 2 } }, // spore pops
+          { type: 'noise', interval: 8000, lastPlayed: now, params: { freq: 150, q: 1, duration: 1.5, volume: 0.02 } }, // underground rumble
+        ];
+        break;
+      case 'volcanic':
+        this.layers = [
+          { type: 'noise', interval: 3000, lastPlayed: now, params: { freq: 100, q: 0.3, duration: 4, volume: 0.05 } }, // rumbling
+          { type: 'tone', interval: 8000, lastPlayed: now + 3000, params: { freq: 60, duration: 3, volume: 0.04, type: 'sawtooth' } }, // deep eruption
+          { type: 'noise', interval: 5000, lastPlayed: now + 1500, params: { freq: 800, q: 2, duration: 0.5, volume: 0.03 } }, // lava hiss
+        ];
+        break;
+      case 'savanna':
+        this.layers = [
+          { type: 'noise', interval: 7000, lastPlayed: now, params: { freq: 500, q: 0.3, duration: 4, volume: 0.03 } }, // warm wind
+          { type: 'chirp', interval: 4000, lastPlayed: now + 2000, params: { freqBase: 1500, freqRange: 600, duration: 0.15, count: 3 } }, // crickets
+          { type: 'tone', interval: 15000, lastPlayed: now, params: { freq: 250, duration: 2, volume: 0.02, type: 'triangle' } }, // distant call
+        ];
+        break;
+      case 'cherry':
+        this.layers = [
+          { type: 'chirp', interval: 3000, lastPlayed: now, params: { freqBase: 1600, freqRange: 600, duration: 0.12, count: 3 } }, // songbirds
+          { type: 'noise', interval: 6000, lastPlayed: now + 2000, params: { freq: 500, q: 0.3, duration: 3, volume: 0.02 } }, // gentle breeze
+          { type: 'chirp', interval: 8000, lastPlayed: now + 4000, params: { freqBase: 2200, freqRange: 400, duration: 0.08, count: 5 } }, // wind chimes
+        ];
+        break;
     }
   }
 
@@ -213,6 +249,11 @@ class AmbientMusicSystem {
       mountains: 247,  // B3
       swamp: 165,     // E3
       tundra: 196,    // G3
+      jungle: 175,    // F3
+      mushroom: 147,  // D3
+      volcanic: 110,  // A2
+      savanna: 208,   // G#3
+      cherry: 262,    // C4
     };
 
     let noteIndex = 0;
