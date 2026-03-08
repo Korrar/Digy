@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { BlockType, isFlat } from '../../core/voxel/BlockRegistry';
+import { computeRailShape } from '../../core/voxel/ChunkMesher';
 import { soundManager } from '../../systems/SoundManager';
 
 interface Minecart {
@@ -207,42 +208,9 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
     cart.velocity.addScaledVector(dir, 0.12);
   }, [camera]);
 
-  // Get rail shape at block position for steering (Minecraft-style rules)
-  const getRailShape = useCallback((bx: number, by: number, bz: number): 'ns' | 'ew' | 'curve_ne' | 'curve_nw' | 'curve_se' | 'curve_sw' => {
-    const block = getBlock(bx, by, bz);
-    const isPowered = block === BlockType.POWERED_RAIL;
-
-    const hasN = isFlat(getBlock(bx, by, bz - 1));
-    const hasS = isFlat(getBlock(bx, by, bz + 1));
-    const hasE = isFlat(getBlock(bx + 1, by, bz));
-    const hasW = isFlat(getBlock(bx - 1, by, bz));
-
-    if (!isPowered) {
-      const count = (hasN ? 1 : 0) + (hasS ? 1 : 0) + (hasE ? 1 : 0) + (hasW ? 1 : 0);
-
-      if (count === 4) return 'curve_se';
-      if (count === 3) {
-        if (hasS && hasE) return 'curve_se';
-        if (hasS && hasW) return 'curve_sw';
-        if (hasN && hasE) return 'curve_ne';
-        if (hasN && hasW) return 'curve_nw';
-      }
-      if (count === 2) {
-        if (hasN && hasS) return 'ns';
-        if (hasE && hasW) return 'ew';
-        if (hasS && hasE) return 'curve_se';
-        if (hasS && hasW) return 'curve_sw';
-        if (hasN && hasE) return 'curve_ne';
-        if (hasN && hasW) return 'curve_nw';
-      }
-      if (count === 1) {
-        if (hasE || hasW) return 'ew';
-        return 'ns';
-      }
-    }
-
-    if ((hasE || hasW) && !hasN && !hasS) return 'ew';
-    return 'ns';
+  // Get rail shape at block position using shared Minecraft-style rules
+  const getRailShape = useCallback((bx: number, by: number, bz: number) => {
+    return computeRailShape(getBlock, bx, by, bz) ?? 'ns';
   }, [getBlock]);
 
   // Track whether any cart is moving on rails for sound
