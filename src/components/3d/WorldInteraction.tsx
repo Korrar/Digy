@@ -300,7 +300,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
       const py = by + hit.normal[1];
       const pz = bz + hit.normal[2];
 
-      if (!isSolid(getBlockW(px, py, pz)) && !(isFlat(getBlockW(px, py, pz)) && selectedBlock === BlockType.RAIL)) {
+      if (!isSolid(getBlockW(px, py, pz)) && !isFlat(getBlockW(px, py, pz))) {
         // Rail placement: compute and store correct shape, then update neighbors
         if (selectedBlock === BlockType.RAIL) {
           const hasRailN = isFlat(getBlockW(px, py, pz - 1));
