@@ -141,6 +141,8 @@ export interface BlockDefinition {
   doorUpper?: boolean;
   /** Render as chest (smaller box with lid) */
   isChest?: boolean;
+  /** Render as torch (thin stick with flame) */
+  isTorch?: boolean;
 }
 
 const BLOCKS: Map<BlockType, BlockDefinition> = new Map();
@@ -182,7 +184,7 @@ register({ id: BlockType.FERN, name: 'Fern', color: new THREE.Color(0x3d7a1d), h
 register({ id: BlockType.PLANKS, name: 'Planks', color: new THREE.Color(0xb8945a), hardness: 1.0, transparent: false, drops: BlockType.PLANKS, stackSize: 64 });
 register({ id: BlockType.GLASS, name: 'Glass', color: new THREE.Color(0xc8e8f8), hardness: 0.3, transparent: true, drops: BlockType.AIR, stackSize: 64 });
 register({ id: BlockType.STONE_BRICKS, name: 'Stone Bricks', color: new THREE.Color(0x7a7a7a), hardness: 1.5, transparent: false, drops: BlockType.STONE_BRICKS, stackSize: 64 });
-register({ id: BlockType.TORCH, name: 'Torch', color: new THREE.Color(0xffaa33), hardness: 0.0, transparent: true, drops: BlockType.TORCH, stackSize: 64, crossedQuad: true, emitsLight: true });
+register({ id: BlockType.TORCH, name: 'Torch', color: new THREE.Color(0xffaa33), hardness: 0.0, transparent: true, drops: BlockType.TORCH, stackSize: 64, emitsLight: true, icon: 'torch', isTorch: true });
 register({ id: BlockType.BOOKSHELF, name: 'Bookshelf', color: new THREE.Color(0x8b6914), topColor: new THREE.Color(0xb8945a), hardness: 1.0, transparent: false, drops: BlockType.BOOKSHELF, stackSize: 64 });
 register({ id: BlockType.CLAY, name: 'Clay', color: new THREE.Color(0x9eabb0), hardness: 0.6, transparent: false, drops: BlockType.CLAY, stackSize: 64 });
 register({ id: BlockType.MUD, name: 'Mud', color: new THREE.Color(0x5c3d2e), hardness: 0.5, transparent: false, drops: BlockType.MUD, stackSize: 64 });
@@ -275,11 +277,15 @@ export function isTransparent(type: BlockType): boolean {
 
 export function isSolid(type: BlockType): boolean {
   const def = getBlock(type);
-  return type !== BlockType.AIR && type !== BlockType.WATER && !def.crossedQuad && !def.isFlat;
+  return type !== BlockType.AIR && type !== BlockType.WATER && !def.crossedQuad && !def.isFlat && !def.isTorch;
 }
 
 export function isCrossedQuad(type: BlockType): boolean {
   return getBlock(type).crossedQuad === true;
+}
+
+export function isTorch(type: BlockType): boolean {
+  return getBlock(type).isTorch === true;
 }
 
 export function getAllPlaceableBlocks(): BlockDefinition[] {

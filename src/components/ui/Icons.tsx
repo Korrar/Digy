@@ -230,6 +230,24 @@ export const IconSunset = ({ size = 16, style }: IconProps) => (
   </svg>
 );
 
+// Torch
+export const IconTorch = ({ size = 16, color = '#8b6914', style }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" style={style} xmlns="http://www.w3.org/2000/svg">
+    <rect x="7" y="6" width="2" height="8" rx="0.5" fill={color} />
+    <path d="M6.5 6C6.5 4 7 2 8 1C9 2 9.5 4 9.5 6" fill="#ff8800" />
+    <path d="M7 5.5C7 4 7.5 2.5 8 1.5C8.5 2.5 9 4 9 5.5" fill="#ffcc00" />
+  </svg>
+);
+
+// Chest
+export const IconChest = ({ size = 16, color = '#b8945a', style }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill={color} style={style} xmlns="http://www.w3.org/2000/svg">
+    <rect x="2" y="4" width="12" height="9" rx="1" />
+    <rect x="2" y="4" width="12" height="4" fill="#a07840" rx="1" />
+    <rect x="7" y="7" width="2" height="2" rx="0.5" fill="#555" />
+  </svg>
+);
+
 // Map of icon IDs to components for BlockRegistry
 const ICON_MAP: Record<string, React.FC<IconProps>> = {
   pickaxe: IconPickaxe,
@@ -247,6 +265,8 @@ const ICON_MAP: Record<string, React.FC<IconProps>> = {
   minecart: IconMinecart,
   rail: IconRail,
   powered_rail: IconPoweredRail,
+  torch: IconTorch,
+  chest: IconChest,
 };
 
 export function ItemIcon({ iconId, size = 16, color, style }: { iconId?: string; size?: number | string; color?: string; style?: React.CSSProperties }) {

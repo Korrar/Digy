@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BlockType, getBlock, getBlockColor, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest } from './BlockRegistry';
+import { BlockType, getBlock, getBlockColor, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest, isTorch } from './BlockRegistry';
 import { ChunkData } from './ChunkData';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
 import { getAtlasUV, getWhiteUV } from './TextureAtlas';
@@ -338,6 +338,76 @@ export function buildChunkMesh(
             );
             vertexCount += 4;
           }
+          continue;
+        }
+
+        // Torch rendering - thin stick with flame top
+        if (isTorch(block)) {
+          const wuv = getWhiteUV();
+          const stickColor = new THREE.Color(0x8b6914);
+          const flameColor = new THREE.Color(0xffaa33);
+          const flameTopColor = new THREE.Color(0xffee66);
+
+          // Stick dimensions: centered, thin
+          const sw = 0.125; // stick width
+          const sh = 0.625; // stick height
+          const sx0 = 0.5 - sw / 2;
+          const sx1 = 0.5 + sw / 2;
+          const sz0 = 0.5 - sw / 2;
+          const sz1 = 0.5 + sw / 2;
+          const sy0 = 0.0;
+          const sy1 = sh;
+
+          // Flame dimensions
+          const fw = 0.1875;
+          const fh = 0.3;
+          const fx0 = 0.5 - fw / 2;
+          const fx1 = 0.5 + fw / 2;
+          const fz0 = 0.5 - fw / 2;
+          const fz1 = 0.5 + fw / 2;
+          const fy0 = sh;
+          const fy1 = sh + fh;
+
+          // Helper to add a box face
+          const addTorchFace = (
+            corners: [number, number, number][],
+            normal: [number, number, number],
+            col: THREE.Color
+          ) => {
+            for (let ci = 0; ci < 4; ci++) {
+              const c = corners[ci];
+              positions.push(x + c[0], y + c[1], z + c[2]);
+              normals.push(normal[0], normal[1], normal[2]);
+              colors.push(col.r, col.g, col.b);
+              const lu = ci % 2 === 0 ? 0 : 1;
+              const lv = ci < 2 ? 0 : 1;
+              uvs.push(wuv.u0 + lu * (wuv.u1 - wuv.u0), wuv.v0 + lv * (wuv.v1 - wuv.v0));
+              sparkles.push(0);
+              oreColors.push(1.0, 0.95, 0.8);
+            }
+            indices.push(
+              vertexCount, vertexCount + 1, vertexCount + 2,
+              vertexCount, vertexCount + 2, vertexCount + 3
+            );
+            vertexCount += 4;
+          };
+
+          // Stick: 4 side faces + top
+          addTorchFace([[sx0,sy0,sz0],[sx1,sy0,sz0],[sx1,sy1,sz0],[sx0,sy1,sz0]], [0,0,-1], stickColor);
+          addTorchFace([[sx1,sy0,sz1],[sx0,sy0,sz1],[sx0,sy1,sz1],[sx1,sy1,sz1]], [0,0,1], stickColor);
+          addTorchFace([[sx0,sy0,sz1],[sx0,sy0,sz0],[sx0,sy1,sz0],[sx0,sy1,sz1]], [-1,0,0], stickColor);
+          addTorchFace([[sx1,sy0,sz0],[sx1,sy0,sz1],[sx1,sy1,sz1],[sx1,sy1,sz0]], [1,0,0], stickColor);
+          addTorchFace([[sx0,sy1,sz0],[sx1,sy1,sz0],[sx1,sy1,sz1],[sx0,sy1,sz1]], [0,1,0], stickColor);
+
+          // Flame: 2 crossed quads (X shape) for glow effect
+          const flameMid = fy0 + fh * 0.5;
+          // Crossed quad 1
+          addTorchFace([[fx0,fy0,fz0],[fx1,fy0,fz1],[fx1,fy1,fz1],[fx0,fy1,fz0]], [-0.707,0,0.707], flameColor);
+          addTorchFace([[fx1,fy0,fz1],[fx0,fy0,fz0],[fx0,fy1,fz0],[fx1,fy1,fz1]], [0.707,0,-0.707], flameColor);
+          // Crossed quad 2
+          addTorchFace([[fx1,fy0,fz0],[fx0,fy0,fz1],[fx0,fy1,fz1],[fx1,fy1,fz0]], [0.707,0,0.707], flameTopColor);
+          addTorchFace([[fx0,fy0,fz1],[fx1,fy0,fz0],[fx1,fy1,fz0],[fx0,fy1,fz1]], [-0.707,0,-0.707], flameTopColor);
+
           continue;
         }
 
