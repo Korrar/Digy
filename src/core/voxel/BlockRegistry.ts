@@ -87,6 +87,10 @@ export interface BlockDefinition {
   durability?: number;
   /** Icon ID for SVG display in UI */
   icon?: string;
+  /** Render as a flat surface instead of full cube (rails) */
+  isFlat?: boolean;
+  /** Item that can be placed in the world as an entity (minecart) */
+  isPlaceableItem?: boolean;
 }
 
 const BLOCKS: Map<BlockType, BlockDefinition> = new Map();
@@ -153,9 +157,9 @@ register({ id: BlockType.RAW_MEAT, name: 'Raw Meat', color: new THREE.Color(0xcc
 register({ id: BlockType.COOKED_MEAT, name: 'Cooked Meat', color: new THREE.Color(0x8b4513), hardness: 0, transparent: true, drops: BlockType.COOKED_MEAT, stackSize: 64, isItem: true, healAmount: 4, icon: 'meat_cooked' });
 register({ id: BlockType.FURNACE, name: 'Furnace', color: new THREE.Color(0x707070), hardness: 2.0, transparent: false, drops: BlockType.FURNACE, stackSize: 64, icon: 'furnace' });
 register({ id: BlockType.CRAFTING_TABLE, name: 'Crafting Table', color: new THREE.Color(0xb8945a), hardness: 1.0, transparent: false, drops: BlockType.CRAFTING_TABLE, stackSize: 64, icon: 'wrench' });
-register({ id: BlockType.RAIL, name: 'Rail', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: true, drops: BlockType.RAIL, stackSize: 64, icon: 'rail' });
-register({ id: BlockType.MINECART, name: 'Minecart', color: new THREE.Color(0x888888), hardness: 0.5, transparent: true, drops: BlockType.MINECART, stackSize: 1, isItem: true, icon: 'minecart' });
-register({ id: BlockType.POWERED_RAIL, name: 'Powered Rail', color: new THREE.Color(0xcc4444), hardness: 0.5, transparent: true, drops: BlockType.POWERED_RAIL, stackSize: 64, icon: 'powered_rail' });
+register({ id: BlockType.RAIL, name: 'Rail', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: true, drops: BlockType.RAIL, stackSize: 64, icon: 'rail', isFlat: true });
+register({ id: BlockType.MINECART, name: 'Minecart', color: new THREE.Color(0x888888), hardness: 0.5, transparent: true, drops: BlockType.MINECART, stackSize: 1, isItem: true, isPlaceableItem: true, icon: 'minecart' });
+register({ id: BlockType.POWERED_RAIL, name: 'Powered Rail', color: new THREE.Color(0xcc4444), hardness: 0.5, transparent: true, drops: BlockType.POWERED_RAIL, stackSize: 64, icon: 'powered_rail', isFlat: true });
 
 // Update ore drops to drop raw materials
 BLOCKS.get(BlockType.COAL_ORE)!.drops = BlockType.COAL;
@@ -180,7 +184,8 @@ export function isTransparent(type: BlockType): boolean {
 }
 
 export function isSolid(type: BlockType): boolean {
-  return type !== BlockType.AIR && type !== BlockType.WATER && !getBlock(type).crossedQuad;
+  const def = getBlock(type);
+  return type !== BlockType.AIR && type !== BlockType.WATER && !def.crossedQuad && !def.isFlat;
 }
 
 export function isCrossedQuad(type: BlockType): boolean {
@@ -205,4 +210,14 @@ export function isSword(type: BlockType): boolean {
 
 export function isFood(type: BlockType): boolean {
   return (getBlock(type).healAmount ?? 0) > 0;
+}
+
+export function canPlaceMinecart(surfaceBlock: BlockType): boolean {
+  if (surfaceBlock === BlockType.AIR || surfaceBlock === BlockType.WATER) return false;
+  if (surfaceBlock === BlockType.RAIL || surfaceBlock === BlockType.POWERED_RAIL) return true;
+  return isSolid(surfaceBlock);
+}
+
+export function isFlat(type: BlockType): boolean {
+  return getBlock(type).isFlat === true;
 }

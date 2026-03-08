@@ -167,6 +167,25 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
         return;
       }
 
+      // Handle minecart placement - place on top of the targeted block
+      if (selectedBlock === BlockType.MINECART) {
+        const result = raycast();
+        if (!result) return;
+        const [bx, by, bz] = result.blockPos;
+        const surfaceBlock = getBlockW(bx, by, bz);
+        // Place minecart on top of the targeted solid/rail block
+        if (isSolid(surfaceBlock) || surfaceBlock === BlockType.RAIL || surfaceBlock === BlockType.POWERED_RAIL) {
+          const spawnY = by + 1;
+          // Dispatch minecart spawn event
+          window.dispatchEvent(new CustomEvent('digy:spawnMinecart', {
+            detail: { x: bx + 0.5, y: spawnY + 0.05, z: bz + 0.5, onRail: surfaceBlock === BlockType.RAIL || surfaceBlock === BlockType.POWERED_RAIL }
+          }));
+          removeBlock(selectedIdx, 1);
+          soundManager.playPlaceSound();
+        }
+        return;
+      }
+
       // Don't place non-block items
       if (isItemType(selectedBlock)) return;
 

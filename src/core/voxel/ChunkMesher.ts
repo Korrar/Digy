@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BlockType, getBlock, getBlockColor, isTransparent, isCrossedQuad } from './BlockRegistry';
+import { BlockType, getBlock, getBlockColor, isTransparent, isCrossedQuad, isFlat } from './BlockRegistry';
 import { ChunkData } from './ChunkData';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
 
@@ -164,6 +164,81 @@ export function buildChunkMesh(
             );
             vertexCount += 4;
           }
+          continue;
+        }
+
+        // Flat block rendering (rails) - thin top-only surface
+        if (isFlat(block)) {
+          const flatHeight = 0.1; // thin slab
+          const railColor = blockDef.color;
+          const isPowered = block === BlockType.POWERED_RAIL;
+
+          // Top face of the flat rail
+          const topCorners: [number, number, number][] = [
+            [0.05, flatHeight, 0.95],
+            [0.95, flatHeight, 0.95],
+            [0.95, flatHeight, 0.05],
+            [0.05, flatHeight, 0.05],
+          ];
+
+          for (let ci = 0; ci < 4; ci++) {
+            const corner = topCorners[ci];
+            positions.push(x + corner[0], y + corner[1], z + corner[2]);
+            normals.push(0, 1, 0);
+
+            const v = (hash3(wx * 5 + ci, y * 3, wz * 5 + ci) - 0.5) * 0.1;
+            // Rail pattern: two darker stripes along Z axis
+            const lx = corner[0]; // local x within block
+            const isRailStripe = (lx > 0.15 && lx < 0.35) || (lx > 0.65 && lx < 0.85);
+            const stripeColor = isRailStripe
+              ? new THREE.Color(isPowered ? 0x992222 : 0x555555) // metal rail color
+              : new THREE.Color(isPowered ? 0xcc4444 : 0x8b6914); // tie/base color
+
+            colors.push(
+              Math.max(0, Math.min(1, stripeColor.r + v)),
+              Math.max(0, Math.min(1, stripeColor.g + v)),
+              Math.max(0, Math.min(1, stripeColor.b + v)),
+            );
+            uvs.push(ci % 2 === 0 ? 0 : 1, ci < 2 ? 0 : 1);
+            sparkles.push(0);
+            oreColors.push(1.0, 0.95, 0.8);
+          }
+
+          indices.push(
+            vertexCount, vertexCount + 1, vertexCount + 2,
+            vertexCount, vertexCount + 2, vertexCount + 3
+          );
+          vertexCount += 4;
+
+          // Bottom face (visible from below)
+          const bottomCorners: [number, number, number][] = [
+            [0.05, 0, 0.05],
+            [0.95, 0, 0.05],
+            [0.95, 0, 0.95],
+            [0.05, 0, 0.95],
+          ];
+
+          for (let ci = 0; ci < 4; ci++) {
+            const corner = bottomCorners[ci];
+            positions.push(x + corner[0], y + corner[1], z + corner[2]);
+            normals.push(0, -1, 0);
+
+            colors.push(
+              Math.max(0, Math.min(1, railColor.r * 0.7)),
+              Math.max(0, Math.min(1, railColor.g * 0.7)),
+              Math.max(0, Math.min(1, railColor.b * 0.7)),
+            );
+            uvs.push(ci % 2 === 0 ? 0 : 1, ci < 2 ? 0 : 1);
+            sparkles.push(0);
+            oreColors.push(1.0, 0.95, 0.8);
+          }
+
+          indices.push(
+            vertexCount, vertexCount + 1, vertexCount + 2,
+            vertexCount, vertexCount + 2, vertexCount + 3
+          );
+          vertexCount += 4;
+
           continue;
         }
 
