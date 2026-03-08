@@ -59,6 +59,31 @@ export enum BlockType {
   MINECART = 53,
   POWERED_RAIL = 54,
   LAMP = 55,
+  // Slabs (half-height blocks)
+  PLANKS_SLAB = 56,
+  COBBLESTONE_SLAB = 57,
+  STONE_BRICKS_SLAB = 58,
+  // Fences (auto-connecting posts)
+  FENCE_OAK = 59,
+  // Stairs - inventory items
+  OAK_STAIRS = 60,
+  COBBLE_STAIRS = 61,
+  // Stairs - placed (4 orientations per material, step rises toward named direction)
+  OAK_STAIRS_N = 62,
+  OAK_STAIRS_S = 63,
+  OAK_STAIRS_E = 64,
+  OAK_STAIRS_W = 65,
+  COBBLE_STAIRS_N = 66,
+  COBBLE_STAIRS_S = 67,
+  COBBLE_STAIRS_E = 68,
+  COBBLE_STAIRS_W = 69,
+  // Door - inventory item
+  DOOR_OAK = 70,
+  // Door - placed blocks
+  DOOR_OAK_BOTTOM = 71,
+  DOOR_OAK_TOP = 72,
+  DOOR_OAK_BOTTOM_OPEN = 73,
+  DOOR_OAK_TOP_OPEN = 74,
 }
 
 export interface BlockDefinition {
@@ -92,6 +117,18 @@ export interface BlockDefinition {
   isFlat?: boolean;
   /** Item that can be placed in the world as an entity (minecart) */
   isPlaceableItem?: boolean;
+  /** Render as half-height slab */
+  isSlab?: boolean;
+  /** Render as fence post with auto-connecting bars */
+  isFence?: boolean;
+  /** Render as stair geometry; direction indicates which way step rises */
+  stairDir?: 'n' | 's' | 'e' | 'w';
+  /** Render as thin door panel */
+  isDoor?: boolean;
+  /** Door is in open state */
+  doorOpen?: boolean;
+  /** Door is upper half */
+  doorUpper?: boolean;
 }
 
 const BLOCKS: Map<BlockType, BlockDefinition> = new Map();
@@ -163,6 +200,37 @@ register({ id: BlockType.MINECART, name: 'Minecart', color: new THREE.Color(0x88
 register({ id: BlockType.POWERED_RAIL, name: 'Powered Rail', color: new THREE.Color(0xcc4444), hardness: 0.5, transparent: true, drops: BlockType.POWERED_RAIL, stackSize: 64, icon: 'powered_rail', isFlat: true });
 register({ id: BlockType.LAMP, name: 'Lamp', color: new THREE.Color(0xffdd88), hardness: 0.5, transparent: false, drops: BlockType.LAMP, stackSize: 64, emitsLight: true, icon: 'lamp' });
 
+// Slabs (half-height blocks)
+register({ id: BlockType.PLANKS_SLAB, name: 'Oak Slab', color: new THREE.Color(0xb8945a), hardness: 1.0, transparent: true, drops: BlockType.PLANKS_SLAB, stackSize: 64, isSlab: true });
+register({ id: BlockType.COBBLESTONE_SLAB, name: 'Cobblestone Slab', color: new THREE.Color(0x707070), hardness: 2.0, transparent: true, drops: BlockType.COBBLESTONE_SLAB, stackSize: 64, isSlab: true });
+register({ id: BlockType.STONE_BRICKS_SLAB, name: 'Stone Brick Slab', color: new THREE.Color(0x7a7a7a), hardness: 1.5, transparent: true, drops: BlockType.STONE_BRICKS_SLAB, stackSize: 64, isSlab: true });
+
+// Fences
+register({ id: BlockType.FENCE_OAK, name: 'Oak Fence', color: new THREE.Color(0xb8945a), hardness: 1.0, transparent: true, drops: BlockType.FENCE_OAK, stackSize: 64, isFence: true });
+
+// Stairs - inventory items (non-placeable directly, converted to oriented on placement)
+register({ id: BlockType.OAK_STAIRS, name: 'Oak Stairs', color: new THREE.Color(0xb8945a), hardness: 1.0, transparent: true, drops: BlockType.OAK_STAIRS, stackSize: 64, isItem: true, icon: 'stairs' });
+register({ id: BlockType.COBBLE_STAIRS, name: 'Cobble Stairs', color: new THREE.Color(0x707070), hardness: 2.0, transparent: true, drops: BlockType.COBBLE_STAIRS, stackSize: 64, isItem: true, icon: 'stairs' });
+
+// Stairs - placed blocks (4 orientations per material)
+register({ id: BlockType.OAK_STAIRS_N, name: 'Oak Stairs', color: new THREE.Color(0xb8945a), hardness: 1.0, transparent: true, drops: BlockType.OAK_STAIRS, stackSize: 0, stairDir: 'n' });
+register({ id: BlockType.OAK_STAIRS_S, name: 'Oak Stairs', color: new THREE.Color(0xb8945a), hardness: 1.0, transparent: true, drops: BlockType.OAK_STAIRS, stackSize: 0, stairDir: 's' });
+register({ id: BlockType.OAK_STAIRS_E, name: 'Oak Stairs', color: new THREE.Color(0xb8945a), hardness: 1.0, transparent: true, drops: BlockType.OAK_STAIRS, stackSize: 0, stairDir: 'e' });
+register({ id: BlockType.OAK_STAIRS_W, name: 'Oak Stairs', color: new THREE.Color(0xb8945a), hardness: 1.0, transparent: true, drops: BlockType.OAK_STAIRS, stackSize: 0, stairDir: 'w' });
+register({ id: BlockType.COBBLE_STAIRS_N, name: 'Cobble Stairs', color: new THREE.Color(0x707070), hardness: 2.0, transparent: true, drops: BlockType.COBBLE_STAIRS, stackSize: 0, stairDir: 'n' });
+register({ id: BlockType.COBBLE_STAIRS_S, name: 'Cobble Stairs', color: new THREE.Color(0x707070), hardness: 2.0, transparent: true, drops: BlockType.COBBLE_STAIRS, stackSize: 0, stairDir: 's' });
+register({ id: BlockType.COBBLE_STAIRS_E, name: 'Cobble Stairs', color: new THREE.Color(0x707070), hardness: 2.0, transparent: true, drops: BlockType.COBBLE_STAIRS, stackSize: 0, stairDir: 'e' });
+register({ id: BlockType.COBBLE_STAIRS_W, name: 'Cobble Stairs', color: new THREE.Color(0x707070), hardness: 2.0, transparent: true, drops: BlockType.COBBLE_STAIRS, stackSize: 0, stairDir: 'w' });
+
+// Door - inventory item
+register({ id: BlockType.DOOR_OAK, name: 'Oak Door', color: new THREE.Color(0x8b6914), hardness: 1.0, transparent: true, drops: BlockType.DOOR_OAK, stackSize: 64, isItem: true, icon: 'door' });
+
+// Door - placed blocks
+register({ id: BlockType.DOOR_OAK_BOTTOM, name: 'Oak Door', color: new THREE.Color(0x8b6914), hardness: 1.0, transparent: true, drops: BlockType.DOOR_OAK, stackSize: 0, isDoor: true, doorOpen: false, doorUpper: false });
+register({ id: BlockType.DOOR_OAK_TOP, name: 'Oak Door', color: new THREE.Color(0x6b4226), hardness: 1.0, transparent: true, drops: BlockType.AIR, stackSize: 0, isDoor: true, doorOpen: false, doorUpper: true });
+register({ id: BlockType.DOOR_OAK_BOTTOM_OPEN, name: 'Oak Door', color: new THREE.Color(0x8b6914), hardness: 1.0, transparent: true, drops: BlockType.DOOR_OAK, stackSize: 0, isDoor: true, doorOpen: true, doorUpper: false });
+register({ id: BlockType.DOOR_OAK_TOP_OPEN, name: 'Oak Door', color: new THREE.Color(0x6b4226), hardness: 1.0, transparent: true, drops: BlockType.AIR, stackSize: 0, isDoor: true, doorOpen: true, doorUpper: true });
+
 // Update ore drops to drop raw materials
 BLOCKS.get(BlockType.COAL_ORE)!.drops = BlockType.COAL;
 BLOCKS.get(BlockType.DIAMOND_ORE)!.drops = BlockType.DIAMOND;
@@ -222,4 +290,49 @@ export function canPlaceMinecart(surfaceBlock: BlockType): boolean {
 
 export function isFlat(type: BlockType): boolean {
   return getBlock(type).isFlat === true;
+}
+
+export function isSlab(type: BlockType): boolean {
+  return getBlock(type).isSlab === true;
+}
+
+export function isFence(type: BlockType): boolean {
+  return getBlock(type).isFence === true;
+}
+
+export function isStairs(type: BlockType): boolean {
+  return getBlock(type).stairDir !== undefined;
+}
+
+export function isStairsItem(type: BlockType): boolean {
+  return type === BlockType.OAK_STAIRS || type === BlockType.COBBLE_STAIRS;
+}
+
+export function isDoor(type: BlockType): boolean {
+  return getBlock(type).isDoor === true;
+}
+
+export function isDoorItem(type: BlockType): boolean {
+  return type === BlockType.DOOR_OAK;
+}
+
+/** Get the oriented stair block type for a stair inventory item + direction */
+export function getOrientedStairs(item: BlockType, dir: 'n' | 's' | 'e' | 'w'): BlockType {
+  if (item === BlockType.OAK_STAIRS) {
+    switch (dir) {
+      case 'n': return BlockType.OAK_STAIRS_N;
+      case 's': return BlockType.OAK_STAIRS_S;
+      case 'e': return BlockType.OAK_STAIRS_E;
+      case 'w': return BlockType.OAK_STAIRS_W;
+    }
+  }
+  if (item === BlockType.COBBLE_STAIRS) {
+    switch (dir) {
+      case 'n': return BlockType.COBBLE_STAIRS_N;
+      case 's': return BlockType.COBBLE_STAIRS_S;
+      case 'e': return BlockType.COBBLE_STAIRS_E;
+      case 'w': return BlockType.COBBLE_STAIRS_W;
+    }
+  }
+  return item;
 }

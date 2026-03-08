@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BlockType, getBlock, getBlockColor, isTransparent, isCrossedQuad, isFlat } from './BlockRegistry';
+import { BlockType, getBlock, getBlockColor, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor } from './BlockRegistry';
 import { ChunkData } from './ChunkData';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
 
@@ -398,6 +398,238 @@ export function buildChunkMesh(
             }
           }
 
+          continue;
+        }
+
+        // Slab rendering (half-height block)
+        if (isSlab(block)) {
+          const slabColor = blockDef.color;
+          const variation = getTextureVariation(block);
+
+          // Half-height faces (same structure as FACES but y goes 0 to 0.5)
+          const SLAB_FACES: Face[] = [
+            { dir: [0, 1, 0], corners: [[0,0.5,1],[1,0.5,1],[1,0.5,0],[0,0.5,0]], faceName: 'top', uvs: [[0,0],[1,0],[1,1],[0,1]] },
+            { dir: [0, -1, 0], corners: [[0,0,0],[1,0,0],[1,0,1],[0,0,1]], faceName: 'bottom', uvs: [[0,0],[1,0],[1,1],[0,1]] },
+            { dir: [1, 0, 0], corners: [[1,0,0],[1,0.5,0],[1,0.5,1],[1,0,1]], faceName: 'side', uvs: [[0,0],[0,1],[1,1],[1,0]] },
+            { dir: [-1, 0, 0], corners: [[0,0,1],[0,0.5,1],[0,0.5,0],[0,0,0]], faceName: 'side', uvs: [[0,0],[0,1],[1,1],[1,0]] },
+            { dir: [0, 0, 1], corners: [[1,0,1],[1,0.5,1],[0,0.5,1],[0,0,1]], faceName: 'side', uvs: [[0,0],[0,1],[1,1],[1,0]] },
+            { dir: [0, 0, -1], corners: [[0,0,0],[0,0.5,0],[1,0.5,0],[1,0,0]], faceName: 'side', uvs: [[0,0],[0,1],[1,1],[1,0]] },
+          ];
+
+          for (const face of SLAB_FACES) {
+            const nx = x + face.dir[0];
+            const ny = y + face.dir[1];
+            const nz = z + face.dir[2];
+            let neighborBlock: BlockType;
+            if (nx >= 0 && nx < CHUNK_SIZE && ny >= 0 && ny < CHUNK_HEIGHT && nz >= 0 && nz < CHUNK_SIZE) {
+              neighborBlock = chunk.getBlock(nx, ny, nz);
+            } else if (getNeighborBlock) {
+              neighborBlock = getNeighborBlock(ox + nx, ny, oz + nz);
+            } else {
+              neighborBlock = BlockType.AIR;
+            }
+            if (!isTransparent(neighborBlock) && neighborBlock !== BlockType.AIR) continue;
+            if (neighborBlock === block) continue;
+
+            const faceBrightness = face.faceName === 'top' ? 1.0 : face.faceName === 'side' ? 0.85 : 0.7;
+            for (let ci = 0; ci < 4; ci++) {
+              const corner = face.corners[ci];
+              positions.push(x + corner[0], y + corner[1], z + corner[2]);
+              normals.push(face.dir[0], face.dir[1], face.dir[2]);
+              const noiseVal = (hash3(wx + corner[0], y + corner[1], wz + corner[2]) - 0.5) * 2;
+              const texNoise = noiseVal * variation;
+              colors.push(
+                Math.max(0, Math.min(1, slabColor.r * faceBrightness + texNoise)),
+                Math.max(0, Math.min(1, slabColor.g * faceBrightness + texNoise * 0.8)),
+                Math.max(0, Math.min(1, slabColor.b * faceBrightness + texNoise * 0.6)),
+              );
+              uvs.push(face.uvs[ci][0], face.uvs[ci][1]);
+              sparkles.push(0);
+              oreColors.push(1.0, 0.95, 0.8);
+            }
+            indices.push(vertexCount, vertexCount + 1, vertexCount + 2, vertexCount, vertexCount + 2, vertexCount + 3);
+            vertexCount += 4;
+          }
+          continue;
+        }
+
+        // Fence rendering (center post + auto-connecting horizontal bars)
+        if (isFence(block)) {
+          const fenceColor = blockDef.color;
+          const darkColor = new THREE.Color(fenceColor.r * 0.8, fenceColor.g * 0.8, fenceColor.b * 0.8);
+
+          const addBoxFaces = (
+            x0: number, y0: number, z0: number,
+            x1: number, y1: number, z1: number,
+            col: THREE.Color
+          ) => {
+            // top
+            const boxFaces: { corners: [number,number,number][]; normal: [number,number,number]; brightness: number }[] = [
+              { corners: [[x0,y1,z1],[x1,y1,z1],[x1,y1,z0],[x0,y1,z0]], normal: [0,1,0], brightness: 1.0 },
+              { corners: [[x0,y0,z0],[x1,y0,z0],[x1,y0,z1],[x0,y0,z1]], normal: [0,-1,0], brightness: 0.7 },
+              { corners: [[x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[x1,y0,z1]], normal: [1,0,0], brightness: 0.85 },
+              { corners: [[x0,y0,z1],[x0,y1,z1],[x0,y1,z0],[x0,y0,z0]], normal: [-1,0,0], brightness: 0.85 },
+              { corners: [[x1,y0,z1],[x1,y1,z1],[x0,y1,z1],[x0,y0,z1]], normal: [0,0,1], brightness: 0.85 },
+              { corners: [[x0,y0,z0],[x0,y1,z0],[x1,y1,z0],[x1,y0,z0]], normal: [0,0,-1], brightness: 0.85 },
+            ];
+            for (const bf of boxFaces) {
+              for (let ci = 0; ci < 4; ci++) {
+                const c = bf.corners[ci];
+                positions.push(x + c[0], y + c[1], z + c[2]);
+                normals.push(bf.normal[0], bf.normal[1], bf.normal[2]);
+                const v = (hash3(wx * 5 + ci, y * 3 + c[1] * 10, wz * 5 + ci) - 0.5) * 0.08;
+                colors.push(
+                  Math.max(0, Math.min(1, col.r * bf.brightness + v)),
+                  Math.max(0, Math.min(1, col.g * bf.brightness + v)),
+                  Math.max(0, Math.min(1, col.b * bf.brightness + v)),
+                );
+                uvs.push(ci % 2 === 0 ? 0 : 1, ci < 2 ? 0 : 1);
+                sparkles.push(0);
+                oreColors.push(1.0, 0.95, 0.8);
+              }
+              indices.push(vertexCount, vertexCount + 1, vertexCount + 2, vertexCount, vertexCount + 2, vertexCount + 3);
+              vertexCount += 4;
+            }
+          };
+
+          // Center post (0.375-0.625 = 0.25 wide)
+          addBoxFaces(0.375, 0, 0.375, 0.625, 1, 0.625, fenceColor);
+
+          // Check neighbors for connections (fence or solid block)
+          const canConnect = (lx: number, ly: number, lz: number): boolean => {
+            let nb: BlockType;
+            if (lx >= 0 && lx < CHUNK_SIZE && ly >= 0 && ly < CHUNK_HEIGHT && lz >= 0 && lz < CHUNK_SIZE) {
+              nb = chunk.getBlock(lx, ly, lz);
+            } else if (getNeighborBlock) {
+              nb = getNeighborBlock(ox + lx, ly, oz + lz);
+            } else {
+              return false;
+            }
+            return isFence(nb) || (!isTransparent(nb) && nb !== BlockType.AIR);
+          };
+
+          // Connecting bars (two horizontal bars at different heights)
+          const barHeights = [[0.25, 0.40], [0.65, 0.80]]; // [bottom, top] of each bar
+          if (canConnect(x + 1, y, z)) { // east
+            for (const [by0, by1] of barHeights) {
+              addBoxFaces(0.625, by0, 0.4375, 1.0, by1, 0.5625, darkColor);
+            }
+          }
+          if (canConnect(x - 1, y, z)) { // west
+            for (const [by0, by1] of barHeights) {
+              addBoxFaces(0.0, by0, 0.4375, 0.375, by1, 0.5625, darkColor);
+            }
+          }
+          if (canConnect(x, y, z + 1)) { // south
+            for (const [by0, by1] of barHeights) {
+              addBoxFaces(0.4375, by0, 0.625, 0.5625, by1, 1.0, darkColor);
+            }
+          }
+          if (canConnect(x, y, z - 1)) { // north
+            for (const [by0, by1] of barHeights) {
+              addBoxFaces(0.4375, by0, 0.0, 0.5625, by1, 0.375, darkColor);
+            }
+          }
+          continue;
+        }
+
+        // Stairs rendering (step geometry based on direction)
+        if (isStairs(block)) {
+          const stairColor = blockDef.color;
+          const darkColor = new THREE.Color(stairColor.r * 0.85, stairColor.g * 0.85, stairColor.b * 0.85);
+          const dir = blockDef.stairDir!;
+
+          const addBoxFaces = (
+            x0: number, y0: number, z0: number,
+            x1: number, y1: number, z1: number,
+            col: THREE.Color
+          ) => {
+            const boxFaces: { corners: [number,number,number][]; normal: [number,number,number]; brightness: number }[] = [
+              { corners: [[x0,y1,z1],[x1,y1,z1],[x1,y1,z0],[x0,y1,z0]], normal: [0,1,0], brightness: 1.0 },
+              { corners: [[x0,y0,z0],[x1,y0,z0],[x1,y0,z1],[x0,y0,z1]], normal: [0,-1,0], brightness: 0.7 },
+              { corners: [[x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[x1,y0,z1]], normal: [1,0,0], brightness: 0.85 },
+              { corners: [[x0,y0,z1],[x0,y1,z1],[x0,y1,z0],[x0,y0,z0]], normal: [-1,0,0], brightness: 0.85 },
+              { corners: [[x1,y0,z1],[x1,y1,z1],[x0,y1,z1],[x0,y0,z1]], normal: [0,0,1], brightness: 0.85 },
+              { corners: [[x0,y0,z0],[x0,y1,z0],[x1,y1,z0],[x1,y0,z0]], normal: [0,0,-1], brightness: 0.85 },
+            ];
+            for (const bf of boxFaces) {
+              for (let ci = 0; ci < 4; ci++) {
+                const c = bf.corners[ci];
+                positions.push(x + c[0], y + c[1], z + c[2]);
+                normals.push(bf.normal[0], bf.normal[1], bf.normal[2]);
+                const v = (hash3(wx * 5 + ci, y * 3 + c[1] * 10, wz * 5 + ci) - 0.5) * 0.08;
+                colors.push(
+                  Math.max(0, Math.min(1, col.r * bf.brightness + v)),
+                  Math.max(0, Math.min(1, col.g * bf.brightness + v)),
+                  Math.max(0, Math.min(1, col.b * bf.brightness + v)),
+                );
+                uvs.push(ci % 2 === 0 ? 0 : 1, ci < 2 ? 0 : 1);
+                sparkles.push(0);
+                oreColors.push(1.0, 0.95, 0.8);
+              }
+              indices.push(vertexCount, vertexCount + 1, vertexCount + 2, vertexCount, vertexCount + 2, vertexCount + 3);
+              vertexCount += 4;
+            }
+          };
+
+          // Bottom half (full width, half height)
+          addBoxFaces(0, 0, 0, 1, 0.5, 1, stairColor);
+
+          // Upper step (half width in the direction the stair rises)
+          switch (dir) {
+            case 'n': addBoxFaces(0, 0.5, 0, 1, 1, 0.5, darkColor); break;   // step rises toward -Z
+            case 's': addBoxFaces(0, 0.5, 0.5, 1, 1, 1, darkColor); break;   // step rises toward +Z
+            case 'e': addBoxFaces(0.5, 0.5, 0, 1, 1, 1, darkColor); break;   // step rises toward +X
+            case 'w': addBoxFaces(0, 0.5, 0, 0.5, 1, 1, darkColor); break;   // step rises toward -X
+          }
+          continue;
+        }
+
+        // Door rendering (thin vertical panel)
+        if (isDoor(block)) {
+          const doorColor = blockDef.color;
+          const isOpen = blockDef.doorOpen === true;
+
+          const addBoxFaces = (
+            x0: number, y0: number, z0: number,
+            x1: number, y1: number, z1: number,
+            col: THREE.Color
+          ) => {
+            const boxFaces: { corners: [number,number,number][]; normal: [number,number,number]; brightness: number }[] = [
+              { corners: [[x0,y1,z1],[x1,y1,z1],[x1,y1,z0],[x0,y1,z0]], normal: [0,1,0], brightness: 1.0 },
+              { corners: [[x0,y0,z0],[x1,y0,z0],[x1,y0,z1],[x0,y0,z1]], normal: [0,-1,0], brightness: 0.7 },
+              { corners: [[x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[x1,y0,z1]], normal: [1,0,0], brightness: 0.85 },
+              { corners: [[x0,y0,z1],[x0,y1,z1],[x0,y1,z0],[x0,y0,z0]], normal: [-1,0,0], brightness: 0.85 },
+              { corners: [[x1,y0,z1],[x1,y1,z1],[x0,y1,z1],[x0,y0,z1]], normal: [0,0,1], brightness: 0.9 },
+              { corners: [[x0,y0,z0],[x0,y1,z0],[x1,y1,z0],[x1,y0,z0]], normal: [0,0,-1], brightness: 0.9 },
+            ];
+            for (const bf of boxFaces) {
+              for (let ci = 0; ci < 4; ci++) {
+                const c = bf.corners[ci];
+                positions.push(x + c[0], y + c[1], z + c[2]);
+                normals.push(bf.normal[0], bf.normal[1], bf.normal[2]);
+                const v = (hash3(wx * 5 + ci, y * 3 + c[1] * 10, wz * 5 + ci) - 0.5) * 0.06;
+                colors.push(
+                  Math.max(0, Math.min(1, col.r * bf.brightness + v)),
+                  Math.max(0, Math.min(1, col.g * bf.brightness + v)),
+                  Math.max(0, Math.min(1, col.b * bf.brightness + v)),
+                );
+                uvs.push(ci % 2 === 0 ? 0 : 1, ci < 2 ? 0 : 1);
+                sparkles.push(0);
+                oreColors.push(1.0, 0.95, 0.8);
+              }
+              indices.push(vertexCount, vertexCount + 1, vertexCount + 2, vertexCount, vertexCount + 2, vertexCount + 3);
+              vertexCount += 4;
+            }
+          };
+
+          if (isOpen) {
+            // Open door: thin along X axis, full Z, attached to west edge
+            addBoxFaces(0, 0, 0, 0.15, 1, 1, doorColor);
+          } else {
+            // Closed door: thin along Z axis, full X
+            addBoxFaces(0, 0, 0.425, 1, 1, 0.575, doorColor);
+          }
           continue;
         }
 

@@ -60,6 +60,17 @@ const ALL_RECIPES: CraftingRecipe[] = [
   { id: 'minecart', name: 'Minecart', ingredients: [{ type: BlockType.IRON_INGOT, count: 5 }], result: { type: BlockType.MINECART, count: 1 }, craftTime: 12, category: 'tools' },
   { id: 'powered_rail', name: 'Powered Rail', ingredients: [{ type: BlockType.GOLD_INGOT, count: 1 }, { type: BlockType.IRON_INGOT, count: 1 }, { type: BlockType.STICK, count: 1 }], result: { type: BlockType.POWERED_RAIL, count: 4 }, craftTime: 10, category: 'blocks' },
   { id: 'lamp', name: 'Lamp', ingredients: [{ type: BlockType.GLASS, count: 4 }, { type: BlockType.TORCH, count: 1 }], result: { type: BlockType.LAMP, count: 1 }, craftTime: 5, category: 'blocks' },
+  // Slabs
+  { id: 'planks_slab', name: 'Oak Slab', ingredients: [{ type: BlockType.PLANKS, count: 3 }], result: { type: BlockType.PLANKS_SLAB, count: 6 }, craftTime: 3, category: 'blocks' },
+  { id: 'cobblestone_slab', name: 'Cobblestone Slab', ingredients: [{ type: BlockType.COBBLESTONE, count: 3 }], result: { type: BlockType.COBBLESTONE_SLAB, count: 6 }, craftTime: 3, category: 'blocks' },
+  { id: 'stone_bricks_slab', name: 'Stone Brick Slab', ingredients: [{ type: BlockType.STONE_BRICKS, count: 3 }], result: { type: BlockType.STONE_BRICKS_SLAB, count: 6 }, craftTime: 3, category: 'blocks' },
+  // Fences
+  { id: 'fence_oak', name: 'Oak Fence', ingredients: [{ type: BlockType.PLANKS, count: 4 }, { type: BlockType.STICK, count: 2 }], result: { type: BlockType.FENCE_OAK, count: 3 }, craftTime: 5, category: 'blocks' },
+  // Stairs
+  { id: 'oak_stairs', name: 'Oak Stairs', ingredients: [{ type: BlockType.PLANKS, count: 6 }], result: { type: BlockType.OAK_STAIRS, count: 4 }, craftTime: 5, category: 'blocks' },
+  { id: 'cobble_stairs', name: 'Cobble Stairs', ingredients: [{ type: BlockType.COBBLESTONE, count: 6 }], result: { type: BlockType.COBBLE_STAIRS, count: 4 }, craftTime: 5, category: 'blocks' },
+  // Doors
+  { id: 'door_oak', name: 'Oak Door', ingredients: [{ type: BlockType.PLANKS, count: 6 }], result: { type: BlockType.DOOR_OAK, count: 3 }, craftTime: 5, category: 'blocks' },
 ];
 
 export const useCraftingStore = create<CraftingState>((set, get) => ({
