@@ -3,7 +3,7 @@ import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
-import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType } from '../../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor } from '../../core/voxel/BlockRegistry';
 import { soundManager } from '../../systems/SoundManager';
 import { spawnParticles } from './DiggingParticles';
 import { processGravity } from '../../systems/SandPhysics';
@@ -120,9 +120,25 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
 
           if (progress >= 1) {
             const [bx, by, bz] = result.blockPos;
-            setBlockW(bx, by, bz, BlockType.AIR);
-            if (def.drops !== BlockType.AIR) {
-              addBlock(def.drops, 1);
+
+            // Door break: remove both halves
+            if (isDoor(result.blockType)) {
+              const doorDef = getBlock(result.blockType);
+              const isUpper = doorDef.doorUpper === true;
+              setBlockW(bx, by, bz, BlockType.AIR);
+              if (isUpper) {
+                setBlockW(bx, by - 1, bz, BlockType.AIR); // remove bottom too
+              } else {
+                setBlockW(bx, by + 1, bz, BlockType.AIR); // remove top too
+              }
+              if (def.drops !== BlockType.AIR) {
+                addBlock(def.drops, 1);
+              }
+            } else {
+              setBlockW(bx, by, bz, BlockType.AIR);
+              if (def.drops !== BlockType.AIR) {
+                addBlock(def.drops, 1);
+              }
             }
             // Leaves have a chance to drop apples
             if (result.blockType === BlockType.LEAVES && Math.random() < 0.15) {
@@ -155,6 +171,28 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
   const handlePointerDown = useCallback(() => {
     isPointerDownRef.current = true;
     if (mode === 'build') {
+      // Door toggle: click door with empty hand or non-placeable item
+      const result = raycast();
+      if (result && isDoor(result.blockType)) {
+        const selectedBlock = getSelectedBlock();
+        if (!selectedBlock || isItemType(selectedBlock)) {
+          const [bx, by, bz] = result.blockPos;
+          const doorDef = getBlock(result.blockType);
+          const isUpper = doorDef.doorUpper === true;
+          const isOpen = doorDef.doorOpen === true;
+          // Toggle both halves
+          if (isUpper) {
+            setBlockW(bx, by, bz, isOpen ? BlockType.DOOR_OAK_TOP : BlockType.DOOR_OAK_TOP_OPEN);
+            setBlockW(bx, by - 1, bz, isOpen ? BlockType.DOOR_OAK_BOTTOM : BlockType.DOOR_OAK_BOTTOM_OPEN);
+          } else {
+            setBlockW(bx, by, bz, isOpen ? BlockType.DOOR_OAK_BOTTOM : BlockType.DOOR_OAK_BOTTOM_OPEN);
+            setBlockW(bx, by + 1, bz, isOpen ? BlockType.DOOR_OAK_TOP : BlockType.DOOR_OAK_TOP_OPEN);
+          }
+          soundManager.playPlaceSound();
+          return;
+        }
+      }
+
       const selectedBlock = getSelectedBlock();
       if (!selectedBlock) return;
 
@@ -182,6 +220,48 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
           window.dispatchEvent(new CustomEvent('digy:spawnMinecart', {
             detail: { x: bx + 0.5, y: spawnY + 0.05, z: bz + 0.5, onRail: isRail }
           }));
+          removeBlock(selectedIdx, 1);
+          soundManager.playPlaceSound();
+        }
+        return;
+      }
+
+      // Handle stair placement - orient based on clicked face
+      if (isStairsItem(selectedBlock)) {
+        const result = raycast();
+        if (!result) return;
+        const [bx, by, bz] = result.blockPos;
+        const px = bx + result.normal[0];
+        const py = by + result.normal[1];
+        const pz = bz + result.normal[2];
+        if (!isSolid(getBlockW(px, py, pz))) {
+          // Determine stair direction from face normal (step rises away from clicked face)
+          let dir: 'n' | 's' | 'e' | 'w' = 'n';
+          const [nx, , nz] = result.normal;
+          if (Math.abs(nx) > Math.abs(nz)) {
+            dir = nx > 0 ? 'e' : 'w';
+          } else if (Math.abs(nz) > 0) {
+            dir = nz > 0 ? 's' : 'n';
+          }
+          setBlockW(px, py, pz, getOrientedStairs(selectedBlock, dir));
+          removeBlock(selectedIdx, 1);
+          soundManager.playPlaceSound();
+        }
+        return;
+      }
+
+      // Handle door placement - places 2-high door
+      if (isDoorItem(selectedBlock)) {
+        const result = raycast();
+        if (!result) return;
+        const [bx, by, bz] = result.blockPos;
+        const px = bx + result.normal[0];
+        const py = by + result.normal[1];
+        const pz = bz + result.normal[2];
+        // Need 2 empty blocks (bottom and top)
+        if (!isSolid(getBlockW(px, py, pz)) && !isSolid(getBlockW(px, py + 1, pz))) {
+          setBlockW(px, py, pz, BlockType.DOOR_OAK_BOTTOM);
+          setBlockW(px, py + 1, pz, BlockType.DOOR_OAK_TOP);
           removeBlock(selectedIdx, 1);
           soundManager.playPlaceSound();
         }

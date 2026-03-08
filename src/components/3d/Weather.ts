@@ -57,7 +57,8 @@ export function useWeather(biomeType: string, center: [number, number, number]) 
     return new Float32Array(config.particleCount * 3);
   }, [config]);
 
-  useFrame((_, delta) => {
+  useFrame((_, rawDelta) => {
+    const delta = Math.min(rawDelta, 0.1); // Clamp to prevent jumps on frame spikes
     const points = pointsRef.current;
     if (!points || !config || config.type === 'none') return;
 

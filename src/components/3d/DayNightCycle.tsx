@@ -37,6 +37,7 @@ export function DayNightCycle({ cycleDuration = 120, onTimeChange }: DayNightCyc
   const timeRef = useRef(0.15); // Start at morning
 
   useFrame((state, delta) => {
+    const clampedDelta = Math.min(delta, 0.1); // Clamp to prevent jumps on frame spikes
     const fixedTime = useDevStore.getState().fixedTimeOfDay;
 
     let t: number;
@@ -44,7 +45,7 @@ export function DayNightCycle({ cycleDuration = 120, onTimeChange }: DayNightCyc
       t = fixedTime;
       timeRef.current = t;
     } else {
-      timeRef.current = (timeRef.current + delta / cycleDuration) % 1;
+      timeRef.current = (timeRef.current + clampedDelta / cycleDuration) % 1;
       t = timeRef.current;
     }
 
