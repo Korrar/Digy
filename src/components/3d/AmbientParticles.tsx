@@ -2,7 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
-import { BlockType, getBlock } from '../../core/voxel/BlockRegistry';
+import { BlockType } from '../../core/voxel/BlockRegistry';
 import { CHUNK_SIZE } from '../../utils/constants';
 
 interface AmbientParticle {
@@ -24,7 +24,6 @@ export function AmbientParticles({ center }: { center: [number, number, number] 
   const pointsRef = useRef<THREE.Points>(null);
   const particlesRef = useRef<AmbientParticle[]>([]);
   const emitTimerRef = useRef(0);
-  const getBlock_ = useWorldStore((s) => s.getBlock);
   const chunks = useWorldStore((s) => s.chunks);
 
   const positionArray = useMemo(() => new Float32Array(MAX_AMBIENT_PARTICLES * 3), []);
