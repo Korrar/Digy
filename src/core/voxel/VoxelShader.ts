@@ -7,6 +7,8 @@ const vertexShader = /* glsl */ `
 attribute float aSparkle;
 attribute vec3 aOreColor;
 attribute float aIsWater;
+attribute float aIsLava;
+attribute float aIsCable;
 
 varying vec3 vColor;
 varying vec3 vNormal;
@@ -16,6 +18,8 @@ varying float vSparkle;
 varying vec3 vOreColor;
 varying vec2 vUv;
 varying float vIsWater;
+varying float vIsLava;
+varying float vIsCable;
 
 uniform float uTime;
 
@@ -26,6 +30,8 @@ void main() {
   vOreColor = aOreColor;
   vUv = uv;
   vIsWater = aIsWater;
+  vIsLava = aIsLava;
+  vIsCable = aIsCable;
 
   vec4 worldPos = modelMatrix * vec4(position, 1.0);
 
@@ -35,6 +41,13 @@ void main() {
     float wave2 = sin(worldPos.z * 2.5 + uTime * 1.8) * 0.03;
     float wave3 = sin((worldPos.x + worldPos.z) * 1.5 + uTime * 1.2) * 0.02;
     worldPos.y += wave1 + wave2 + wave3 - 0.1;
+  }
+
+  // Animated lava: slower, thicker waves
+  if (aIsLava > 0.5 && normal.y > 0.5) {
+    float lwave1 = sin(worldPos.x * 1.2 + uTime * 0.6) * 0.05;
+    float lwave2 = sin(worldPos.z * 1.5 + uTime * 0.4) * 0.04;
+    worldPos.y += lwave1 + lwave2 - 0.08;
   }
 
   vWorldPosition = worldPos.xyz;
@@ -76,6 +89,8 @@ varying float vSparkle;
 varying vec3 vOreColor;
 varying vec2 vUv;
 varying float vIsWater;
+varying float vIsLava;
+varying float vIsCable;
 
 // Hash for sparkle
 float hash(vec3 p) {
@@ -111,12 +126,9 @@ void main() {
     vec3 lightCol = pointLightColors[i];
     vec3 toLight = lightPos - vWorldPosition;
     float dist = length(toLight);
-    // distance = 12.0 for torches, quadratic falloff with decay=2
     float attenuation = 1.0 / (1.0 + 0.15 * dist + 0.05 * dist * dist);
-    // Clamp range: no contribution beyond ~12 blocks
     attenuation *= max(0.0, 1.0 - dist / 14.0);
     float nDotL = max(dot(vNormal, normalize(toLight)), 0.0);
-    // Add both diffuse and ambient contribution (so all nearby faces light up)
     float contribution = nDotL * 0.7 + 0.3;
     pointLightTotal += lightCol * attenuation * contribution;
   }
@@ -131,19 +143,16 @@ void main() {
 
   // Sparkle effect for ores
   if (vSparkle > 0.0) {
-    // Persistent subtle ore sheen (always visible, not animated)
     vec3 sheenPos = floor(vWorldPosition * 6.0) * 0.167;
     float sheenHash = hash(sheenPos);
     float sheen = smoothstep(0.4, 0.8, sheenHash) * 0.15;
     color += vOreColor * sheen * vSparkle;
 
-    // Animated sparkle points per block face
     vec3 sparklePos = floor(vWorldPosition * 4.0) * 0.25;
     float sparkleHash = hash(sparklePos);
     float sparklePhase = sparkleHash * 6.28318 + uTime * 3.0;
     float sparkleBrightness = pow(max(0.0, sin(sparklePhase)), 16.0);
     float sparkleThreshold = step(0.7, sparkleHash);
-    // Tint sparkle with ore color (bright white core + colored halo)
     vec3 sparkleColor = mix(vOreColor, vec3(1.0), 0.4);
     color += sparkleColor * sparkleBrightness * vSparkle * sparkleThreshold * 0.8;
   }
@@ -152,10 +161,39 @@ void main() {
   if (vIsWater > 0.5) {
     float shimmer = sin(vWorldPosition.x * 3.0 + uTime * 2.0) * sin(vWorldPosition.z * 3.5 + uTime * 1.7) * 0.08;
     color += vec3(shimmer * 0.3, shimmer * 0.5, shimmer);
-    // Slight transparency via darker bottom-faces
     float fresnel = abs(dot(vNormal, vec3(0.0, 1.0, 0.0)));
     color *= 0.85 + 0.15 * fresnel;
   }
+
+  // Animated lava: pulsing glow, flowing hot surface
+  if (vIsLava > 0.5) {
+    // Flowing magma pattern
+    float flow1 = sin(vWorldPosition.x * 2.0 + uTime * 0.8) * sin(vWorldPosition.z * 1.8 - uTime * 0.5) * 0.15;
+    float flow2 = sin((vWorldPosition.x + vWorldPosition.z) * 1.5 + uTime * 0.3) * 0.1;
+    // Bright core with dark crust veins
+    float crust = smoothstep(0.3, 0.5, hash(floor(vWorldPosition * 3.0))) * 0.3;
+    // Emissive glow (self-illuminating, ignores lighting)
+    float pulse = 0.9 + 0.1 * sin(uTime * 1.5);
+    vec3 lavaGlow = vec3(1.0, 0.35 + flow1, 0.05 + flow2) * pulse;
+    color = mix(lavaGlow * (1.0 - crust), lavaGlow, 0.6);
+  }
+
+  // Animated cable: electric pulse glow
+  if (vIsCable > 0.5) {
+    // Powered cable (vIsCable > 1.5): bright blue with traveling pulse
+    if (vIsCable > 1.5) {
+      float pulse = 0.7 + 0.3 * sin(vWorldPosition.x * 4.0 + vWorldPosition.z * 4.0 + uTime * 5.0);
+      vec3 cableGlow = vec3(0.2, 0.5, 1.0) * pulse;
+      color = color * 0.3 + cableGlow;
+    } else {
+      // Unpowered cable: dim blue
+      color *= 0.7;
+      color += vec3(0.02, 0.04, 0.12);
+    }
+  }
+
+  // Animated torch flame: add extra glow near torch position
+  // (torch is identified by bright orange vertex color from mesher)
 
   // Tone mapping (simple Reinhard)
   color = color / (color + vec3(1.0));
@@ -164,8 +202,10 @@ void main() {
   float fogFactor = smoothstep(fogNear, fogFar, vFogDepth);
   color = mix(color, fogColor, fogFactor);
 
-  // Water slight transparency
-  float alpha = vIsWater > 0.5 ? 0.8 : 1.0;
+  // Transparency for water/lava
+  float alpha = 1.0;
+  if (vIsWater > 0.5) alpha = 0.8;
+  if (vIsLava > 0.5) alpha = 0.95;
   gl_FragColor = vec4(color, alpha);
 }
 `;

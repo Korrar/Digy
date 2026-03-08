@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BlockType, getBlock, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest, isTorch, isLever, isButton } from './BlockRegistry';
+import { BlockType, getBlock, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest, isTorch, isLever, isButton, isCable } from './BlockRegistry';
 import { ChunkData } from './ChunkData';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
 import { getAtlasUV, getWhiteUV } from './TextureAtlas';
@@ -260,6 +260,8 @@ export function buildChunkMesh(
   const sparkles: number[] = [];
   const oreColors: number[] = [];
   const waterFlags: number[] = [];
+  const lavaFlags: number[] = [];
+  const cableFlags: number[] = [];
   const indices: number[] = [];
   let vertexCount = 0;
 
@@ -277,6 +279,8 @@ export function buildChunkMesh(
         const blockDef = getBlock(block);
         const sparkle = blockDef.sparkle ?? 0;
         const isWater = block === BlockType.WATER ? 1.0 : 0.0;
+        const isLavaBlock = block === BlockType.LAVA ? 1.0 : 0.0;
+        const cableVal = block === BlockType.CABLE_POWERED ? 2.0 : (block === BlockType.CABLE ? 1.0 : 0.0);
         const oreColor = blockDef.oreColor;
 
         // Crossed quad rendering for vegetation
@@ -304,7 +308,7 @@ export function buildChunkMesh(
               const lv = corner[1] > 0.5 ? 1 : 0;
               uvs.push(wuv.u0 + lu * (wuv.u1 - wuv.u0), wuv.v0 + lv * (wuv.v1 - wuv.v0));
               sparkles.push(0);
-              waterFlags.push(0);
+              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
               oreColors.push(1.0, 0.95, 0.8);
             }
 
@@ -359,7 +363,7 @@ export function buildChunkMesh(
               const lv = ci < 2 ? 0 : 1;
               uvs.push(wuv.u0 + lu * (wuv.u1 - wuv.u0), wuv.v0 + lv * (wuv.v1 - wuv.v0));
               sparkles.push(0);
-              waterFlags.push(0);
+              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
               oreColors.push(1.0, 0.95, 0.8);
             }
             indices.push(
@@ -415,7 +419,7 @@ export function buildChunkMesh(
               const lv = ci < 2 ? 0 : 1;
               uvs.push(railWhite.u0 + lu * (railWhite.u1 - railWhite.u0), railWhite.v0 + lv * (railWhite.v1 - railWhite.v0));
               sparkles.push(0);
-              waterFlags.push(0);
+              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
               oreColors.push(1.0, 0.95, 0.8);
             }
             indices.push(
@@ -625,7 +629,7 @@ export function buildChunkMesh(
               const lv = ci < 2 ? 0 : 1;
               uvs.push(chestAtlas.u0 + lu * (chestAtlas.u1 - chestAtlas.u0), chestAtlas.v0 + lv * (chestAtlas.v1 - chestAtlas.v0));
               sparkles.push(0);
-              waterFlags.push(0);
+              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
               oreColors.push(0, 0, 0);
             }
             indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
@@ -673,7 +677,7 @@ export function buildChunkMesh(
               const v = slabAtlas.v0 + face.uvs[ci][1] * (slabAtlas.v1 - slabAtlas.v0);
               uvs.push(u, v);
               sparkles.push(0);
-              waterFlags.push(0);
+              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
               oreColors.push(1.0, 0.95, 0.8);
             }
             indices.push(vertexCount, vertexCount + 1, vertexCount + 2, vertexCount, vertexCount + 2, vertexCount + 3);
@@ -713,7 +717,7 @@ export function buildChunkMesh(
                 const lv = ci < 2 ? 0 : 1;
                 uvs.push(fAtlas.u0 + lu * (fAtlas.u1 - fAtlas.u0), fAtlas.v0 + lv * (fAtlas.v1 - fAtlas.v0));
                 sparkles.push(0);
-                waterFlags.push(0);
+                waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
                 oreColors.push(1.0, 0.95, 0.8);
               }
               indices.push(vertexCount, vertexCount + 1, vertexCount + 2, vertexCount, vertexCount + 2, vertexCount + 3);
@@ -793,7 +797,7 @@ export function buildChunkMesh(
                 const lv = ci < 2 ? 0 : 1;
                 uvs.push(fAtlas.u0 + lu * (fAtlas.u1 - fAtlas.u0), fAtlas.v0 + lv * (fAtlas.v1 - fAtlas.v0));
                 sparkles.push(0);
-                waterFlags.push(0);
+                waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
                 oreColors.push(1.0, 0.95, 0.8);
               }
               indices.push(vertexCount, vertexCount + 1, vertexCount + 2, vertexCount, vertexCount + 2, vertexCount + 3);
@@ -844,7 +848,7 @@ export function buildChunkMesh(
                 const lv = ci < 2 ? 0 : 1;
                 uvs.push(fAtlas.u0 + lu * (fAtlas.u1 - fAtlas.u0), fAtlas.v0 + lv * (fAtlas.v1 - fAtlas.v0));
                 sparkles.push(0);
-                waterFlags.push(0);
+                waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
                 oreColors.push(1.0, 0.95, 0.8);
               }
               indices.push(vertexCount, vertexCount + 1, vertexCount + 2, vertexCount, vertexCount + 2, vertexCount + 3);
@@ -887,7 +891,7 @@ export function buildChunkMesh(
               normals.push(f.n[0], f.n[1], f.n[2]);
               colors.push(baseColor.r * f.b, baseColor.g * f.b, baseColor.b * f.b);
               uvs.push(whiteUV.u0, whiteUV.v0);
-              sparkles.push(0); waterFlags.push(0); oreColors.push(1, 0.95, 0.8);
+              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); oreColors.push(1, 0.95, 0.8);
             }
             indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
             vertexCount += 4;
@@ -913,7 +917,7 @@ export function buildChunkMesh(
               normals.push(f.n[0], f.n[1], f.n[2]);
               colors.push(stickColor.r * f.b, stickColor.g * f.b, stickColor.b * f.b);
               uvs.push(whiteUV.u0, whiteUV.v0);
-              sparkles.push(0); waterFlags.push(0); oreColors.push(1, 0.95, 0.8);
+              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); oreColors.push(1, 0.95, 0.8);
             }
             indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
             vertexCount += 4;
@@ -943,10 +947,79 @@ export function buildChunkMesh(
               normals.push(f.n[0], f.n[1], f.n[2]);
               colors.push(btnColor.r * f.b, btnColor.g * f.b, btnColor.b * f.b);
               uvs.push(whiteUV.u0, whiteUV.v0);
-              sparkles.push(0); waterFlags.push(0); oreColors.push(1, 0.95, 0.8);
+              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); oreColors.push(1, 0.95, 0.8);
             }
             indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
             vertexCount += 4;
+          }
+          continue;
+        }
+
+        // Cable rendering (thin blue wire along bottom of block space)
+        if (isCable(block)) {
+          const cDef = getBlock(block);
+          const cCol = cDef.color;
+          const powered = cDef.cablePowered === true;
+          const whiteUV = getWhiteUV();
+          const brightness = powered ? 1.2 : 0.7;
+
+          // Check neighbors for cable connections (4 horizontal directions)
+          const dirs4: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+          const connected: boolean[] = [];
+          for (const [dx, dz] of dirs4) {
+            const cnx = x + dx;
+            const cnz = z + dz;
+            let nBlock: BlockType;
+            if (cnx >= 0 && cnx < CHUNK_SIZE && cnz >= 0 && cnz < CHUNK_SIZE) {
+              nBlock = chunk.getBlock(cnx, y, cnz);
+            } else if (getNeighborBlock) {
+              nBlock = getNeighborBlock(ox + cnx, y, oz + cnz);
+            } else {
+              nBlock = BlockType.AIR;
+            }
+            // Connect to other cables, levers, or powered rails
+            const nDef = getBlock(nBlock);
+            connected.push(nDef.isCable === true || nDef.isLever === true || nBlock === BlockType.POWERED_RAIL);
+          }
+
+          // Center hub (always drawn)
+          const hw = 0.08; // half-width of wire
+          const cy0 = 0.01, cy1 = 0.06; // wire height (sits on floor)
+          const cx0 = 0.5 - hw, cx1 = 0.5 + hw;
+          const cz0 = 0.5 - hw, cz1 = 0.5 + hw;
+
+          // Draw wire segments to connected neighbors
+          const segments: [number, number, number, number, number, number][] = [
+            [cx0, cy0, cz0, cx1, cy1, cz1], // center hub
+          ];
+          // +X
+          if (connected[0]) segments.push([cx1, cy0, cz0, 1.0, cy1, cz1]);
+          // -X
+          if (connected[1]) segments.push([0.0, cy0, cz0, cx0, cy1, cz1]);
+          // +Z
+          if (connected[2]) segments.push([cx0, cy0, cz1, cx1, cy1, 1.0]);
+          // -Z
+          if (connected[3]) segments.push([cx0, cy0, 0.0, cx1, cy1, cz0]);
+
+          for (const [sx0, sy0, sz0, sx1, sy1, sz1] of segments) {
+            const segFaces: { c: [number,number,number][]; n: [number,number,number]; b: number }[] = [
+              { c: [[sx0,sy1,sz1],[sx1,sy1,sz1],[sx1,sy1,sz0],[sx0,sy1,sz0]], n: [0,1,0], b: 1.0 },
+              { c: [[sx1,sy0,sz0],[sx1,sy1,sz0],[sx1,sy1,sz1],[sx1,sy0,sz1]], n: [1,0,0], b: 0.85 },
+              { c: [[sx0,sy0,sz1],[sx0,sy1,sz1],[sx0,sy1,sz0],[sx0,sy0,sz0]], n: [-1,0,0], b: 0.85 },
+              { c: [[sx1,sy0,sz1],[sx1,sy1,sz1],[sx0,sy1,sz1],[sx0,sy0,sz1]], n: [0,0,1], b: 0.9 },
+              { c: [[sx0,sy0,sz0],[sx0,sy1,sz0],[sx1,sy1,sz0],[sx1,sy0,sz0]], n: [0,0,-1], b: 0.9 },
+            ];
+            for (const f of segFaces) {
+              for (let ci = 0; ci < 4; ci++) {
+                positions.push(x + f.c[ci][0], y + f.c[ci][1], z + f.c[ci][2]);
+                normals.push(f.n[0], f.n[1], f.n[2]);
+                colors.push(cCol.r * f.b * brightness, cCol.g * f.b * brightness, cCol.b * f.b * brightness);
+                uvs.push(whiteUV.u0, whiteUV.v0);
+                sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(cableVal); oreColors.push(1, 0.95, 0.8);
+              }
+              indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+              vertexCount += 4;
+            }
           }
           continue;
         }
@@ -993,7 +1066,7 @@ export function buildChunkMesh(
             const v = atlas.v0 + face.uvs[ci][1] * (atlas.v1 - atlas.v0);
             uvs.push(u, v);
             sparkles.push(sparkle);
-            waterFlags.push(isWater);
+            waterFlags.push(isWater); lavaFlags.push(isLavaBlock); cableFlags.push(cableVal);
             oreColors.push(
               oreColor ? oreColor.r : 1.0,
               oreColor ? oreColor.g : 0.95,
@@ -1018,6 +1091,8 @@ export function buildChunkMesh(
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setAttribute('aSparkle', new THREE.Float32BufferAttribute(sparkles, 1));
   geometry.setAttribute('aIsWater', new THREE.Float32BufferAttribute(waterFlags, 1));
+  geometry.setAttribute('aIsLava', new THREE.Float32BufferAttribute(lavaFlags, 1));
+  geometry.setAttribute('aIsCable', new THREE.Float32BufferAttribute(cableFlags, 1));
   geometry.setAttribute('aOreColor', new THREE.Float32BufferAttribute(oreColors, 3));
   geometry.setIndex(indices);
   geometry.computeBoundingSphere();

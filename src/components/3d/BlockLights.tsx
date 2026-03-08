@@ -40,14 +40,24 @@ export function BlockLights() {
 
             const isTorch = block === BlockType.TORCH;
             const isLamp = block === BlockType.LAMP;
+            const isLava = block === BlockType.LAVA;
+            const isCablePowered = block === BlockType.CABLE_POWERED;
+
+            let colorR = 1.0, colorG = 0.87, colorB = 0.53;
+            let intensity = 0.6;
+            let yOffset = 0.5;
+
+            if (isTorch) { colorR = 1.0; colorG = 0.67; colorB = 0.2; yOffset = 0.8; }
+            else if (isLamp) { intensity = 1.2; }
+            else if (isLava) { colorR = 1.0; colorG = 0.3; colorB = 0.05; intensity = 1.0; }
+            else if (isCablePowered) { colorR = 0.2; colorG = 0.5; colorB = 1.0; intensity = 0.4; }
+
             result.push({
               x: ox + x + 0.5,
-              y: y + (isTorch ? 0.8 : 0.5),
+              y: y + yOffset,
               z: oz + z + 0.5,
-              colorR: isTorch ? 1.0 : 1.0,
-              colorG: isTorch ? 0.67 : 0.87,
-              colorB: isTorch ? 0.2 : 0.53,
-              intensity: isLamp ? 1.2 : 0.6,
+              colorR, colorG, colorB,
+              intensity,
               distance: 12,
               isTorch,
               phaseOffset: Math.random() * Math.PI * 2,

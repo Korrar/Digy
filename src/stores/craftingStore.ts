@@ -78,6 +78,8 @@ const ALL_RECIPES: CraftingRecipe[] = [
   { id: 'button', name: 'Button', ingredients: [{ type: BlockType.STONE, count: 1 }], result: { type: BlockType.BUTTON, count: 1 }, craftTime: 3, category: 'blocks' },
   // Warning Light
   { id: 'warning_light', name: 'Warning Light', ingredients: [{ type: BlockType.GOLD_INGOT, count: 2 }, { type: BlockType.TORCH, count: 1 }], result: { type: BlockType.WARNING_LIGHT, count: 1 }, craftTime: 8, category: 'blocks' },
+  // Cable
+  { id: 'cable', name: 'Cable', ingredients: [{ type: BlockType.IRON_INGOT, count: 1 }, { type: BlockType.COAL, count: 1 }], result: { type: BlockType.CABLE, count: 8 }, craftTime: 5, category: 'blocks' },
 ];
 
 export const useCraftingStore = create<CraftingState>((set, get) => ({
