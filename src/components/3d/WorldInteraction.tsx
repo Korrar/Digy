@@ -3,7 +3,7 @@ import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
-import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, isLever, isButton } from '../../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, isLever, isButton, isCable } from '../../core/voxel/BlockRegistry';
 import { computeRailBlockType, shouldRailUpdate } from '../../core/voxel/ChunkMesher';
 import { soundManager } from '../../systems/SoundManager';
 import { spawnParticles } from './DiggingParticles';
@@ -13,6 +13,11 @@ import { useDevStore } from '../../stores/devStore';
 import { propagateCablePower } from '../../systems/CablePower';
 import { useCombatStore } from '../../stores/combatStore';
 import { useChestStore } from '../../stores/chestStore';
+
+// Tracks cable positions hidden under solid blocks
+// Key format: "x,y,z" — when a block is placed on a cable, the cable is hidden;
+// when the block is broken, the cable is restored.
+const hiddenCables = new Set<string>();
 
 interface WorldInteractionProps {
   mode: 'mine' | 'build' | 'explore';
@@ -138,7 +143,14 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
                 addBlock(def.drops, 1);
               }
             } else {
-              setBlockW(bx, by, bz, BlockType.AIR);
+              // Restore hidden cable when block above it is broken
+              const cableKey = `${bx},${by},${bz}`;
+              if (hiddenCables.has(cableKey)) {
+                hiddenCables.delete(cableKey);
+                setBlockW(bx, by, bz, BlockType.CABLE);
+              } else {
+                setBlockW(bx, by, bz, BlockType.AIR);
+              }
               if (def.drops !== BlockType.AIR) {
                 addBlock(def.drops, 1);
               }
@@ -375,6 +387,16 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
       const targetBlock = getBlockW(px, py, pz);
       // Prevent placing rails on existing rails (would cause floating rail glitch)
       if (isFlat(selectedBlock) && isFlat(targetBlock)) return;
+
+      // When placing a solid block on a cable, hide the cable (it persists underneath)
+      if (isCable(targetBlock) && isSolid(selectedBlock)) {
+        const cableKey = `${px},${py},${pz}`;
+        hiddenCables.add(cableKey);
+        setBlockW(px, py, pz, selectedBlock);
+        removeBlock(selectedIdx, 1);
+        soundManager.playPlaceSound();
+        return;
+      }
 
       if (!isSolid(targetBlock)) {
         // Rail placement: compute and store correct shape, then update neighbors

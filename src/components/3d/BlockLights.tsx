@@ -5,6 +5,7 @@ import { BlockType, getBlock } from '../../core/voxel/BlockRegistry';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
 import { updateVoxelShaderUniforms } from '../../core/voxel/VoxelShader';
 import type { PointLightData } from '../../core/voxel/VoxelShader';
+import { minecartLightsRef } from './Minecarts';
 
 interface LightEntry {
   x: number;
@@ -73,22 +74,51 @@ export function BlockLights() {
   // Push light data to the voxel shader every frame (with flickering)
   useFrame((state) => {
     const t = state.clock.elapsedTime;
-    const pointLights: PointLightData[] = [];
+    const camPos = state.camera.position;
+
+    // Combine block lights + minecart warning lights
+    const allLights: (LightEntry & { distSq: number })[] = lights.map((l) => ({
+      ...l,
+      distSq: (l.x - camPos.x) ** 2 + (l.y - camPos.y) ** 2 + (l.z - camPos.z) ** 2,
+    }));
+
+    // Add minecart warning lights (dynamic, moving)
+    for (const mc of minecartLightsRef.current) {
+      if (!mc.hasWarningLight) continue;
+      const distSq = (mc.x - camPos.x) ** 2 + (mc.y - camPos.y) ** 2 + (mc.z - camPos.z) ** 2;
+      // Two alternating lights on each minecart
+      const phase = (t * 4) % 2;
+      // Left light
+      allLights.push({
+        x: mc.x - 0.25, y: mc.y + 0.45, z: mc.z,
+        colorR: 1.0, colorG: 0.8, colorB: 0.0,
+        intensity: phase < 1 ? 1.5 : 0.1,
+        distance: 12,
+        isTorch: false,
+        phaseOffset: 0,
+        distSq,
+      });
+      // Right light
+      allLights.push({
+        x: mc.x + 0.25, y: mc.y + 0.45, z: mc.z,
+        colorR: 1.0, colorG: 0.8, colorB: 0.0,
+        intensity: phase < 1 ? 0.1 : 1.5,
+        distance: 12,
+        isTorch: false,
+        phaseOffset: 0,
+        distSq,
+      });
+    }
 
     // Sort by distance to camera, take closest 16
-    const camPos = state.camera.position;
-    const sorted = lights
-      .map((l) => ({
-        ...l,
-        distSq: (l.x - camPos.x) ** 2 + (l.y - camPos.y) ** 2 + (l.z - camPos.z) ** 2,
-      }))
+    const sorted = allLights
       .sort((a, b) => a.distSq - b.distSq)
       .slice(0, 16);
 
+    const pointLights: PointLightData[] = [];
     for (const light of sorted) {
       let intensity = light.intensity;
       if (light.isTorch) {
-        // Gentle flickering
         const flicker = 0.85 + 0.15 * Math.sin(t * 6 + light.phaseOffset) * Math.sin(t * 9.3 + light.phaseOffset * 2);
         intensity *= flicker;
       }
