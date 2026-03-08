@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getAtlasTexture } from './TextureAtlas';
 
 const vertexShader = /* glsl */ `
 attribute float aSparkle;
@@ -10,12 +11,14 @@ varying vec3 vWorldPosition;
 varying float vFogDepth;
 varying float vSparkle;
 varying vec3 vOreColor;
+varying vec2 vUv;
 
 void main() {
   vColor = color;
   vNormal = normalize(normalMatrix * normal);
   vSparkle = aSparkle;
   vOreColor = aOreColor;
+  vUv = uv;
 
   vec4 worldPos = modelMatrix * vec4(position, 1.0);
   vWorldPosition = worldPos.xyz;
@@ -37,6 +40,7 @@ uniform vec3 moonLightColor;
 uniform float moonLightIntensity;
 uniform vec3 moonLightDirection;
 uniform float uTime;
+uniform sampler2D uAtlas;
 
 // Fog
 uniform vec3 fogColor;
@@ -49,6 +53,7 @@ varying vec3 vWorldPosition;
 varying float vFogDepth;
 varying float vSparkle;
 varying vec3 vOreColor;
+varying vec2 vUv;
 
 // Hash for sparkle
 float hash(vec3 p) {
@@ -58,6 +63,9 @@ float hash(vec3 p) {
 }
 
 void main() {
+  // Sample texture atlas
+  vec4 texColor = texture2D(uAtlas, vUv);
+
   // Ambient
   vec3 ambient = ambientLightColor * ambientLightIntensity;
 
@@ -76,7 +84,10 @@ void main() {
   // Minimum light floor to prevent pitch black
   vec3 totalLight = ambient + diffuse + moonLight + hemiFill;
   totalLight = max(totalLight, vec3(0.08, 0.07, 0.12));
-  vec3 color = vColor * totalLight;
+
+  // Multiply texture color by vertex color (AO/brightness) and lighting
+  vec3 baseColor = texColor.rgb * vColor;
+  vec3 color = baseColor * totalLight;
 
   // Sparkle effect for ores
   if (vSparkle > 0.0) {
@@ -124,6 +135,7 @@ export function createVoxelMaterial(): THREE.ShaderMaterial {
       moonLightIntensity: { value: 0.0 },
       moonLightDirection: { value: new THREE.Vector3(-0.5, 0.4, -0.3).normalize() },
       uTime: { value: 0.0 },
+      uAtlas: { value: getAtlasTexture() },
       fogColor: { value: new THREE.Color(0x87CEEB) },
       fogNear: { value: 30.0 },
       fogFar: { value: 80.0 },
