@@ -25,19 +25,19 @@ export function buildMinecartGeometry(): THREE.BufferGeometry {
   const wheelColor = new THREE.Color(0x444444);
   const insideColor = new THREE.Color(0x555555);
 
-  // Cart body (open top trapezoid)
-  const bottom = new THREE.BoxGeometry(0.7, 0.06, 0.5);
-  bottom.translate(0, 0.28, 0);
+  // Cart body - wider and lower profile, horizontal plank look
+  const bottom = new THREE.BoxGeometry(0.7, 0.05, 0.55);
+  bottom.translate(0, 0.14, 0);
 
-  // Sides
-  const sideL = new THREE.BoxGeometry(0.06, 0.3, 0.5);
-  sideL.translate(-0.35, 0.43, 0);
-  const sideR = new THREE.BoxGeometry(0.06, 0.3, 0.5);
-  sideR.translate(0.35, 0.43, 0);
-  const sideF = new THREE.BoxGeometry(0.7, 0.3, 0.06);
-  sideF.translate(0, 0.43, 0.25);
-  const sideB = new THREE.BoxGeometry(0.7, 0.3, 0.06);
-  sideB.translate(0, 0.43, -0.25);
+  // Sides - short horizontal planks (wider than tall)
+  const sideL = new THREE.BoxGeometry(0.05, 0.18, 0.55);
+  sideL.translate(-0.35, 0.25, 0);
+  const sideR = new THREE.BoxGeometry(0.05, 0.18, 0.55);
+  sideR.translate(0.35, 0.25, 0);
+  const sideF = new THREE.BoxGeometry(0.7, 0.18, 0.05);
+  sideF.translate(0, 0.25, 0.275);
+  const sideB = new THREE.BoxGeometry(0.7, 0.18, 0.05);
+  sideB.translate(0, 0.25, -0.275);
 
   const parts: [THREE.BufferGeometry, THREE.Color][] = [
     [bottom, insideColor],
@@ -45,12 +45,12 @@ export function buildMinecartGeometry(): THREE.BufferGeometry {
     [sideF, bodyColor], [sideB, bodyColor],
   ];
 
-  // 4 wheels
-  const wheelGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.06, 8);
+  // 4 wheels - lower, closer to ground
+  const wheelGeo = new THREE.CylinderGeometry(0.07, 0.07, 0.05, 8);
   wheelGeo.rotateZ(Math.PI / 2);
   const wheelPositions = [
-    [-0.3, 0.12, -0.2], [0.3, 0.12, -0.2],
-    [-0.3, 0.12, 0.2], [0.3, 0.12, 0.2],
+    [-0.28, 0.07, -0.2], [0.28, 0.07, -0.2],
+    [-0.28, 0.07, 0.2], [0.28, 0.07, 0.2],
   ];
   for (const wp of wheelPositions) {
     const w = wheelGeo.clone();
@@ -59,12 +59,12 @@ export function buildMinecartGeometry(): THREE.BufferGeometry {
   }
 
   // Axles
-  const axleGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.7, 4);
+  const axleGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.6, 4);
   axleGeo.rotateZ(Math.PI / 2);
   const a1 = axleGeo.clone();
-  a1.translate(0, 0.12, -0.2);
+  a1.translate(0, 0.07, -0.2);
   const a2 = axleGeo.clone();
-  a2.translate(0, 0.12, 0.2);
+  a2.translate(0, 0.07, 0.2);
   parts.push([a1, wheelColor], [a2, wheelColor]);
 
   for (const [geo, col] of parts) {
@@ -99,14 +99,22 @@ export function buildMinecartGeometry(): THREE.BufferGeometry {
 
 function MinecartMesh({ cart, onPush }: { cart: Minecart; onPush: (id: number) => void }) {
   const meshRef = useRef<THREE.Mesh>(null);
+  const currentRotY = useRef(0);
 
   useFrame(() => {
     if (!meshRef.current) return;
     meshRef.current.position.copy(cart.position);
 
-    // Face direction of velocity
+    // Face direction of velocity with smooth interpolation for curves
     if (cart.velocity.lengthSq() > 0.0001) {
-      meshRef.current.rotation.y = Math.atan2(cart.velocity.x, cart.velocity.z);
+      const targetY = Math.atan2(cart.velocity.x, cart.velocity.z);
+      // Smooth lerp for rotation (handles angle wrapping)
+      let diff = targetY - currentRotY.current;
+      // Wrap to [-PI, PI]
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      currentRotY.current += diff * 0.25;
+      meshRef.current.rotation.y = currentRotY.current;
     }
   });
 
@@ -331,14 +339,14 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
       // Snap to terrain height
       const targetY = getTerrainHeight(cart.position.x, cart.position.z);
       if (onRail) {
-        cart.position.y = targetY + 0.05;
+        cart.position.y = targetY - 0.02;
       } else {
         // Gravity: fall to terrain
-        if (cart.position.y > targetY + 0.1) {
+        if (cart.position.y > targetY + 0.05) {
           cart.velocity.y = (cart.velocity.y || 0) - gravity;
           cart.position.y += cart.velocity.y;
         } else {
-          cart.position.y = targetY + 0.05;
+          cart.position.y = targetY - 0.02;
           cart.velocity.y = 0;
         }
       }
