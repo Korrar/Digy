@@ -107,22 +107,26 @@ function computeAO(
 
 export type RailShape = 'ns' | 'ew' | 'curve_ne' | 'curve_nw' | 'curve_se' | 'curve_sw';
 
+/** Map from curve block type to RailShape */
+const CURVE_BLOCK_TO_SHAPE: Partial<Record<BlockType, RailShape>> = {
+  [BlockType.RAIL_CURVE_NE]: 'curve_ne',
+  [BlockType.RAIL_CURVE_NW]: 'curve_nw',
+  [BlockType.RAIL_CURVE_SE]: 'curve_se',
+  [BlockType.RAIL_CURVE_SW]: 'curve_sw',
+};
+
+/** Map from RailShape to curve block type */
+export const SHAPE_TO_CURVE_BLOCK: Partial<Record<RailShape, BlockType>> = {
+  'curve_ne': BlockType.RAIL_CURVE_NE,
+  'curve_nw': BlockType.RAIL_CURVE_NW,
+  'curve_se': BlockType.RAIL_CURVE_SE,
+  'curve_sw': BlockType.RAIL_CURVE_SW,
+};
+
 /**
- * Compute the rail shape using pure Minecraft rules.
- * Shape is determined solely by adjacent rail neighbors (4 cardinal directions).
- *
- * Rules (Minecraft Java Edition):
- * - 0 neighbors: use stored block type (RAIL → NS, RAIL_EW → EW)
- * - 1 neighbor: extend toward that neighbor (NS or EW)
- * - 2 opposite neighbors (N+S or E+W): straight
- * - 2 perpendicular neighbors: curve connecting both
- * - 3 neighbors (T-junction): curve with south-east priority
- * - 4 neighbors: always curve south-east
- * - Powered rails: always straight, never curve
- *
- * In Minecraft, track shape is controlled by placement order:
- * existing rails auto-reorient when a new rail is placed next to them
- * (handled automatically since computeRailShape runs during mesh rebuild).
+ * Get the rail shape for rendering. Uses stored block type directly.
+ * Curve block types (RAIL_CURVE_*) return their stored shape.
+ * Straight rails (RAIL, RAIL_EW) and powered rails compute from neighbors.
  */
 export function computeRailShape(
   getBlockAt: (x: number, y: number, z: number) => BlockType,
@@ -130,6 +134,11 @@ export function computeRailShape(
 ): RailShape | null {
   const block = getBlockAt(x, y, z);
   if (!isFlat(block)) return null;
+
+  // Curve block types: return stored shape directly (like Minecraft)
+  const storedCurve = CURVE_BLOCK_TO_SHAPE[block];
+  if (storedCurve) return storedCurve;
+
   const isPowered = block === BlockType.POWERED_RAIL;
 
   const hasNorth = isFlat(getBlockAt(x, y, z - 1));
@@ -145,53 +154,14 @@ export function computeRailShape(
 
   const count = (hasNorth ? 1 : 0) + (hasSouth ? 1 : 0) + (hasEast ? 1 : 0) + (hasWest ? 1 : 0);
 
-  // 4-way: always south-east (Minecraft south-east rule)
-  if (count === 4) return 'curve_se';
-
-  // T-junction: smart connectivity using 2nd-degree neighbors
-  // When two T-junctions are adjacent, each should curve AWAY from the other
-  // to form an S-curve. Check diagonal neighbors to determine which pair to connect.
-  if (count === 3) {
-    if (hasNorth && hasSouth && hasEast && !hasWest) {
-      // N+S+E: odd=E, choose N or S to pair with E
-      const sEastRail = isFlat(getBlockAt(x + 1, y, z + 1));
-      const nEastRail = isFlat(getBlockAt(x + 1, y, z - 1));
-      if (sEastRail && !nEastRail) return 'curve_ne'; // S has E-path, N needs E
-      if (nEastRail && !sEastRail) return 'curve_se'; // N has E-path, S needs E
-      return 'curve_se'; // fallback: south-east priority
-    }
-    if (hasNorth && hasSouth && !hasEast && hasWest) {
-      // N+S+W: odd=W, choose N or S to pair with W
-      const sWestRail = isFlat(getBlockAt(x - 1, y, z + 1));
-      const nWestRail = isFlat(getBlockAt(x - 1, y, z - 1));
-      if (sWestRail && !nWestRail) return 'curve_nw'; // S has W-path, N needs W
-      if (nWestRail && !sWestRail) return 'curve_sw'; // N has W-path, S needs W
-      return 'curve_sw'; // fallback: south priority
-    }
-    if (hasNorth && !hasSouth && hasEast && hasWest) {
-      // N+E+W: odd=N, choose E or W to pair with N
-      const wNorthRail = isFlat(getBlockAt(x - 1, y, z - 1));
-      const eNorthRail = isFlat(getBlockAt(x + 1, y, z - 1));
-      if (wNorthRail && !eNorthRail) return 'curve_ne'; // W has N-path, E needs N
-      if (eNorthRail && !wNorthRail) return 'curve_nw'; // E has N-path, W needs N
-      return 'curve_ne'; // fallback: east priority
-    }
-    if (!hasNorth && hasSouth && hasEast && hasWest) {
-      // S+E+W: odd=S, choose E or W to pair with S
-      const wSouthRail = isFlat(getBlockAt(x - 1, y, z + 1));
-      const eSouthRail = isFlat(getBlockAt(x + 1, y, z + 1));
-      if (wSouthRail && !eSouthRail) return 'curve_se'; // W has S-path, E needs S
-      if (eSouthRail && !wSouthRail) return 'curve_sw'; // E has S-path, W needs S
-      return 'curve_se'; // fallback: south-east priority
-    }
-  }
-
-  // 2 neighbors
-  if (count === 2) {
-    // Opposite neighbors: always straight
+  // 2 opposite neighbors: always straight
+  if (count >= 2) {
     if (hasNorth && hasSouth) return 'ns';
     if (hasEast && hasWest) return 'ew';
-    // Perpendicular neighbors: always curve
+  }
+
+  // 2 perpendicular neighbors: always curve
+  if (count === 2) {
     if (hasSouth && hasEast) return 'curve_se';
     if (hasSouth && hasWest) return 'curve_sw';
     if (hasNorth && hasEast) return 'curve_ne';
@@ -205,9 +175,85 @@ export function computeRailShape(
   }
 
   // 0 neighbors: use stored block type for orientation
-  // RAIL_EW was placed when player faced east/west
   if (block === BlockType.RAIL_EW) return 'ew';
   return 'ns';
+}
+
+/**
+ * Compute what block type a rail at (x,y,z) should be, considering neighbors.
+ * Used at placement time and for neighbor updates.
+ * For 3+ neighbors (T-junction), uses 2nd-degree neighbor check.
+ */
+export function computeRailBlockType(
+  getBlockAt: (x: number, y: number, z: number) => BlockType,
+  x: number, y: number, z: number
+): BlockType {
+  const block = getBlockAt(x, y, z);
+  const isPowered = block === BlockType.POWERED_RAIL;
+
+  const hasNorth = isFlat(getBlockAt(x, y, z - 1));
+  const hasSouth = isFlat(getBlockAt(x, y, z + 1));
+  const hasEast = isFlat(getBlockAt(x + 1, y, z));
+  const hasWest = isFlat(getBlockAt(x - 1, y, z));
+
+  if (isPowered) return BlockType.POWERED_RAIL;
+
+  const count = (hasNorth ? 1 : 0) + (hasSouth ? 1 : 0) + (hasEast ? 1 : 0) + (hasWest ? 1 : 0);
+
+  // 4-way: south-east curve
+  if (count === 4) return BlockType.RAIL_CURVE_SE;
+
+  // T-junction: smart connectivity using 2nd-degree neighbors
+  if (count === 3) {
+    if (hasNorth && hasSouth && hasEast && !hasWest) {
+      const sEastRail = isFlat(getBlockAt(x + 1, y, z + 1));
+      const nEastRail = isFlat(getBlockAt(x + 1, y, z - 1));
+      if (sEastRail && !nEastRail) return BlockType.RAIL_CURVE_NE;
+      if (nEastRail && !sEastRail) return BlockType.RAIL_CURVE_SE;
+      return BlockType.RAIL_CURVE_SE;
+    }
+    if (hasNorth && hasSouth && !hasEast && hasWest) {
+      const sWestRail = isFlat(getBlockAt(x - 1, y, z + 1));
+      const nWestRail = isFlat(getBlockAt(x - 1, y, z - 1));
+      if (sWestRail && !nWestRail) return BlockType.RAIL_CURVE_NW;
+      if (nWestRail && !sWestRail) return BlockType.RAIL_CURVE_SW;
+      return BlockType.RAIL_CURVE_SW;
+    }
+    if (hasNorth && !hasSouth && hasEast && hasWest) {
+      const wNorthRail = isFlat(getBlockAt(x - 1, y, z - 1));
+      const eNorthRail = isFlat(getBlockAt(x + 1, y, z - 1));
+      if (wNorthRail && !eNorthRail) return BlockType.RAIL_CURVE_NE;
+      if (eNorthRail && !wNorthRail) return BlockType.RAIL_CURVE_NW;
+      return BlockType.RAIL_CURVE_NE;
+    }
+    if (!hasNorth && hasSouth && hasEast && hasWest) {
+      const wSouthRail = isFlat(getBlockAt(x - 1, y, z + 1));
+      const eSouthRail = isFlat(getBlockAt(x + 1, y, z + 1));
+      if (wSouthRail && !eSouthRail) return BlockType.RAIL_CURVE_SE;
+      if (eSouthRail && !wSouthRail) return BlockType.RAIL_CURVE_SW;
+      return BlockType.RAIL_CURVE_SE;
+    }
+  }
+
+  // 2 neighbors
+  if (count === 2) {
+    if (hasNorth && hasSouth) return BlockType.RAIL;
+    if (hasEast && hasWest) return BlockType.RAIL_EW;
+    if (hasSouth && hasEast) return BlockType.RAIL_CURVE_SE;
+    if (hasSouth && hasWest) return BlockType.RAIL_CURVE_SW;
+    if (hasNorth && hasEast) return BlockType.RAIL_CURVE_NE;
+    return BlockType.RAIL_CURVE_NW;
+  }
+
+  // 1 neighbor
+  if (count === 1) {
+    if (hasEast || hasWest) return BlockType.RAIL_EW;
+    return BlockType.RAIL;
+  }
+
+  // 0 neighbors: keep current
+  if (block === BlockType.RAIL_EW) return BlockType.RAIL_EW;
+  return BlockType.RAIL;
 }
 
 export function buildChunkMesh(

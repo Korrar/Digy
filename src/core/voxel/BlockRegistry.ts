@@ -87,6 +87,11 @@ export enum BlockType {
 
   // Rail with EW default orientation (placed when player faces E/W)
   RAIL_EW = 75,
+  // Rail curves (stored orientation, like Minecraft)
+  RAIL_CURVE_NE = 76,
+  RAIL_CURVE_NW = 77,
+  RAIL_CURVE_SE = 78,
+  RAIL_CURVE_SW = 79,
 }
 
 export interface BlockDefinition {
@@ -202,6 +207,10 @@ register({ id: BlockType.RAIL, name: 'Rail', color: new THREE.Color(0x8b6914), h
 register({ id: BlockType.MINECART, name: 'Minecart', color: new THREE.Color(0x888888), hardness: 0.5, transparent: true, drops: BlockType.MINECART, stackSize: 1, isItem: true, isPlaceableItem: true, icon: 'minecart' });
 register({ id: BlockType.POWERED_RAIL, name: 'Powered Rail', color: new THREE.Color(0xcc4444), hardness: 0.5, transparent: true, drops: BlockType.POWERED_RAIL, stackSize: 64, icon: 'powered_rail', isFlat: true });
 register({ id: BlockType.RAIL_EW, name: 'Rail', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: true, drops: BlockType.RAIL, stackSize: 64, icon: 'rail', isFlat: true });
+register({ id: BlockType.RAIL_CURVE_NE, name: 'Rail', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: true, drops: BlockType.RAIL, stackSize: 64, icon: 'rail', isFlat: true });
+register({ id: BlockType.RAIL_CURVE_NW, name: 'Rail', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: true, drops: BlockType.RAIL, stackSize: 64, icon: 'rail', isFlat: true });
+register({ id: BlockType.RAIL_CURVE_SE, name: 'Rail', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: true, drops: BlockType.RAIL, stackSize: 64, icon: 'rail', isFlat: true });
+register({ id: BlockType.RAIL_CURVE_SW, name: 'Rail', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: true, drops: BlockType.RAIL, stackSize: 64, icon: 'rail', isFlat: true });
 register({ id: BlockType.LAMP, name: 'Lamp', color: new THREE.Color(0xffdd88), hardness: 0.5, transparent: false, drops: BlockType.LAMP, stackSize: 64, emitsLight: true, icon: 'lamp' });
 
 // Slabs (half-height blocks)
@@ -288,7 +297,7 @@ export function isFood(type: BlockType): boolean {
 
 export function canPlaceMinecart(surfaceBlock: BlockType): boolean {
   if (surfaceBlock === BlockType.AIR || surfaceBlock === BlockType.WATER) return false;
-  if (surfaceBlock === BlockType.RAIL || surfaceBlock === BlockType.RAIL_EW || surfaceBlock === BlockType.POWERED_RAIL) return true;
+  if (isFlat(surfaceBlock)) return true;
   return isSolid(surfaceBlock);
 }
 
