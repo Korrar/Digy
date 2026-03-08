@@ -8,7 +8,7 @@ import { MushroomBiome } from '../../terrain/biomes/MushroomBiome';
 import { VolcanicBiome } from '../../terrain/biomes/VolcanicBiome';
 import { SavannaBiome } from '../../terrain/biomes/SavannaBiome';
 import { CherryBiome } from '../../terrain/biomes/CherryBiome';
-import { createBiome, BIOME_LIST } from '../../terrain/biomes';
+import { createBiome, BIOME_LIST, type BiomeType } from '../../terrain/biomes';
 
 describe('New block types', () => {
   describe('Piston blocks', () => {
@@ -313,7 +313,7 @@ describe('New biomes generation', () => {
 
   it('should create all biome types via createBiome', () => {
     // createBiome imported at top
-    const biomeTypes = ['forest', 'desert', 'cave', 'mountains', 'swamp', 'tundra', 'jungle', 'mushroom', 'volcanic', 'savanna', 'cherry'];
+    const biomeTypes: BiomeType[] = ['forest', 'desert', 'cave', 'mountains', 'swamp', 'tundra', 'jungle', 'mushroom', 'volcanic', 'savanna', 'cherry'];
     for (const type of biomeTypes) {
       const biome = createBiome(type, 42);
       expect(biome).toBeDefined();

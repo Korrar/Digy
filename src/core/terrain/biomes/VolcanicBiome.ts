@@ -1,7 +1,7 @@
 import { BiomeBase, type BiomeConfig } from './BiomeBase';
 import { ChunkData } from '../../voxel/ChunkData';
 import { BlockType } from '../../voxel/BlockRegistry';
-import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../../utils/constants';
+import { CHUNK_SIZE } from '../../../utils/constants';
 
 export class VolcanicBiome extends BiomeBase {
   readonly config: BiomeConfig = {
