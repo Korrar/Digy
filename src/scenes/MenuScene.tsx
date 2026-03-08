@@ -12,15 +12,16 @@ export function MenuScene() {
   return (
     <div style={{
       width: '100vw',
-      height: '100vh',
+      minHeight: '100vh',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      justifyContent: 'center',
+      justifyContent: 'flex-start',
       background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
       fontFamily: "'Segoe UI', sans-serif",
-      padding: '16px',
+      padding: 'clamp(24px, 5vh, 48px) 16px env(safe-area-inset-bottom, 24px) 16px',
       overflow: 'auto',
+      boxSizing: 'border-box',
     }}>
       <h1 style={{
         color: '#fff',

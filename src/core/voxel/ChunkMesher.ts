@@ -382,13 +382,16 @@ export function buildChunkMesh(
           addTorchFace([[sx1,sy0,sz0],[sx1,sy0,sz1],[sx1,sy1,sz1],[sx1,sy1,sz0]], [1,0,0], stickColor);
           addTorchFace([[sx0,sy1,sz0],[sx1,sy1,sz0],[sx1,sy1,sz1],[sx0,sy1,sz1]], [0,1,0], stickColor);
 
-          // Flame: 2 crossed quads (X shape) for glow effect - marked as flame for shader animation
-          // Crossed quad 1
+          // Flame: 3 crossed quads (star shape) for volumetric glow
+          // Quad 1 - diagonal
           addTorchFace([[fx0,fy0,fz0],[fx1,fy0,fz1],[fx1,fy1,fz1],[fx0,fy1,fz0]], [-0.707,0,0.707], flameColor, true);
           addTorchFace([[fx1,fy0,fz1],[fx0,fy0,fz0],[fx0,fy1,fz0],[fx1,fy1,fz1]], [0.707,0,-0.707], flameColor, true);
-          // Crossed quad 2
+          // Quad 2 - other diagonal
           addTorchFace([[fx1,fy0,fz0],[fx0,fy0,fz1],[fx0,fy1,fz1],[fx1,fy1,fz0]], [0.707,0,0.707], flameTopColor, true);
           addTorchFace([[fx0,fy0,fz1],[fx1,fy0,fz0],[fx1,fy1,fz0],[fx0,fy1,fz1]], [-0.707,0,-0.707], flameTopColor, true);
+          // Quad 3 - front/back for more volume
+          addTorchFace([[fx0,fy0,0.5],[fx1,fy0,0.5],[fx1,fy1,0.5],[fx0,fy1,0.5]], [0,0,1], flameColor, true);
+          addTorchFace([[fx1,fy0,0.5],[fx0,fy0,0.5],[fx0,fy1,0.5],[fx1,fy1,0.5]], [0,0,-1], flameTopColor, true);
 
           continue;
         }
