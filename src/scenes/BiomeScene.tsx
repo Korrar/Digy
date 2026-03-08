@@ -12,6 +12,7 @@ import { DayNightCycle } from '../components/3d/DayNightCycle';
 import { Hotbar } from '../components/ui/Hotbar';
 import { HUD } from '../components/ui/HUD';
 import { InventoryPanel } from '../components/ui/InventoryPanel';
+import { ChestPanel } from '../components/ui/ChestPanel';
 import { MobileControls, useTouchDetect } from '../components/ui/MobileControls';
 import { useInventoryStore } from '../stores/inventoryStore';
 import { CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE, CAMERA_MIN_POLAR, CAMERA_MAX_POLAR } from '../utils/constants';
@@ -204,6 +205,7 @@ export function BiomeScene() {
       <ModeToggle mode={gameMode} onToggle={() => setGameMode((m) => m === 'mine' ? 'explore' : 'mine')} />
       <Hotbar />
       <InventoryPanel />
+      <ChestPanel />
       <CraftingPanel />
       <LootPopup />
       {isTouch && (

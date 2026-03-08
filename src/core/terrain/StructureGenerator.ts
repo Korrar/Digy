@@ -47,6 +47,8 @@ function createCabin(): Structure {
   }
   // Torch inside
   blocks.push([2, 2, 2, BlockType.TORCH]);
+  // Chest with loot
+  blocks.push([3, 1, 3, BlockType.CHEST]);
   return { name: 'cabin', blocks, width: 5, depth: 5, height: 5 };
 }
 
@@ -72,8 +74,8 @@ function createPyramid(): Structure {
       }
     }
   }
-  // Gold inside
-  blocks.push([3, 1, 3, BlockType.GOLD_ORE]);
+  // Treasure inside
+  blocks.push([3, 1, 3, BlockType.CHEST]);
   blocks.push([3, 2, 3, BlockType.TORCH]);
   return { name: 'pyramid', blocks, width: 7, depth: 7, height: 5 };
 }
@@ -111,6 +113,8 @@ function createWatchtower(): Structure {
   blocks.push([3, 8, 1, BlockType.STONE_BRICKS]);
   // Torch on top
   blocks.push([1, 8, 1, BlockType.TORCH]);
+  // Chest at base
+  blocks.push([1, 1, 1, BlockType.CHEST]);
   return { name: 'watchtower', blocks, width: 5, depth: 5, height: 9 };
 }
 
@@ -147,6 +151,8 @@ function createIgloo(): Structure {
   }
   // Cap
   blocks.push([2, 3, 2, BlockType.ICE]);
+  // Hidden chest
+  blocks.push([2, 1, 2, BlockType.CHEST]);
   // Floor
   for (let x = 1; x < 4; x++) {
     for (let z = 1; z < 4; z++) {
@@ -173,6 +179,8 @@ function createMineCorridor(): Structure {
   // Torch at entrance
   blocks.push([1, 1, 0, BlockType.TORCH]);
   blocks.push([1, 1, 4, BlockType.TORCH]);
+  // Chest at the end of the corridor
+  blocks.push([1, 0, 3, BlockType.CHEST]);
   return { name: 'mine_corridor', blocks, width: 3, depth: 5, height: 3 };
 }
 

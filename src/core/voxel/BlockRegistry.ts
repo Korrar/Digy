@@ -92,6 +92,8 @@ export enum BlockType {
   RAIL_CURVE_NW = 77,
   RAIL_CURVE_SE = 78,
   RAIL_CURVE_SW = 79,
+  // Chest
+  CHEST = 80,
 }
 
 export interface BlockDefinition {
@@ -137,6 +139,8 @@ export interface BlockDefinition {
   doorOpen?: boolean;
   /** Door is upper half */
   doorUpper?: boolean;
+  /** Render as chest (smaller box with lid) */
+  isChest?: boolean;
 }
 
 const BLOCKS: Map<BlockType, BlockDefinition> = new Map();
@@ -235,6 +239,9 @@ register({ id: BlockType.COBBLE_STAIRS_S, name: 'Cobble Stairs', color: new THRE
 register({ id: BlockType.COBBLE_STAIRS_E, name: 'Cobble Stairs', color: new THREE.Color(0x707070), hardness: 2.0, transparent: true, drops: BlockType.COBBLE_STAIRS, stackSize: 0, stairDir: 'e' });
 register({ id: BlockType.COBBLE_STAIRS_W, name: 'Cobble Stairs', color: new THREE.Color(0x707070), hardness: 2.0, transparent: true, drops: BlockType.COBBLE_STAIRS, stackSize: 0, stairDir: 'w' });
 
+// Chest
+register({ id: BlockType.CHEST, name: 'Chest', color: new THREE.Color(0xb8945a), hardness: 1.5, transparent: true, drops: BlockType.CHEST, stackSize: 64, isChest: true, icon: 'chest' });
+
 // Door - inventory item
 register({ id: BlockType.DOOR_OAK, name: 'Oak Door', color: new THREE.Color(0x8b6914), hardness: 1.0, transparent: true, drops: BlockType.DOOR_OAK, stackSize: 64, isItem: true, icon: 'door' });
 
@@ -323,6 +330,10 @@ export function isStairsItem(type: BlockType): boolean {
 
 export function isDoor(type: BlockType): boolean {
   return getBlock(type).isDoor === true;
+}
+
+export function isChest(type: BlockType): boolean {
+  return getBlock(type).isChest === true;
 }
 
 export function isDoorItem(type: BlockType): boolean {

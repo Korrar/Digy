@@ -14,6 +14,7 @@ import { ambientMusic } from '../systems/AmbientMusic';
 import { Hotbar } from '../components/ui/Hotbar';
 import { HUD } from '../components/ui/HUD';
 import { InventoryPanel } from '../components/ui/InventoryPanel';
+import { ChestPanel } from '../components/ui/ChestPanel';
 import { MobileControls, useTouchDetect } from '../components/ui/MobileControls';
 import { ChunkData, chunkKey } from '../core/voxel/ChunkData';
 import { buildChunkMesh } from '../core/voxel/ChunkMesher';
@@ -144,6 +145,7 @@ export function HideoutScene() {
       <HUD mode={mode} onModeToggle={toggleMode} timeIndicator={timeIndicator} />
       <Hotbar />
       <InventoryPanel />
+      <ChestPanel />
       {isTouch && (
         <MobileControls
           onDigStart={handleDigStart}
