@@ -180,9 +180,53 @@ export function computeRailShape(
 }
 
 /**
+ * Get the two connection directions for a rail block type.
+ * Returns [[dx1, dz1], [dx2, dz2]] where dx/dz are -1, 0, or 1.
+ * North = [0,-1], South = [0,1], East = [1,0], West = [-1,0]
+ */
+export function getRailConnections(blockType: BlockType): [number, number][] {
+  switch (blockType) {
+    case BlockType.RAIL:           return [[0, -1], [0, 1]];  // N, S
+    case BlockType.RAIL_EW:        return [[1, 0], [-1, 0]];  // E, W
+    case BlockType.RAIL_CURVE_NE:  return [[0, -1], [1, 0]];  // N, E
+    case BlockType.RAIL_CURVE_NW:  return [[0, -1], [-1, 0]]; // N, W
+    case BlockType.RAIL_CURVE_SE:  return [[0, 1], [1, 0]];   // S, E
+    case BlockType.RAIL_CURVE_SW:  return [[0, 1], [-1, 0]];  // S, W
+    case BlockType.POWERED_RAIL:   return [[0, -1], [0, 1]];  // N, S (default)
+    default:                       return [[0, -1], [0, 1]];  // N, S
+  }
+}
+
+/**
+ * Check if a neighbor rail should update when a new rail is placed/removed nearby.
+ * Returns true if the rail needs recomputation (one or both connections are broken).
+ * Returns false if both connections still have rails (rail is happy, don't change).
+ * This implements Minecraft's behavior where existing rails with 2 valid connections
+ * are not disrupted by new adjacent rails.
+ */
+export function shouldRailUpdate(
+  getBlockAt: (x: number, y: number, z: number) => BlockType,
+  x: number, y: number, z: number
+): boolean {
+  const block = getBlockAt(x, y, z);
+  if (!isFlat(block)) return false;
+  if (block === BlockType.POWERED_RAIL) return false;
+
+  const connections = getRailConnections(block);
+  let validCount = 0;
+  for (const [dx, dz] of connections) {
+    if (isFlat(getBlockAt(x + dx, y, z + dz))) {
+      validCount++;
+    }
+  }
+  // Only update if the rail doesn't have both connections satisfied
+  return validCount < 2;
+}
+
+/**
  * Compute what block type a rail at (x,y,z) should be, considering neighbors.
  * Used at placement time and for neighbor updates.
- * For 3+ neighbors (T-junction), uses 2nd-degree neighbor check.
+ * Follows Minecraft's south-east rule: curve priority is SE > SW > NE > NW.
  */
 export function computeRailBlockType(
   getBlockAt: (x: number, y: number, z: number) => BlockType,
@@ -200,39 +244,14 @@ export function computeRailBlockType(
 
   const count = (hasNorth ? 1 : 0) + (hasSouth ? 1 : 0) + (hasEast ? 1 : 0) + (hasWest ? 1 : 0);
 
-  // 4-way: south-east curve
-  if (count === 4) return BlockType.RAIL_CURVE_SE;
-
-  // T-junction: smart connectivity using 2nd-degree neighbors
-  if (count === 3) {
-    if (hasNorth && hasSouth && hasEast && !hasWest) {
-      const sEastRail = isFlat(getBlockAt(x + 1, y, z + 1));
-      const nEastRail = isFlat(getBlockAt(x + 1, y, z - 1));
-      if (sEastRail && !nEastRail) return BlockType.RAIL_CURVE_NE;
-      if (nEastRail && !sEastRail) return BlockType.RAIL_CURVE_SE;
-      return BlockType.RAIL_CURVE_SE;
-    }
-    if (hasNorth && hasSouth && !hasEast && hasWest) {
-      const sWestRail = isFlat(getBlockAt(x - 1, y, z + 1));
-      const nWestRail = isFlat(getBlockAt(x - 1, y, z - 1));
-      if (sWestRail && !nWestRail) return BlockType.RAIL_CURVE_NW;
-      if (nWestRail && !sWestRail) return BlockType.RAIL_CURVE_SW;
-      return BlockType.RAIL_CURVE_SW;
-    }
-    if (hasNorth && !hasSouth && hasEast && hasWest) {
-      const wNorthRail = isFlat(getBlockAt(x - 1, y, z - 1));
-      const eNorthRail = isFlat(getBlockAt(x + 1, y, z - 1));
-      if (wNorthRail && !eNorthRail) return BlockType.RAIL_CURVE_NE;
-      if (eNorthRail && !wNorthRail) return BlockType.RAIL_CURVE_NW;
-      return BlockType.RAIL_CURVE_NE;
-    }
-    if (!hasNorth && hasSouth && hasEast && hasWest) {
-      const wSouthRail = isFlat(getBlockAt(x - 1, y, z + 1));
-      const eSouthRail = isFlat(getBlockAt(x + 1, y, z + 1));
-      if (wSouthRail && !eSouthRail) return BlockType.RAIL_CURVE_SE;
-      if (eSouthRail && !wSouthRail) return BlockType.RAIL_CURVE_SW;
-      return BlockType.RAIL_CURVE_SE;
-    }
+  // 3 or 4 neighbors (T-junction or 4-way): Minecraft south-east rule
+  // Try curves in priority order: SE > SW > NE > NW
+  // Pick the first curve where both directions have rail neighbors
+  if (count >= 3) {
+    if (hasSouth && hasEast) return BlockType.RAIL_CURVE_SE;
+    if (hasSouth && hasWest) return BlockType.RAIL_CURVE_SW;
+    if (hasNorth && hasEast) return BlockType.RAIL_CURVE_NE;
+    return BlockType.RAIL_CURVE_NW;
   }
 
   // 2 neighbors

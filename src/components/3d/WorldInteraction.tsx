@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat } from '../../core/voxel/BlockRegistry';
-import { computeRailBlockType } from '../../core/voxel/ChunkMesher';
+import { computeRailBlockType, shouldRailUpdate } from '../../core/voxel/ChunkMesher';
 import { soundManager } from '../../systems/SoundManager';
 import { spawnParticles } from './DiggingParticles';
 import { processGravity } from '../../systems/SandPhysics';
@@ -155,7 +155,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
             processGravity(bx, by, bz);
             checkWaterDrain(bx, by, bz);
 
-            // If a rail was broken, update neighboring rails
+            // If a rail was broken, update neighboring rails (only those with broken connections)
             if (isFlat(result.blockType)) {
               const neighbors: [number, number, number][] = [
                 [bx, by, bz - 1], [bx, by, bz + 1],
@@ -164,9 +164,12 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
               for (const [nx, ny, nz] of neighbors) {
                 const nBlock = getBlockW(nx, ny, nz);
                 if (isFlat(nBlock) && nBlock !== BlockType.POWERED_RAIL) {
-                  const newType = computeRailBlockType(getBlockW, nx, ny, nz);
-                  if (newType !== nBlock) {
-                    setBlockW(nx, ny, nz, newType);
+                  // When breaking, always check for update since a connection was just lost
+                  if (shouldRailUpdate(getBlockW, nx, ny, nz)) {
+                    const newType = computeRailBlockType(getBlockW, nx, ny, nz);
+                    if (newType !== nBlock) {
+                      setBlockW(nx, ny, nz, newType);
+                    }
                   }
                 }
               }
@@ -321,16 +324,19 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
             if (correctType !== BlockType.RAIL) {
               setBlockW(px, py, pz, correctType);
             }
-            // Update neighboring rails (they may need to curve toward this new rail)
+            // Update neighboring rails (only if their current connections are broken)
+            // Minecraft behavior: rails with 2 valid connections don't change
             const neighbors: [number, number, number][] = [
               [px, py, pz - 1], [px, py, pz + 1],
               [px + 1, py, pz], [px - 1, py, pz],
             ];
             for (const [nx, ny, nz] of neighbors) {
               if (isFlat(getBlockW(nx, ny, nz)) && getBlockW(nx, ny, nz) !== BlockType.POWERED_RAIL) {
-                const newType = computeRailBlockType(getBlockW, nx, ny, nz);
-                if (newType !== getBlockW(nx, ny, nz)) {
-                  setBlockW(nx, ny, nz, newType);
+                if (shouldRailUpdate(getBlockW, nx, ny, nz)) {
+                  const newType = computeRailBlockType(getBlockW, nx, ny, nz);
+                  if (newType !== getBlockW(nx, ny, nz)) {
+                    setBlockW(nx, ny, nz, newType);
+                  }
                 }
               }
             }
