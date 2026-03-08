@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { getBlock, BlockType } from '../../core/voxel/BlockRegistry';
 import { INVENTORY_SIZE, HOTBAR_SIZE } from '../../utils/constants';
+import { ItemIcon } from './Icons';
 
 function blockColor(type: BlockType): string {
   const def = getBlock(type);
@@ -11,8 +13,28 @@ export function InventoryPanel() {
   const slots = useInventoryStore((s) => s.slots);
   const isOpen = useInventoryStore((s) => s.inventoryOpen);
   const toggle = useInventoryStore((s) => s.toggleInventory);
+  const moveSlot = useInventoryStore((s) => s.moveSlot);
+  const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
 
   if (!isOpen) return null;
+
+  const handleSlotClick = (idx: number) => {
+    if (selectedSlot === null) {
+      // Pick up
+      if (slots[idx]) {
+        setSelectedSlot(idx);
+      }
+    } else {
+      if (selectedSlot === idx) {
+        // Deselect
+        setSelectedSlot(null);
+      } else {
+        // Swap
+        moveSlot(selectedSlot, idx);
+        setSelectedSlot(null);
+      }
+    }
+  };
 
   const rows: (typeof slots)[] = [];
   for (let i = HOTBAR_SIZE; i < INVENTORY_SIZE; i += 9) {
@@ -21,6 +43,58 @@ export function InventoryPanel() {
 
   const slotSize = 'clamp(34px, 9vw, 44px)';
   const blockSize = 'clamp(22px, 6vw, 28px)';
+
+  const renderSlot = (slot: typeof slots[0], idx: number, borderColor: string = '#444') => {
+    const isSelected = selectedSlot === idx;
+    return (
+      <div
+        key={idx}
+        onClick={() => handleSlotClick(idx)}
+        style={{
+          width: slotSize,
+          height: slotSize,
+          border: isSelected ? '2px solid #ffcc00' : `1px solid ${borderColor}`,
+          borderRadius: 4,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: isSelected ? 'rgba(255,204,0,0.15)' : 'rgba(0,0,0,0.4)',
+          position: 'relative',
+          flexShrink: 0,
+          cursor: slot || selectedSlot !== null ? 'pointer' : 'default',
+        }}
+      >
+        {slot && (
+          <>
+            <div style={{
+              width: blockSize,
+              height: blockSize,
+              backgroundColor: blockColor(slot.blockType),
+              borderRadius: 3,
+              border: '1px solid rgba(255,255,255,0.15)',
+              opacity: isSelected ? 0.6 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }} title={getBlock(slot.blockType).name}>
+              <ItemIcon iconId={getBlock(slot.blockType).icon} size="60%" color="#fff" />
+            </div>
+            <span style={{
+              position: 'absolute',
+              bottom: 1,
+              right: 2,
+              fontSize: 'clamp(8px, 2vw, 10px)',
+              color: '#fff',
+              fontWeight: 'bold',
+              textShadow: '1px 1px 2px black',
+            }}>
+              {slot.count}
+            </span>
+          </>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div style={{
@@ -33,7 +107,7 @@ export function InventoryPanel() {
       zIndex: 200,
       padding: 16,
     }}
-      onClick={(e) => { if (e.target === e.currentTarget) toggle(); }}
+      onClick={(e) => { if (e.target === e.currentTarget) { setSelectedSlot(null); toggle(); } }}
     >
       <div style={{
         background: 'rgba(30,30,30,0.95)',
@@ -59,43 +133,7 @@ export function InventoryPanel() {
           <div key={ri} style={{ display: 'flex', gap: 'clamp(2px, 0.5vw, 4px)', marginBottom: 'clamp(2px, 0.5vw, 4px)', justifyContent: 'center' }}>
             {row.map((slot, si) => {
               const idx = HOTBAR_SIZE + ri * 9 + si;
-              return (
-                <div key={idx} style={{
-                  width: slotSize,
-                  height: slotSize,
-                  border: '1px solid #444',
-                  borderRadius: 4,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: 'rgba(0,0,0,0.4)',
-                  position: 'relative',
-                  flexShrink: 0,
-                }}>
-                  {slot && (
-                    <>
-                      <div style={{
-                        width: blockSize,
-                        height: blockSize,
-                        backgroundColor: blockColor(slot.blockType),
-                        borderRadius: 3,
-                        border: '1px solid rgba(255,255,255,0.15)',
-                      }} title={getBlock(slot.blockType).name} />
-                      <span style={{
-                        position: 'absolute',
-                        bottom: 1,
-                        right: 2,
-                        fontSize: 'clamp(8px, 2vw, 10px)',
-                        color: '#fff',
-                        fontWeight: 'bold',
-                        textShadow: '1px 1px 2px black',
-                      }}>
-                        {slot.count}
-                      </span>
-                    </>
-                  )}
-                </div>
-              );
+              return renderSlot(slot, idx);
             })}
           </div>
         ))}
@@ -103,48 +141,12 @@ export function InventoryPanel() {
         {/* Hotbar */}
         <div style={{ borderTop: '1px solid #555', marginTop: 8, paddingTop: 8 }}>
           <div style={{ display: 'flex', gap: 'clamp(2px, 0.5vw, 4px)', justifyContent: 'center' }}>
-            {slots.slice(0, HOTBAR_SIZE).map((slot, i) => (
-              <div key={i} style={{
-                width: slotSize,
-                height: slotSize,
-                border: '1px solid #666',
-                borderRadius: 4,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: 'rgba(0,0,0,0.4)',
-                position: 'relative',
-                flexShrink: 0,
-              }}>
-                {slot && (
-                  <>
-                    <div style={{
-                      width: blockSize,
-                      height: blockSize,
-                      backgroundColor: blockColor(slot.blockType),
-                      borderRadius: 3,
-                      border: '1px solid rgba(255,255,255,0.15)',
-                    }} title={getBlock(slot.blockType).name} />
-                    <span style={{
-                      position: 'absolute',
-                      bottom: 1,
-                      right: 2,
-                      fontSize: 'clamp(8px, 2vw, 10px)',
-                      color: '#fff',
-                      fontWeight: 'bold',
-                      textShadow: '1px 1px 2px black',
-                    }}>
-                      {slot.count}
-                    </span>
-                  </>
-                )}
-              </div>
-            ))}
+            {slots.slice(0, HOTBAR_SIZE).map((slot, i) => renderSlot(slot, i, '#666'))}
           </div>
         </div>
 
         <button
-          onClick={toggle}
+          onClick={() => { setSelectedSlot(null); toggle(); }}
           style={{
             display: 'block',
             margin: '12px auto 0',

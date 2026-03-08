@@ -3,7 +3,7 @@ import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
-import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat } from '../../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest } from '../../core/voxel/BlockRegistry';
 import { computeRailBlockType, shouldRailUpdate } from '../../core/voxel/ChunkMesher';
 import { soundManager } from '../../systems/SoundManager';
 import { spawnParticles } from './DiggingParticles';
@@ -11,6 +11,7 @@ import { processGravity } from '../../systems/SandPhysics';
 import { checkWaterDrain } from '../../systems/WaterFlow';
 import { useDevStore } from '../../stores/devStore';
 import { useCombatStore } from '../../stores/combatStore';
+import { useChestStore } from '../../stores/chestStore';
 
 interface WorldInteractionProps {
   mode: 'mine' | 'build' | 'explore';
@@ -145,6 +146,17 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
             if (result.blockType === BlockType.LEAVES && Math.random() < 0.15) {
               addBlock(BlockType.APPLE, 1);
             }
+            // Chest broken: drop all contents into player inventory
+            if (isChest(result.blockType)) {
+              const chestStore = useChestStore.getState();
+              const chestData = chestStore.chests.get(`${bx},${by},${bz}`);
+              if (chestData) {
+                for (const slot of chestData.slots) {
+                  if (slot) addBlock(slot.blockType, slot.count);
+                }
+              }
+              chestStore.removeChest(bx, by, bz);
+            }
             // XP for mining
             useCombatStore.getState().addXp(1);
             // Play break sound and emit burst particles
@@ -192,6 +204,18 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
   const handlePointerDown = useCallback(() => {
     isPointerDownRef.current = true;
     if (mode === 'build') {
+      // Chest open: click chest with empty hand or non-placeable item
+      const chestCheck = raycast();
+      if (chestCheck && isChest(chestCheck.blockType)) {
+        const selectedBlock = getSelectedBlock();
+        if (!selectedBlock || isItemType(selectedBlock)) {
+          const [cx, cy, cz] = chestCheck.blockPos;
+          useChestStore.getState().openChest(cx, cy, cz);
+          soundManager.playPlaceSound();
+          return;
+        }
+      }
+
       // Door toggle: click door with empty hand or non-placeable item
       const doorCheck = raycast();
       if (doorCheck && isDoor(doorCheck.blockType)) {
@@ -346,6 +370,10 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
           return;
         }
         setBlockW(px, py, pz, selectedBlock);
+        // Chest placement: register empty chest
+        if (selectedBlock === BlockType.CHEST) {
+          useChestStore.getState().createChest(px, py, pz);
+        }
         removeBlock(selectedIdx, 1);
         soundManager.playPlaceSound();
       }

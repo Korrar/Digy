@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BlockType, getBlock, getBlockColor, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor } from './BlockRegistry';
+import { BlockType, getBlock, getBlockColor, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest } from './BlockRegistry';
 import { ChunkData } from './ChunkData';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
 
@@ -523,6 +523,60 @@ export function buildChunkMesh(
             }
           }
 
+          continue;
+        }
+
+        // Chest rendering (slightly smaller box with darker bottom and lighter lid)
+        if (isChest(block)) {
+          const baseColor = blockDef.color;
+          const lidColor = new THREE.Color(baseColor.r * 1.1, baseColor.g * 1.05, baseColor.b * 0.9);
+          const darkColor = new THREE.Color(baseColor.r * 0.7, baseColor.g * 0.65, baseColor.b * 0.55);
+          const metalColor = new THREE.Color(0.85, 0.75, 0.2); // gold latch
+          // Inset: x 0.0625..0.9375, z 0.0625..0.9375, y 0..0.875
+          const x0 = 0.0625, x1 = 0.9375, z0 = 0.0625, z1 = 0.9375;
+          const yMid = 0.5625, yTop = 0.875;
+          // Bottom half (darker)
+          const bottomFaces: { corners: [number,number,number][]; normal: [number,number,number]; color: THREE.Color }[] = [
+            { corners: [[x0,0,z1],[x1,0,z1],[x1,0,z0],[x0,0,z0]], normal: [0,-1,0], color: darkColor },
+            { corners: [[x0,yMid,z0],[x1,yMid,z0],[x1,yMid,z1],[x0,yMid,z1]], normal: [0,1,0], color: baseColor },
+            { corners: [[x1,0,z0],[x1,yMid,z0],[x1,yMid,z1],[x1,0,z1]], normal: [1,0,0], color: darkColor },
+            { corners: [[x0,0,z1],[x0,yMid,z1],[x0,yMid,z0],[x0,0,z0]], normal: [-1,0,0], color: darkColor },
+            { corners: [[x1,0,z1],[x1,yMid,z1],[x0,yMid,z1],[x0,0,z1]], normal: [0,0,1], color: darkColor },
+            { corners: [[x0,0,z0],[x0,yMid,z0],[x1,yMid,z0],[x1,0,z0]], normal: [0,0,-1], color: darkColor },
+          ];
+          // Lid (lighter)
+          const lidFaces: { corners: [number,number,number][]; normal: [number,number,number]; color: THREE.Color }[] = [
+            { corners: [[x0,yMid,z0],[x1,yMid,z0],[x1,yMid,z1],[x0,yMid,z1]], normal: [0,-1,0], color: baseColor },
+            { corners: [[x0,yTop,z1],[x1,yTop,z1],[x1,yTop,z0],[x0,yTop,z0]], normal: [0,1,0], color: lidColor },
+            { corners: [[x1,yMid,z0],[x1,yTop,z0],[x1,yTop,z1],[x1,yMid,z1]], normal: [1,0,0], color: lidColor },
+            { corners: [[x0,yMid,z1],[x0,yTop,z1],[x0,yTop,z0],[x0,yMid,z0]], normal: [-1,0,0], color: lidColor },
+            { corners: [[x1,yMid,z1],[x1,yTop,z1],[x0,yTop,z1],[x0,yMid,z1]], normal: [0,0,1], color: lidColor },
+            { corners: [[x0,yMid,z0],[x0,yTop,z0],[x1,yTop,z0],[x1,yMid,z0]], normal: [0,0,-1], color: lidColor },
+          ];
+          // Metal latch on front (z+1 side)
+          const lx0 = 0.375, lx1 = 0.625, ly0 = 0.4375, ly1 = 0.625, lz = z1 + 0.001;
+          const latchFaces: { corners: [number,number,number][]; normal: [number,number,number]; color: THREE.Color }[] = [
+            { corners: [[lx1,ly0,lz],[lx1,ly1,lz],[lx0,ly1,lz],[lx0,ly0,lz]], normal: [0,0,1], color: metalColor },
+          ];
+          for (const face of [...bottomFaces, ...lidFaces, ...latchFaces]) {
+            const brightness = face.normal[1] > 0 ? 1.0 : face.normal[1] < 0 ? 0.7 : 0.85;
+            for (let ci = 0; ci < 4; ci++) {
+              const [cx, cy, cz] = face.corners[ci];
+              positions.push(ox + x + cx, y + cy, oz + z + cz);
+              normals.push(...face.normal);
+              const v = hash3(ox+x+ci*7, y+ci*13, oz+z+ci*19) * 0.06 - 0.03;
+              colors.push(
+                face.color.r * brightness + v,
+                face.color.g * brightness + v,
+                face.color.b * brightness + v
+              );
+              uvs.push(0, 0);
+              sparkles.push(0);
+              oreColors.push(0, 0, 0);
+            }
+            indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+            vertexCount += 4;
+          }
           continue;
         }
 
