@@ -17,6 +17,28 @@ const blockSoundMap: Partial<Record<BlockType, SoundCategory>> = {
   [BlockType.ICE]: 'glass',
   [BlockType.CACTUS]: 'wood',
   [BlockType.GRAVEL]: 'gravel',
+  [BlockType.JUNGLE_WOOD]: 'wood',
+  [BlockType.JUNGLE_LEAVES]: 'grass' as SoundCategory,
+  [BlockType.CHERRY_WOOD]: 'wood',
+  [BlockType.CHERRY_LEAVES]: 'grass' as SoundCategory,
+  [BlockType.ACACIA_WOOD]: 'wood',
+  [BlockType.ACACIA_LEAVES]: 'grass' as SoundCategory,
+  [BlockType.BASALT]: 'stone',
+  [BlockType.OBSIDIAN]: 'stone',
+  [BlockType.MAGMA]: 'stone',
+  [BlockType.MYCELIUM]: 'dirt',
+  [BlockType.MOSS]: 'dirt',
+  [BlockType.SAVANNA_GRASS]: 'dirt',
+  [BlockType.MUSHROOM_BLOCK_RED]: 'wood',
+  [BlockType.MUSHROOM_BLOCK_BROWN]: 'wood',
+  [BlockType.GIANT_MUSHROOM_STEM]: 'wood',
+  [BlockType.PLANKS]: 'wood',
+  [BlockType.GLASS]: 'glass',
+  [BlockType.CLAY]: 'dirt',
+  [BlockType.MUD]: 'dirt',
+  [BlockType.GOLD_ORE]: 'metal',
+  [BlockType.DIAMOND_ORE]: 'stone',
+  [BlockType.STONE_BRICKS]: 'stone',
 };
 
 // Procedural sound generation using Web Audio API
@@ -228,6 +250,55 @@ export class SoundManager {
     gains.push(whineGain);
 
     this.minecartNodes = { sources, gains };
+  }
+
+  playFootstep(blockType: BlockType): void {
+    this.init();
+    const category = blockSoundMap[blockType] || 'stone';
+    const pitchVar = 0.85 + Math.random() * 0.3;
+
+    switch (category) {
+      case 'dirt':
+        this.noise(0.06, 0.06, 250 * pitchVar, 1);
+        break;
+      case 'stone':
+        this.noise(0.04, 0.08, 1800 * pitchVar, 2.5);
+        this.tone(150 * pitchVar, 0.03, 0.03, 'square');
+        break;
+      case 'sand':
+        this.noise(0.08, 0.05, 3500 * pitchVar, 0.4);
+        break;
+      case 'wood':
+        this.tone(350 * pitchVar, 0.05, 0.06, 'triangle');
+        break;
+      case 'glass':
+        this.tone(1800 * pitchVar, 0.04, 0.04, 'sine');
+        break;
+      case 'snow':
+        this.noise(0.1, 0.04, 5000 * pitchVar, 0.2);
+        break;
+      case 'gravel':
+        this.noise(0.06, 0.07, 1200 * pitchVar, 1.2);
+        break;
+      case 'metal':
+        this.tone(500 * pitchVar, 0.05, 0.06, 'square');
+        break;
+      default:
+        this.noise(0.05, 0.05, 800 * pitchVar, 1);
+    }
+  }
+
+  playPistonExtend(): void {
+    this.init();
+    this.tone(150, 0.1, 0.12, 'square');
+    this.noise(0.08, 0.08, 600, 2);
+    this.tone(200, 0.05, 0.06, 'sine');
+  }
+
+  playPistonRetract(): void {
+    this.init();
+    this.tone(120, 0.08, 0.1, 'square');
+    this.noise(0.06, 0.06, 400, 1.5);
   }
 
   stopMinecartRiding(): void {

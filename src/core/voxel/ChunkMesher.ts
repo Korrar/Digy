@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BlockType, getBlock, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest, isTorch, isLever, isButton, isCable } from './BlockRegistry';
+import { BlockType, getBlock, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest, isTorch, isLever, isButton, isCable, isPiston, isPistonHead, isSign } from './BlockRegistry';
 import { ChunkData } from './ChunkData';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
 import { getAtlasUV, getWhiteUV } from './TextureAtlas';
@@ -1050,6 +1050,141 @@ export function buildChunkMesh(
             pushCableSeg(0.5 - hw, 0.0, 0.5 + hw, end - dashLen - gapLen, 0.85);
           }
 
+          continue;
+        }
+
+        // Piston rendering (body block with wooden/stone face plate)
+        if (isPiston(block)) {
+          const bodyColor = blockDef.color;
+          const plateColor = new THREE.Color(0x707070); // stone face plate
+          const rodColor = new THREE.Color(0x5a3a1a); // dark wood rod
+          const extended = blockDef.pistonExtended === true;
+
+          // Body: slightly inset top if extended (missing top part)
+          const bodyTop = extended ? 0.75 : 1.0;
+          const bodyFaces: { corners: [number,number,number][]; normal: [number,number,number]; brightness: number; col: THREE.Color }[] = [
+            { corners: [[0,bodyTop,1],[1,bodyTop,1],[1,bodyTop,0],[0,bodyTop,0]], normal: [0,1,0], brightness: 1.0, col: extended ? rodColor : plateColor },
+            { corners: [[0,0,0],[1,0,0],[1,0,1],[0,0,1]], normal: [0,-1,0], brightness: 0.7, col: bodyColor },
+            { corners: [[1,0,0],[1,bodyTop,0],[1,bodyTop,1],[1,0,1]], normal: [1,0,0], brightness: 0.85, col: bodyColor },
+            { corners: [[0,0,1],[0,bodyTop,1],[0,bodyTop,0],[0,0,0]], normal: [-1,0,0], brightness: 0.85, col: bodyColor },
+            { corners: [[1,0,1],[1,bodyTop,1],[0,bodyTop,1],[0,0,1]], normal: [0,0,1], brightness: 0.85, col: bodyColor },
+            { corners: [[0,0,0],[0,bodyTop,0],[1,bodyTop,0],[1,0,0]], normal: [0,0,-1], brightness: 0.85, col: bodyColor },
+          ];
+
+          // If extended, add the rod sticking up
+          if (extended) {
+            const rodR = 0.125;
+            const rFaces: { corners: [number,number,number][]; normal: [number,number,number]; brightness: number; col: THREE.Color }[] = [
+              { corners: [[0.5-rodR,bodyTop,0.5+rodR],[0.5+rodR,bodyTop,0.5+rodR],[0.5+rodR,bodyTop,0.5-rodR],[0.5-rodR,bodyTop,0.5-rodR]], normal: [0,-1,0], brightness: 0.7, col: rodColor },
+              { corners: [[0.5+rodR,bodyTop,0.5-rodR],[0.5+rodR,1.0,0.5-rodR],[0.5+rodR,1.0,0.5+rodR],[0.5+rodR,bodyTop,0.5+rodR]], normal: [1,0,0], brightness: 0.85, col: rodColor },
+              { corners: [[0.5-rodR,bodyTop,0.5+rodR],[0.5-rodR,1.0,0.5+rodR],[0.5-rodR,1.0,0.5-rodR],[0.5-rodR,bodyTop,0.5-rodR]], normal: [-1,0,0], brightness: 0.85, col: rodColor },
+              { corners: [[0.5+rodR,bodyTop,0.5+rodR],[0.5+rodR,1.0,0.5+rodR],[0.5-rodR,1.0,0.5+rodR],[0.5-rodR,bodyTop,0.5+rodR]], normal: [0,0,1], brightness: 0.85, col: rodColor },
+              { corners: [[0.5-rodR,bodyTop,0.5-rodR],[0.5-rodR,1.0,0.5-rodR],[0.5+rodR,1.0,0.5-rodR],[0.5+rodR,bodyTop,0.5-rodR]], normal: [0,0,-1], brightness: 0.85, col: rodColor },
+            ];
+            bodyFaces.push(...rFaces);
+          }
+
+          const pistonAtlas = getWhiteUV();
+          for (const face of bodyFaces) {
+            for (let ci = 0; ci < 4; ci++) {
+              const [cx, cy, cz] = face.corners[ci];
+              positions.push(ox + x + cx, y + cy, oz + z + cz);
+              normals.push(...face.normal);
+              colors.push(face.col.r * face.brightness, face.col.g * face.brightness, face.col.b * face.brightness);
+              uvs.push(pistonAtlas.u0, pistonAtlas.v0);
+              sparkles.push(0);
+              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
+              oreColors.push(0, 0, 0);
+            }
+            indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+            vertexCount += 4;
+          }
+          continue;
+        }
+
+        // Piston Head rendering (flat plate on top of rod)
+        if (isPistonHead(block)) {
+          const plateColor = new THREE.Color(0x707070);
+          const rodColor = new THREE.Color(0x5a3a1a);
+          const rodR = 0.125;
+
+          const headFaces: { corners: [number,number,number][]; normal: [number,number,number]; brightness: number; col: THREE.Color }[] = [
+            // Plate (top half-slab)
+            { corners: [[0,0.75,1],[1,0.75,1],[1,0.75,0],[0,0.75,0]], normal: [0,-1,0], brightness: 0.7, col: plateColor },
+            { corners: [[0,1,0],[1,1,0],[1,1,1],[0,1,1]], normal: [0,1,0], brightness: 1.0, col: plateColor },
+            { corners: [[1,0.75,0],[1,1,0],[1,1,1],[1,0.75,1]], normal: [1,0,0], brightness: 0.85, col: plateColor },
+            { corners: [[0,0.75,1],[0,1,1],[0,1,0],[0,0.75,0]], normal: [-1,0,0], brightness: 0.85, col: plateColor },
+            { corners: [[1,0.75,1],[1,1,1],[0,1,1],[0,0.75,1]], normal: [0,0,1], brightness: 0.85, col: plateColor },
+            { corners: [[0,0.75,0],[0,1,0],[1,1,0],[1,0.75,0]], normal: [0,0,-1], brightness: 0.85, col: plateColor },
+            // Rod going down
+            { corners: [[0.5+rodR,0,0.5-rodR],[0.5+rodR,0.75,0.5-rodR],[0.5+rodR,0.75,0.5+rodR],[0.5+rodR,0,0.5+rodR]], normal: [1,0,0], brightness: 0.85, col: rodColor },
+            { corners: [[0.5-rodR,0,0.5+rodR],[0.5-rodR,0.75,0.5+rodR],[0.5-rodR,0.75,0.5-rodR],[0.5-rodR,0,0.5-rodR]], normal: [-1,0,0], brightness: 0.85, col: rodColor },
+            { corners: [[0.5+rodR,0,0.5+rodR],[0.5+rodR,0.75,0.5+rodR],[0.5-rodR,0.75,0.5+rodR],[0.5-rodR,0,0.5+rodR]], normal: [0,0,1], brightness: 0.85, col: rodColor },
+            { corners: [[0.5-rodR,0,0.5-rodR],[0.5-rodR,0.75,0.5-rodR],[0.5+rodR,0.75,0.5-rodR],[0.5+rodR,0,0.5-rodR]], normal: [0,0,-1], brightness: 0.85, col: rodColor },
+          ];
+
+          const phAtlas = getWhiteUV();
+          for (const face of headFaces) {
+            for (let ci = 0; ci < 4; ci++) {
+              const [cx, cy, cz] = face.corners[ci];
+              positions.push(ox + x + cx, y + cy, oz + z + cz);
+              normals.push(...face.normal);
+              colors.push(face.col.r * face.brightness, face.col.g * face.brightness, face.col.b * face.brightness);
+              uvs.push(phAtlas.u0, phAtlas.v0);
+              sparkles.push(0);
+              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
+              oreColors.push(0, 0, 0);
+            }
+            indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+            vertexCount += 4;
+          }
+          continue;
+        }
+
+        // Sign rendering (thin flat panel on a post)
+        if (isSign(block)) {
+          const woodColor = blockDef.color;
+          const postColor = new THREE.Color(woodColor.r * 0.7, woodColor.g * 0.7, woodColor.b * 0.7);
+          // Post: thin stick from ground to sign panel
+          const pw = 0.0625;
+          // Sign panel: flat board
+          const panelY0 = 0.45, panelY1 = 0.95;
+          const panelZ = 0.45, panelZ1 = 0.55;
+
+          const signFaces: { corners: [number,number,number][]; normal: [number,number,number]; brightness: number; col: THREE.Color }[] = [
+            // Post
+            { corners: [[0.5-pw,0,0.5+pw],[0.5+pw,0,0.5+pw],[0.5+pw,0,0.5-pw],[0.5-pw,0,0.5-pw]], normal: [0,-1,0], brightness: 0.7, col: postColor },
+            { corners: [[0.5+pw,0,0.5-pw],[0.5+pw,panelY0,0.5-pw],[0.5+pw,panelY0,0.5+pw],[0.5+pw,0,0.5+pw]], normal: [1,0,0], brightness: 0.85, col: postColor },
+            { corners: [[0.5-pw,0,0.5+pw],[0.5-pw,panelY0,0.5+pw],[0.5-pw,panelY0,0.5-pw],[0.5-pw,0,0.5-pw]], normal: [-1,0,0], brightness: 0.85, col: postColor },
+            { corners: [[0.5+pw,0,0.5+pw],[0.5+pw,panelY0,0.5+pw],[0.5-pw,panelY0,0.5+pw],[0.5-pw,0,0.5+pw]], normal: [0,0,1], brightness: 0.85, col: postColor },
+            { corners: [[0.5-pw,0,0.5-pw],[0.5-pw,panelY0,0.5-pw],[0.5+pw,panelY0,0.5-pw],[0.5+pw,0,0.5-pw]], normal: [0,0,-1], brightness: 0.85, col: postColor },
+            // Panel - front and back
+            { corners: [[0.1,panelY0,panelZ1],[0.9,panelY0,panelZ1],[0.9,panelY1,panelZ1],[0.1,panelY1,panelZ1]], normal: [0,0,1], brightness: 0.9, col: woodColor },
+            { corners: [[0.9,panelY0,panelZ],[0.1,panelY0,panelZ],[0.1,panelY1,panelZ],[0.9,panelY1,panelZ]], normal: [0,0,-1], brightness: 0.9, col: woodColor },
+            // Panel top
+            { corners: [[0.1,panelY1,panelZ],[0.9,panelY1,panelZ],[0.9,panelY1,panelZ1],[0.1,panelY1,panelZ1]], normal: [0,1,0], brightness: 1.0, col: woodColor },
+            // Panel bottom
+            { corners: [[0.1,panelY0,panelZ1],[0.9,panelY0,panelZ1],[0.9,panelY0,panelZ],[0.1,panelY0,panelZ]], normal: [0,-1,0], brightness: 0.7, col: woodColor },
+            // Panel sides
+            { corners: [[0.9,panelY0,panelZ],[0.9,panelY1,panelZ],[0.9,panelY1,panelZ1],[0.9,panelY0,panelZ1]], normal: [1,0,0], brightness: 0.85, col: woodColor },
+            { corners: [[0.1,panelY0,panelZ1],[0.1,panelY1,panelZ1],[0.1,panelY1,panelZ],[0.1,panelY0,panelZ]], normal: [-1,0,0], brightness: 0.85, col: woodColor },
+          ];
+
+          const signAtlas = getWhiteUV();
+          for (const face of signFaces) {
+            for (let ci = 0; ci < 4; ci++) {
+              const [cx, cy, cz] = face.corners[ci];
+              positions.push(ox + x + cx, y + cy, oz + z + cz);
+              normals.push(...face.normal);
+              colors.push(face.col.r * face.brightness, face.col.g * face.brightness, face.col.b * face.brightness);
+              uvs.push(signAtlas.u0, signAtlas.v0);
+              sparkles.push(0);
+              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
+              oreColors.push(0, 0, 0);
+            }
+            indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+            vertexCount += 4;
+          }
           continue;
         }
 

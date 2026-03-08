@@ -52,6 +52,34 @@ const BIOME_ANIMALS: Record<string, AnimalConfig> = {
     bodyScale: [0.4, 0.4, 0.75], headScale: [0.28, 0.28, 0.35],
     headOffset: [0, 0.1, 0.48], legLength: 0.25,
   },
+  jungle: {
+    // Parrots - small colorful birds
+    count: 5, bodyColor: 0x22aa44, headColor: 0xcc2222, legColor: 0x444444,
+    size: 0.25, speed: 0.6, bounceHeight: 0.2,
+    bodyScale: [0.3, 0.35, 0.5], headScale: [0.22, 0.22, 0.2],
+    headOffset: [0, 0.2, 0.3], legLength: 0.12,
+  },
+  mushroom: {
+    // Mooshrooms - cow-like, mushroom colored
+    count: 3, bodyColor: 0xcc3333, headColor: 0xcc4444, legColor: 0x666666,
+    size: 0.5, speed: 0.2, bounceHeight: 0.05,
+    bodyScale: [0.6, 0.55, 0.9], headScale: [0.4, 0.4, 0.4],
+    headOffset: [0, 0.15, 0.55], legLength: 0.35,
+  },
+  savanna: {
+    // Zebras - tall, striped (shown by colors)
+    count: 4, bodyColor: 0xf0f0f0, headColor: 0xe0e0e0, legColor: 0x333333,
+    size: 0.5, speed: 0.45, bounceHeight: 0.08,
+    bodyScale: [0.45, 0.55, 0.9], headScale: [0.3, 0.4, 0.45],
+    headOffset: [0, 0.25, 0.6], legLength: 0.45,
+  },
+  cherry: {
+    // Butterflies - tiny, colorful
+    count: 8, bodyColor: 0xff88aa, headColor: 0xffaacc, legColor: 0x664444,
+    size: 0.15, speed: 0.3, bounceHeight: 0.3,
+    bodyScale: [0.2, 0.1, 0.3], headScale: [0.12, 0.1, 0.12],
+    headOffset: [0, 0.02, 0.18], legLength: 0.05,
+  },
 };
 
 /**

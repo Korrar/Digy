@@ -34,6 +34,7 @@ import { MinecartRenderer } from '../components/3d/Minecarts';
 import { BlockLights } from '../components/3d/BlockLights';
 import { StarrySky } from '../components/3d/StarrySky';
 import { ModeToggle } from '../components/ui/ModeToggle';
+import { AmbientParticles } from '../components/3d/AmbientParticles';
 
 function getTimeIndicator(timeOfDay: number): string {
   if (timeOfDay > 0.2 && timeOfDay < 0.3) return 'sunrise';
@@ -191,6 +192,7 @@ export function BiomeScene() {
         <BlockLights />
         {biomeType !== 'cave' && <StarrySky sunIntensity={sunIntensity} />}
         <ParticleSystem />
+        <AmbientParticles center={[8, 8, 8]} />
         {(biomeType === 'forest' || biomeType === 'swamp') && (
           <FirefliesRenderer center={[8, 0, 8]} />
         )}

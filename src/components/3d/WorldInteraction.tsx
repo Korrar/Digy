@@ -3,7 +3,7 @@ import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
-import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, isLever, isButton, isCable } from '../../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, isLever, isButton, isCable, isPiston, isPistonHead } from '../../core/voxel/BlockRegistry';
 import { computeRailBlockType, shouldRailUpdate } from '../../core/voxel/ChunkMesher';
 import { soundManager } from '../../systems/SoundManager';
 import { spawnParticles } from './DiggingParticles';
@@ -129,8 +129,25 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
           if (progress >= 1) {
             const [bx, by, bz] = result.blockPos;
 
+            // Piston head break: retract piston body below
+            if (isPistonHead(result.blockType)) {
+              setBlockW(bx, by, bz, BlockType.AIR);
+              const belowBlock = getBlockW(bx, by - 1, bz);
+              if (isPiston(belowBlock)) {
+                setBlockW(bx, by - 1, bz, BlockType.PISTON);
+              }
+            }
+            // Extended piston break: remove head above
+            else if (isPiston(result.blockType) && getBlock(result.blockType).pistonExtended) {
+              setBlockW(bx, by, bz, BlockType.AIR);
+              const aboveBlock = getBlockW(bx, by + 1, bz);
+              if (isPistonHead(aboveBlock)) {
+                setBlockW(bx, by + 1, bz, BlockType.AIR);
+              }
+              addBlock(BlockType.PISTON, 1);
+            }
             // Door break: remove both halves
-            if (isDoor(result.blockType)) {
+            else if (isDoor(result.blockType)) {
               const doorDef = getBlock(result.blockType);
               const isUpper = doorDef.doorUpper === true;
               setBlockW(bx, by, bz, BlockType.AIR);

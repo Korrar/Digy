@@ -1,4 +1,4 @@
-import { BlockType, getBlock } from '../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid } from '../core/voxel/BlockRegistry';
 import { useWorldStore } from '../stores/worldStore';
 
 const MAX_CABLE_DISTANCE = 16;
@@ -66,6 +66,54 @@ export function propagateCablePower(leverX: number, leverY: number, leverZ: numb
         queue.push({ x: nx, y: ny, z: nz, dist: current.dist + 1 });
       }
     }
+
+    // Activate/deactivate adjacent pistons
+    for (const [dx, dy, dz] of dirs) {
+      const px = current.x + dx;
+      const py = current.y + dy;
+      const pz = current.z + dz;
+      const pBlock = store.getBlock(px, py, pz);
+      const pDef = getBlock(pBlock);
+      if (pDef.isPiston) {
+        activatePiston(store, px, py, pz, powerOn);
+      }
+    }
+  }
+}
+
+/**
+ * Activate or deactivate a piston at the given position.
+ * When activated, the piston extends upward, pushing the block above.
+ * When deactivated, the piston retracts.
+ */
+function activatePiston(store: ReturnType<typeof useWorldStore.getState>, px: number, py: number, pz: number, extend: boolean) {
+  const currentBlock = store.getBlock(px, py, pz);
+  const def = getBlock(currentBlock);
+  if (!def.isPiston) return;
+
+  if (extend && !def.pistonExtended) {
+    // Extend: push block above upward if possible
+    const aboveBlock = store.getBlock(px, py + 1, pz);
+    const above2Block = store.getBlock(px, py + 2, pz);
+
+    if (aboveBlock === BlockType.AIR) {
+      // Nothing to push, just extend
+      store.setBlock(px, py, pz, BlockType.PISTON_EXTENDED);
+      store.setBlock(px, py + 1, pz, BlockType.PISTON_HEAD);
+    } else if (above2Block === BlockType.AIR && isSolid(aboveBlock)) {
+      // Push the block up
+      store.setBlock(px, py + 2, pz, aboveBlock);
+      store.setBlock(px, py + 1, pz, BlockType.PISTON_HEAD);
+      store.setBlock(px, py, pz, BlockType.PISTON_EXTENDED);
+    }
+    // Can't extend if blocked
+  } else if (!extend && def.pistonExtended) {
+    // Retract: remove piston head
+    const headBlock = store.getBlock(px, py + 1, pz);
+    if (headBlock === BlockType.PISTON_HEAD) {
+      store.setBlock(px, py + 1, pz, BlockType.AIR);
+    }
+    store.setBlock(px, py, pz, BlockType.PISTON);
   }
 }
 

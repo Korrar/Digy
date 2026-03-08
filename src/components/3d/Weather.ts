@@ -19,6 +19,11 @@ const BIOME_WEATHER: Record<string, WeatherConfig> = {
   swamp: { type: 'fog', particleCount: 100, color: 0x556644, size: 0.12, speed: 0.3, spread: 14, height: 10 },
   tundra: { type: 'snow', particleCount: 180, color: 0xffffff, size: 0.04, speed: 2, spread: 16, height: 20 },
   cave: { type: 'none', particleCount: 0, color: 0, size: 0, speed: 0, spread: 0, height: 0 },
+  jungle: { type: 'rain', particleCount: 250, color: 0x5577aa, size: 0.02, speed: 14, spread: 16, height: 22 },
+  mushroom: { type: 'fog', particleCount: 120, color: 0x8866aa, size: 0.1, speed: 0.4, spread: 14, height: 12 },
+  volcanic: { type: 'fog', particleCount: 100, color: 0x332222, size: 0.15, speed: 0.6, spread: 16, height: 18 },
+  savanna: { type: 'none', particleCount: 0, color: 0, size: 0, speed: 0, spread: 0, height: 0 },
+  cherry: { type: 'snow', particleCount: 100, color: 0xffaacc, size: 0.05, speed: 1, spread: 16, height: 18 },
 };
 
 interface Particle {
