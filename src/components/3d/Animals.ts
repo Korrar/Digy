@@ -184,7 +184,8 @@ export function useAnimals(biomeType: string, center: [number, number, number]) 
     return list;
   }, [config, center[0], center[1], center[2]]);
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
+    const clampedDelta = Math.min(delta, 0.1); // Clamp to prevent jumps on frame spikes
     const mesh = meshRef.current;
     if (!mesh || !config) return;
 
@@ -207,7 +208,7 @@ export function useAnimals(biomeType: string, center: [number, number, number]) 
 
       // Move toward target
       const dir = animal.target.clone().sub(animal.position).normalize();
-      animal.position.addScaledVector(dir, animal.speed * 0.016);
+      animal.position.addScaledVector(dir, animal.speed * clampedDelta);
 
       // Bounce animation
       const bounce = Math.abs(Math.sin(t * 4 + animal.phase)) * config.bounceHeight;
