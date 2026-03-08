@@ -299,8 +299,7 @@ export function EnemiesRenderer({ biomeType, center }: { biomeType: string; cent
   }, [biomeType, center, spawnEnemy]);
 
   // Enemy AI update
-  useFrame((state, delta) => {
-    const clampedDelta = Math.min(delta, 0.1); // Clamp to prevent jumps on frame spikes
+  useFrame((state) => {
     const t = state.clock.elapsedTime;
     // Camera position as rough player position
     const playerPos = camera.position.clone();
@@ -337,7 +336,7 @@ export function EnemiesRenderer({ biomeType, center }: { biomeType: string; cent
       const dz = tz - ez;
       const dist = Math.sqrt(dx * dx + dz * dz);
       if (dist > 0.1) {
-        const speed = enemy.speed * clampedDelta;
+        const speed = enemy.speed * 0.016;
         const newX = ex + (dx / dist) * speed;
         const newZ = ez + (dz / dist) * speed;
         updateEnemy(enemy.id, {

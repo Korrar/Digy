@@ -105,6 +105,97 @@ function computeAO(
   return 1.0 - occluders * 0.12;
 }
 
+export type RailShape = 'ns' | 'ew' | 'curve_ne' | 'curve_nw' | 'curve_se' | 'curve_sw';
+
+/**
+ * Compute the rail shape for a block at (x, y, z) in the given chunk.
+ * Uses connectivity-aware neighbor checking: only connects to neighbors
+ * whose own shape (based on their other neighbors) faces toward us.
+ */
+export function computeRailShape(chunk: ChunkData, x: number, y: number, z: number): RailShape | null {
+  const block = chunk.getBlock(x, y, z);
+  if (!isFlat(block)) return null;
+  const isPowered = block === BlockType.POWERED_RAIL;
+
+  const isRailBlock = (lx: number, ly: number, lz: number): boolean => {
+    if (lx >= 0 && lx < CHUNK_SIZE && ly >= 0 && ly < CHUNK_HEIGHT && lz >= 0 && lz < CHUNK_SIZE) {
+      return isFlat(chunk.getBlock(lx, ly, lz));
+    }
+    return false;
+  };
+
+  const shapeConnects = (shape: RailShape, dir: 'n' | 's' | 'e' | 'w'): boolean => {
+    switch (shape) {
+      case 'ns': return dir === 'n' || dir === 's';
+      case 'ew': return dir === 'e' || dir === 'w';
+      case 'curve_ne': return dir === 'n' || dir === 'e';
+      case 'curve_nw': return dir === 'n' || dir === 'w';
+      case 'curve_se': return dir === 's' || dir === 'e';
+      case 'curve_sw': return dir === 's' || dir === 'w';
+    }
+  };
+
+  const neighborConnects = (nx: number, ny: number, nz: number, dirTowardUs: 'n' | 's' | 'e' | 'w'): boolean => {
+    if (!isRailBlock(nx, ny, nz)) return false;
+    const nN = (nz - 1 !== z || nx !== x) && isRailBlock(nx, ny, nz - 1);
+    const nS = (nz + 1 !== z || nx !== x) && isRailBlock(nx, ny, nz + 1);
+    const nE = (nx + 1 !== x || nz !== z) && isRailBlock(nx + 1, ny, nz);
+    const nW = (nx - 1 !== x || nz !== z) && isRailBlock(nx - 1, ny, nz);
+    const otherCount = (nN?1:0) + (nS?1:0) + (nE?1:0) + (nW?1:0);
+    if (otherCount < 2) return true;
+    const nBlock = chunk.getBlock(nx, ny, nz);
+    if (nBlock === BlockType.POWERED_RAIL) {
+      const pShape: RailShape = ((nE || nW) && !nN && !nS) ? 'ew' : 'ns';
+      return shapeConnects(pShape, dirTowardUs);
+    }
+    let nShape: RailShape;
+    if (otherCount >= 3) {
+      if (nS && nE) nShape = 'curve_se';
+      else if (nS && nW) nShape = 'curve_sw';
+      else if (nN && nE) nShape = 'curve_ne';
+      else nShape = 'curve_nw';
+    } else {
+      if (nN && nS) nShape = 'ns';
+      else if (nE && nW) nShape = 'ew';
+      else if (nS && nE) nShape = 'curve_se';
+      else if (nS && nW) nShape = 'curve_sw';
+      else if (nN && nE) nShape = 'curve_ne';
+      else nShape = 'curve_nw';
+    }
+    return shapeConnects(nShape, dirTowardUs);
+  };
+
+  const hasNorth = neighborConnects(x, y, z - 1, 's');
+  const hasSouth = neighborConnects(x, y, z + 1, 'n');
+  const hasEast = neighborConnects(x + 1, y, z, 'w');
+  const hasWest = neighborConnects(x - 1, y, z, 'e');
+
+  let shape: RailShape = 'ns';
+  if (!isPowered) {
+    const count = (hasNorth ? 1 : 0) + (hasSouth ? 1 : 0) + (hasEast ? 1 : 0) + (hasWest ? 1 : 0);
+    if (count === 4) shape = 'curve_se';
+    else if (count === 3) {
+      if (hasSouth && hasEast) shape = 'curve_se';
+      else if (hasSouth && hasWest) shape = 'curve_sw';
+      else if (hasNorth && hasEast) shape = 'curve_ne';
+      else if (hasNorth && hasWest) shape = 'curve_nw';
+    } else if (count === 2) {
+      if (hasNorth && hasSouth) shape = 'ns';
+      else if (hasEast && hasWest) shape = 'ew';
+      else if (hasSouth && hasEast) shape = 'curve_se';
+      else if (hasSouth && hasWest) shape = 'curve_sw';
+      else if (hasNorth && hasEast) shape = 'curve_ne';
+      else if (hasNorth && hasWest) shape = 'curve_nw';
+    } else if (count === 1) {
+      if (hasEast || hasWest) shape = 'ew';
+    }
+  } else {
+    if ((hasEast || hasWest) && !hasNorth && !hasSouth) shape = 'ew';
+  }
+
+  return shape;
+}
+
 export function buildChunkMesh(
   chunk: ChunkData,
   getNeighborBlock?: (wx: number, wy: number, wz: number) => BlockType
@@ -201,61 +292,8 @@ export function buildChunkMesh(
             vertexCount += 4;
           };
 
-          // Check neighbors for rail connections
-          const isRailBlock = (lx: number, ly: number, lz: number): boolean => {
-            if (lx >= 0 && lx < CHUNK_SIZE && ly >= 0 && ly < CHUNK_HEIGHT && lz >= 0 && lz < CHUNK_SIZE) {
-              return isFlat(chunk.getBlock(lx, ly, lz));
-            } else if (getNeighborBlock) {
-              return isFlat(getNeighborBlock(ox + lx, ly, oz + lz));
-            }
-            return false;
-          };
-
-          const hasNorth = isRailBlock(x, y, z - 1); // -Z
-          const hasSouth = isRailBlock(x, y, z + 1); // +Z
-          const hasEast = isRailBlock(x + 1, y, z);  // +X
-          const hasWest = isRailBlock(x - 1, y, z);  // -X
-
-          // Determine rail shape using Minecraft-style rules:
-          // - 0 or 1 neighbor: straight (ns default, ew if only east/west)
-          // - 2 neighbors: straight if opposite sides, curve to connect if adjacent
-          // - 3 neighbors (T-junction): curve with priority south > east > west > north
-          // - 4 neighbors: always curve south-east
-          type RailShape = 'ns' | 'ew' | 'curve_ne' | 'curve_nw' | 'curve_se' | 'curve_sw';
-          let shape: RailShape = 'ns'; // default: straight north-south
-
-          // Powered rails don't curve
-          if (!isPowered) {
-            const count = (hasNorth ? 1 : 0) + (hasSouth ? 1 : 0) + (hasEast ? 1 : 0) + (hasWest ? 1 : 0);
-
-            if (count === 4) {
-              // 4-way intersection: always south-east (Minecraft rule)
-              shape = 'curve_se';
-            } else if (count === 3) {
-              // T-junction: curve with Minecraft priority (south > east > west > north)
-              // Pick the two directions to connect via curve
-              if (hasSouth && hasEast) shape = 'curve_se';
-              else if (hasSouth && hasWest) shape = 'curve_sw';
-              else if (hasNorth && hasEast) shape = 'curve_ne';
-              else if (hasNorth && hasWest) shape = 'curve_nw';
-            } else if (count === 2) {
-              // 2 neighbors: straight if opposite, curve if adjacent
-              if (hasNorth && hasSouth) shape = 'ns';
-              else if (hasEast && hasWest) shape = 'ew';
-              else if (hasSouth && hasEast) shape = 'curve_se';
-              else if (hasSouth && hasWest) shape = 'curve_sw';
-              else if (hasNorth && hasEast) shape = 'curve_ne';
-              else if (hasNorth && hasWest) shape = 'curve_nw';
-            } else if (count === 1) {
-              // 1 neighbor: straight in that direction
-              if (hasEast || hasWest) shape = 'ew';
-              else shape = 'ns';
-            }
-            // count === 0: default 'ns'
-          } else {
-            // Powered rails: only straight, pick orientation
-            if ((hasEast || hasWest) && !hasNorth && !hasSouth) shape = 'ew';
-          }
+          // Compute rail shape using shared function
+          const shape = computeRailShape(chunk, x, y, z) ?? 'ns';
 
           if (shape === 'ns' || shape === 'ew') {
             // Straight rail - either NS (along Z) or EW (along X)
