@@ -167,7 +167,7 @@ export function buildChunkMesh(
           continue;
         }
 
-        // Flat block rendering (rails) - 3D track with ties and raised rails
+        // Flat block rendering (rails) - 3D track with ties, auto-connecting and curving
         if (isFlat(block)) {
           const isPowered = block === BlockType.POWERED_RAIL;
           const tieColor = new THREE.Color(isPowered ? 0x8b4444 : 0x6b4226);
@@ -201,40 +201,182 @@ export function buildChunkMesh(
             vertexCount += 4;
           };
 
-          // Cross ties (wooden sleepers)
-          const tieZPositions = [0.1, 0.3, 0.5, 0.7, 0.9];
-          for (const tz of tieZPositions) {
-            addQuad(
-              [[0.05, tieHeight, tz - 0.06], [0.95, tieHeight, tz - 0.06],
-               [0.95, tieHeight, tz + 0.06], [0.05, tieHeight, tz + 0.06]],
-              [0, 1, 0], tieColor
-            );
+          // Check neighbors for rail connections
+          const isRailBlock = (lx: number, ly: number, lz: number): boolean => {
+            if (lx >= 0 && lx < CHUNK_SIZE && ly >= 0 && ly < CHUNK_HEIGHT && lz >= 0 && lz < CHUNK_SIZE) {
+              return isFlat(chunk.getBlock(lx, ly, lz));
+            } else if (getNeighborBlock) {
+              return isFlat(getNeighborBlock(ox + lx, ly, oz + lz));
+            }
+            return false;
+          };
+
+          const hasNorth = isRailBlock(x, y, z - 1); // -Z
+          const hasSouth = isRailBlock(x, y, z + 1); // +Z
+          const hasEast = isRailBlock(x + 1, y, z);  // +X
+          const hasWest = isRailBlock(x - 1, y, z);  // -X
+
+          // Determine rail shape: 'ns' | 'ew' | 'curve_ne' | 'curve_nw' | 'curve_se' | 'curve_sw'
+          type RailShape = 'ns' | 'ew' | 'curve_ne' | 'curve_nw' | 'curve_se' | 'curve_sw';
+          let shape: RailShape = 'ns'; // default: straight north-south
+
+          // Powered rails don't curve
+          if (!isPowered) {
+            if (hasNorth && hasEast && !hasSouth && !hasWest) shape = 'curve_ne';
+            else if (hasNorth && hasWest && !hasSouth && !hasEast) shape = 'curve_nw';
+            else if (hasSouth && hasEast && !hasNorth && !hasWest) shape = 'curve_se';
+            else if (hasSouth && hasWest && !hasNorth && !hasEast) shape = 'curve_sw';
+            else if (hasEast || hasWest) {
+              if (!hasNorth && !hasSouth) shape = 'ew';
+              else shape = 'ns'; // prefer NS when both axes have neighbors
+            }
+          } else {
+            // Powered rails: only straight, pick orientation
+            if ((hasEast || hasWest) && !hasNorth && !hasSouth) shape = 'ew';
           }
 
-          // Two raised metal rails along Z
-          const railXRanges = [
-            { x1: 0.18, x2: 0.30 },
-            { x1: 0.70, x2: 0.82 },
-          ];
-          for (const rp of railXRanges) {
-            // Top face
-            addQuad(
-              [[rp.x1, railHeight, 0.02], [rp.x2, railHeight, 0.02],
-               [rp.x2, railHeight, 0.98], [rp.x1, railHeight, 0.98]],
-              [0, 1, 0], metalColor
-            );
-            // Inner side face
-            const innerX = rp.x1 < 0.5 ? rp.x2 : rp.x1;
-            const sideNx = rp.x1 < 0.5 ? 1 : -1;
-            addQuad(
-              [[innerX, tieHeight, 0.02], [innerX, railHeight, 0.02],
-               [innerX, railHeight, 0.98], [innerX, tieHeight, 0.98]],
-              [sideNx, 0, 0],
-              new THREE.Color(metalColor.r * 0.8, metalColor.g * 0.8, metalColor.b * 0.8)
-            );
+          if (shape === 'ns' || shape === 'ew') {
+            // Straight rail - either NS (along Z) or EW (along X)
+            const isEW = shape === 'ew';
+
+            // Cross ties
+            const tiePositions = [0.1, 0.3, 0.5, 0.7, 0.9];
+            for (const t of tiePositions) {
+              if (isEW) {
+                // Ties run along Z (perpendicular to X rail)
+                addQuad(
+                  [[t - 0.06, tieHeight, 0.05], [t + 0.06, tieHeight, 0.05],
+                   [t + 0.06, tieHeight, 0.95], [t - 0.06, tieHeight, 0.95]],
+                  [0, 1, 0], tieColor
+                );
+              } else {
+                // Ties run along X (perpendicular to Z rail)
+                addQuad(
+                  [[0.05, tieHeight, t - 0.06], [0.95, tieHeight, t - 0.06],
+                   [0.95, tieHeight, t + 0.06], [0.05, tieHeight, t + 0.06]],
+                  [0, 1, 0], tieColor
+                );
+              }
+            }
+
+            // Two raised metal rails
+            if (isEW) {
+              // Rails along X axis
+              const railZRanges = [
+                { z1: 0.18, z2: 0.30 },
+                { z1: 0.70, z2: 0.82 },
+              ];
+              for (const rp of railZRanges) {
+                addQuad(
+                  [[0.02, railHeight, rp.z1], [0.98, railHeight, rp.z1],
+                   [0.98, railHeight, rp.z2], [0.02, railHeight, rp.z2]],
+                  [0, 1, 0], metalColor
+                );
+                const innerZ = rp.z1 < 0.5 ? rp.z2 : rp.z1;
+                const sideNz = rp.z1 < 0.5 ? 1 : -1;
+                addQuad(
+                  [[0.02, tieHeight, innerZ], [0.02, railHeight, innerZ],
+                   [0.98, railHeight, innerZ], [0.98, tieHeight, innerZ]],
+                  [0, 0, sideNz],
+                  new THREE.Color(metalColor.r * 0.8, metalColor.g * 0.8, metalColor.b * 0.8)
+                );
+              }
+            } else {
+              // Rails along Z axis (default)
+              const railXRanges = [
+                { x1: 0.18, x2: 0.30 },
+                { x1: 0.70, x2: 0.82 },
+              ];
+              for (const rp of railXRanges) {
+                addQuad(
+                  [[rp.x1, railHeight, 0.02], [rp.x2, railHeight, 0.02],
+                   [rp.x2, railHeight, 0.98], [rp.x1, railHeight, 0.98]],
+                  [0, 1, 0], metalColor
+                );
+                const innerX = rp.x1 < 0.5 ? rp.x2 : rp.x1;
+                const sideNx = rp.x1 < 0.5 ? 1 : -1;
+                addQuad(
+                  [[innerX, tieHeight, 0.02], [innerX, railHeight, 0.02],
+                   [innerX, railHeight, 0.98], [innerX, tieHeight, 0.98]],
+                  [sideNx, 0, 0],
+                  new THREE.Color(metalColor.r * 0.8, metalColor.g * 0.8, metalColor.b * 0.8)
+                );
+              }
+            }
+          } else {
+            // Curved rail - generate arc ties and curved rails
+            // Determine curve center and angles based on shape
+            // curve_ne: connects -Z (north) and +X (east) -> pivot at (1, 0)
+            // curve_nw: connects -Z (north) and -X (west) -> pivot at (0, 0)
+            // curve_se: connects +Z (south) and +X (east) -> pivot at (1, 1)
+            // curve_sw: connects +Z (south) and -X (west) -> pivot at (0, 1)
+
+            let pivotX: number, pivotZ: number, startAngle: number;
+            switch (shape) {
+              case 'curve_ne': pivotX = 1; pivotZ = 0; startAngle = Math.PI; break;       // 180 -> 270
+              case 'curve_nw': pivotX = 0; pivotZ = 0; startAngle = -Math.PI / 2; break;  // 270 -> 360
+              case 'curve_se': pivotX = 1; pivotZ = 1; startAngle = Math.PI / 2; break;   // 90 -> 180
+              case 'curve_sw': pivotX = 0; pivotZ = 1; startAngle = 0; break;             // 0 -> 90
+            }
+
+            const CURVE_SEGMENTS = 5;
+            const angleSpan = Math.PI / 2;
+
+            // Curved ties
+            for (let s = 0; s < CURVE_SEGMENTS; s++) {
+              const t = (s + 0.5) / CURVE_SEGMENTS;
+              const angle = startAngle + t * angleSpan;
+              const cx = pivotX + Math.cos(angle) * 0.5;
+              const cz = pivotZ + Math.sin(angle) * 0.5;
+              // Tie perpendicular to curve direction
+              const tx = -Math.sin(angle) * 0.45;
+              const tz = Math.cos(angle) * 0.45;
+              const tw = Math.cos(angle) * 0.06;
+              const th = Math.sin(angle) * 0.06;
+              addQuad(
+                [[cx - tx + tw, tieHeight, cz - tz + th],
+                 [cx + tx + tw, tieHeight, cz + tz + th],
+                 [cx + tx - tw, tieHeight, cz + tz - th],
+                 [cx - tx - tw, tieHeight, cz - tz - th]],
+                [0, 1, 0], tieColor
+              );
+            }
+
+            // Curved metal rails (inner and outer)
+            const railOffsets = [0.24, 0.76]; // inner and outer rail distance from pivot
+            const RAIL_SEGMENTS = 8;
+            const railWidth = 0.06;
+            for (const railR of railOffsets) {
+              for (let s = 0; s < RAIL_SEGMENTS; s++) {
+                const t0 = s / RAIL_SEGMENTS;
+                const t1 = (s + 1) / RAIL_SEGMENTS;
+                const a0 = startAngle + t0 * angleSpan;
+                const a1 = startAngle + t1 * angleSpan;
+
+                const cx0 = pivotX + Math.cos(a0) * railR;
+                const cz0 = pivotZ + Math.sin(a0) * railR;
+                const cx1 = pivotX + Math.cos(a1) * railR;
+                const cz1 = pivotZ + Math.sin(a1) * railR;
+
+                // Rail width perpendicular to direction
+                const nx0 = Math.cos(a0) * railWidth;
+                const nz0 = Math.sin(a0) * railWidth;
+                const nx1 = Math.cos(a1) * railWidth;
+                const nz1 = Math.sin(a1) * railWidth;
+
+                // Top face of curved rail segment
+                addQuad(
+                  [[cx0 - nx0, railHeight, cz0 - nz0],
+                   [cx0 + nx0, railHeight, cz0 + nz0],
+                   [cx1 + nx1, railHeight, cz1 + nz1],
+                   [cx1 - nx1, railHeight, cz1 - nz1]],
+                  [0, 1, 0], metalColor
+                );
+              }
+            }
           }
 
-          // Bottom face
+          // Bottom face (same for all shapes)
           addQuad(
             [[0.05, 0, 0.05], [0.95, 0, 0.05],
              [0.95, 0, 0.95], [0.05, 0, 0.95]],

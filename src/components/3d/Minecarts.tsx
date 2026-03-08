@@ -2,7 +2,7 @@ import { useRef, useMemo, useCallback, useEffect, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
-import { BlockType } from '../../core/voxel/BlockRegistry';
+import { BlockType, isFlat } from '../../core/voxel/BlockRegistry';
 import { soundManager } from '../../systems/SoundManager';
 
 interface Minecart {
@@ -191,6 +191,27 @@ export function MinecartRenderer({ center }: { center: [number, number, number] 
     cart.velocity.addScaledVector(dir, 0.12);
   }, [camera]);
 
+  // Get rail shape at block position for steering
+  const getRailShape = useCallback((bx: number, by: number, bz: number): 'ns' | 'ew' | 'curve_ne' | 'curve_nw' | 'curve_se' | 'curve_sw' => {
+    const block = getBlock(bx, by, bz);
+    const isPowered = block === BlockType.POWERED_RAIL;
+
+    const hasN = isFlat(getBlock(bx, by, bz - 1));
+    const hasS = isFlat(getBlock(bx, by, bz + 1));
+    const hasE = isFlat(getBlock(bx + 1, by, bz));
+    const hasW = isFlat(getBlock(bx - 1, by, bz));
+
+    if (!isPowered) {
+      if (hasN && hasE && !hasS && !hasW) return 'curve_ne';
+      if (hasN && hasW && !hasS && !hasE) return 'curve_nw';
+      if (hasS && hasE && !hasN && !hasW) return 'curve_se';
+      if (hasS && hasW && !hasN && !hasE) return 'curve_sw';
+    }
+
+    if ((hasE || hasW) && !hasN && !hasS) return 'ew';
+    return 'ns';
+  }, [getBlock]);
+
   // Physics update
   useFrame(() => {
     const friction = 0.97;
@@ -205,6 +226,64 @@ export function MinecartRenderer({ center }: { center: [number, number, number] 
       const f = onRail ? railFriction : friction;
       cart.velocity.x *= f;
       cart.velocity.z *= f;
+
+      // Rail steering: constrain velocity direction based on rail shape
+      if (onRail && cart.velocity.lengthSq() > 0.00001) {
+        const bx = Math.floor(cart.position.x);
+        const by = Math.floor(cart.position.y - 0.3);
+        const bz = Math.floor(cart.position.z);
+        const shape = getRailShape(bx, by, bz);
+        const speed = Math.sqrt(cart.velocity.x * cart.velocity.x + cart.velocity.z * cart.velocity.z);
+
+        if (shape === 'ns') {
+          // Constrain to Z axis
+          cart.velocity.x *= 0.8;
+        } else if (shape === 'ew') {
+          // Constrain to X axis
+          cart.velocity.z *= 0.8;
+        } else {
+          // Curved rail: steer the cart along the curve
+          // Calculate position within the block (0-1)
+          const localX = cart.position.x - bx;
+          const localZ = cart.position.z - bz;
+
+          // Get curve pivot
+          let pivotX: number, pivotZ: number;
+          switch (shape) {
+            case 'curve_ne': pivotX = 1; pivotZ = 0; break;
+            case 'curve_nw': pivotX = 0; pivotZ = 0; break;
+            case 'curve_se': pivotX = 1; pivotZ = 1; break;
+            case 'curve_sw': pivotX = 0; pivotZ = 1; break;
+          }
+
+          // Direction tangent to the curve at current position
+          const dx = localX - pivotX;
+          const dz = localZ - pivotZ;
+          const dist = Math.sqrt(dx * dx + dz * dz);
+          if (dist > 0.01) {
+            // Tangent is perpendicular to radius
+            let tangentX = -dz / dist;
+            let tangentZ = dx / dist;
+
+            // Choose direction that matches current velocity
+            const dot = tangentX * cart.velocity.x + tangentZ * cart.velocity.z;
+            if (dot < 0) {
+              tangentX = -tangentX;
+              tangentZ = -tangentZ;
+            }
+
+            // Steer towards tangent direction
+            cart.velocity.x = tangentX * speed;
+            cart.velocity.z = tangentZ * speed;
+
+            // Pull towards the ideal radius (0.5 from pivot)
+            const idealR = 0.5;
+            const rDiff = dist - idealR;
+            cart.position.x -= (dx / dist) * rDiff * 0.1;
+            cart.position.z -= (dz / dist) * rDiff * 0.1;
+          }
+        }
+      }
 
       // Powered rail boost
       const onPowered = isOnPoweredRail(cart.position.x, cart.position.y, cart.position.z);
