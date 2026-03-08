@@ -3,7 +3,7 @@ import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
-import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest } from '../../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, isLever, isButton } from '../../core/voxel/BlockRegistry';
 import { computeRailBlockType, shouldRailUpdate } from '../../core/voxel/ChunkMesher';
 import { soundManager } from '../../systems/SoundManager';
 import { spawnParticles } from './DiggingParticles';
@@ -234,6 +234,38 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
             setBlockW(bx, by + 1, bz, isOpen ? BlockType.DOOR_OAK_TOP : BlockType.DOOR_OAK_TOP_OPEN);
           }
           soundManager.playPlaceSound();
+          return;
+        }
+      }
+
+      // Lever toggle: click lever with empty hand
+      const leverCheck = raycast();
+      if (leverCheck && isLever(leverCheck.blockType)) {
+        const selBlock = getSelectedBlock();
+        if (!selBlock || isItemType(selBlock)) {
+          const [bx, by, bz] = leverCheck.blockPos;
+          const leverDef = getBlock(leverCheck.blockType);
+          const isOn = leverDef.leverOn === true;
+          setBlockW(bx, by, bz, isOn ? BlockType.LEVER : BlockType.LEVER_ON);
+          soundManager.playPlaceSound();
+          // Emit event for powered rails and other systems
+          window.dispatchEvent(new CustomEvent('digy:leverToggle', {
+            detail: { x: bx, y: by, z: bz, on: !isOn }
+          }));
+          return;
+        }
+      }
+
+      // Button press: click button, temporarily activates (1.5s pulse)
+      const buttonCheck = raycast();
+      if (buttonCheck && isButton(buttonCheck.blockType)) {
+        const selBlock = getSelectedBlock();
+        if (!selBlock || isItemType(selBlock)) {
+          const [bx, by, bz] = buttonCheck.blockPos;
+          soundManager.playPlaceSound();
+          window.dispatchEvent(new CustomEvent('digy:buttonPress', {
+            detail: { x: bx, y: by, z: bz }
+          }));
           return;
         }
       }

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BlockType, getBlock, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest, isTorch } from './BlockRegistry';
+import { BlockType, getBlock, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest, isTorch, isLever, isButton } from './BlockRegistry';
 import { ChunkData } from './ChunkData';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
 import { getAtlasUV, getWhiteUV } from './TextureAtlas';
@@ -259,6 +259,7 @@ export function buildChunkMesh(
   const uvs: number[] = [];
   const sparkles: number[] = [];
   const oreColors: number[] = [];
+  const waterFlags: number[] = [];
   const indices: number[] = [];
   let vertexCount = 0;
 
@@ -275,6 +276,7 @@ export function buildChunkMesh(
         const wz = oz + z;
         const blockDef = getBlock(block);
         const sparkle = blockDef.sparkle ?? 0;
+        const isWater = block === BlockType.WATER ? 1.0 : 0.0;
         const oreColor = blockDef.oreColor;
 
         // Crossed quad rendering for vegetation
@@ -302,6 +304,7 @@ export function buildChunkMesh(
               const lv = corner[1] > 0.5 ? 1 : 0;
               uvs.push(wuv.u0 + lu * (wuv.u1 - wuv.u0), wuv.v0 + lv * (wuv.v1 - wuv.v0));
               sparkles.push(0);
+              waterFlags.push(0);
               oreColors.push(1.0, 0.95, 0.8);
             }
 
@@ -356,6 +359,7 @@ export function buildChunkMesh(
               const lv = ci < 2 ? 0 : 1;
               uvs.push(wuv.u0 + lu * (wuv.u1 - wuv.u0), wuv.v0 + lv * (wuv.v1 - wuv.v0));
               sparkles.push(0);
+              waterFlags.push(0);
               oreColors.push(1.0, 0.95, 0.8);
             }
             indices.push(
@@ -411,6 +415,7 @@ export function buildChunkMesh(
               const lv = ci < 2 ? 0 : 1;
               uvs.push(railWhite.u0 + lu * (railWhite.u1 - railWhite.u0), railWhite.v0 + lv * (railWhite.v1 - railWhite.v0));
               sparkles.push(0);
+              waterFlags.push(0);
               oreColors.push(1.0, 0.95, 0.8);
             }
             indices.push(
@@ -620,6 +625,7 @@ export function buildChunkMesh(
               const lv = ci < 2 ? 0 : 1;
               uvs.push(chestAtlas.u0 + lu * (chestAtlas.u1 - chestAtlas.u0), chestAtlas.v0 + lv * (chestAtlas.v1 - chestAtlas.v0));
               sparkles.push(0);
+              waterFlags.push(0);
               oreColors.push(0, 0, 0);
             }
             indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
@@ -667,6 +673,7 @@ export function buildChunkMesh(
               const v = slabAtlas.v0 + face.uvs[ci][1] * (slabAtlas.v1 - slabAtlas.v0);
               uvs.push(u, v);
               sparkles.push(0);
+              waterFlags.push(0);
               oreColors.push(1.0, 0.95, 0.8);
             }
             indices.push(vertexCount, vertexCount + 1, vertexCount + 2, vertexCount, vertexCount + 2, vertexCount + 3);
@@ -706,6 +713,7 @@ export function buildChunkMesh(
                 const lv = ci < 2 ? 0 : 1;
                 uvs.push(fAtlas.u0 + lu * (fAtlas.u1 - fAtlas.u0), fAtlas.v0 + lv * (fAtlas.v1 - fAtlas.v0));
                 sparkles.push(0);
+                waterFlags.push(0);
                 oreColors.push(1.0, 0.95, 0.8);
               }
               indices.push(vertexCount, vertexCount + 1, vertexCount + 2, vertexCount, vertexCount + 2, vertexCount + 3);
@@ -785,6 +793,7 @@ export function buildChunkMesh(
                 const lv = ci < 2 ? 0 : 1;
                 uvs.push(fAtlas.u0 + lu * (fAtlas.u1 - fAtlas.u0), fAtlas.v0 + lv * (fAtlas.v1 - fAtlas.v0));
                 sparkles.push(0);
+                waterFlags.push(0);
                 oreColors.push(1.0, 0.95, 0.8);
               }
               indices.push(vertexCount, vertexCount + 1, vertexCount + 2, vertexCount, vertexCount + 2, vertexCount + 3);
@@ -835,6 +844,7 @@ export function buildChunkMesh(
                 const lv = ci < 2 ? 0 : 1;
                 uvs.push(fAtlas.u0 + lu * (fAtlas.u1 - fAtlas.u0), fAtlas.v0 + lv * (fAtlas.v1 - fAtlas.v0));
                 sparkles.push(0);
+                waterFlags.push(0);
                 oreColors.push(1.0, 0.95, 0.8);
               }
               indices.push(vertexCount, vertexCount + 1, vertexCount + 2, vertexCount, vertexCount + 2, vertexCount + 3);
@@ -848,6 +858,95 @@ export function buildChunkMesh(
           } else {
             // Closed door: thin along Z axis, full X
             addBoxFaces(0, 0, 0.425, 1, 1, 0.575, doorColor);
+          }
+          continue;
+        }
+
+        // Lever rendering
+        if (isLever(block)) {
+          const leverDef = getBlock(block);
+          const isOn = leverDef.leverOn === true;
+          const baseColor = new THREE.Color(0x555555);
+          const stickColor = leverDef.color;
+          const whiteUV = getWhiteUV();
+
+          // Stone base plate
+          const bx0 = 0.3, bx1 = 0.7, bz0 = 0.3, bz1 = 0.7;
+          const by0 = 0, by1 = 0.15;
+          const baseFaces: { c: [number,number,number][]; n: [number,number,number]; b: number }[] = [
+            { c: [[bx0,by1,bz1],[bx1,by1,bz1],[bx1,by1,bz0],[bx0,by1,bz0]], n: [0,1,0], b: 1.0 },
+            { c: [[bx0,by0,bz0],[bx1,by0,bz0],[bx1,by0,bz1],[bx0,by0,bz1]], n: [0,-1,0], b: 0.7 },
+            { c: [[bx1,by0,bz0],[bx1,by1,bz0],[bx1,by1,bz1],[bx1,by0,bz1]], n: [1,0,0], b: 0.85 },
+            { c: [[bx0,by0,bz1],[bx0,by1,bz1],[bx0,by1,bz0],[bx0,by0,bz0]], n: [-1,0,0], b: 0.85 },
+            { c: [[bx1,by0,bz1],[bx1,by1,bz1],[bx0,by1,bz1],[bx0,by0,bz1]], n: [0,0,1], b: 0.9 },
+            { c: [[bx0,by0,bz0],[bx0,by1,bz0],[bx1,by1,bz0],[bx1,by0,bz0]], n: [0,0,-1], b: 0.9 },
+          ];
+          for (const f of baseFaces) {
+            for (let ci = 0; ci < 4; ci++) {
+              positions.push(x + f.c[ci][0], y + f.c[ci][1], z + f.c[ci][2]);
+              normals.push(f.n[0], f.n[1], f.n[2]);
+              colors.push(baseColor.r * f.b, baseColor.g * f.b, baseColor.b * f.b);
+              uvs.push(whiteUV.u0, whiteUV.v0);
+              sparkles.push(0); waterFlags.push(0); oreColors.push(1, 0.95, 0.8);
+            }
+            indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+            vertexCount += 4;
+          }
+
+          // Stick (angled differently for ON/OFF)
+          const sw = 0.08;
+          const sh = 0.45;
+          const sx = 0.5 - sw/2, sx1l = 0.5 + sw/2;
+          const sz = 0.5 - sw/2, sz1l = 0.5 + sw/2;
+          // ON: stick tilted up, OFF: stick tilted down
+          const tipY = isOn ? 0.15 + sh : 0.15 + sh * 0.6;
+          const tipOffset = isOn ? 0.0 : 0.15;
+          const stickFaces: { c: [number,number,number][]; n: [number,number,number]; b: number }[] = [
+            { c: [[sx+tipOffset,tipY,sz],[sx1l+tipOffset,tipY,sz],[sx1l,0.15,sz1l],[sx,0.15,sz1l]], n: [0,0,-1], b: 0.85 },
+            { c: [[sx,0.15,sz1l],[sx1l,0.15,sz1l],[sx1l+tipOffset,tipY,sz1l],[sx+tipOffset,tipY,sz1l]], n: [0,0,1], b: 0.85 },
+            { c: [[sx1l,0.15,sz1l],[sx1l,0.15,sz],[sx1l+tipOffset,tipY,sz],[sx1l+tipOffset,tipY,sz1l]], n: [1,0,0], b: 0.9 },
+            { c: [[sx+tipOffset,tipY,sz1l],[sx+tipOffset,tipY,sz],[sx,0.15,sz],[sx,0.15,sz1l]], n: [-1,0,0], b: 0.9 },
+          ];
+          for (const f of stickFaces) {
+            for (let ci = 0; ci < 4; ci++) {
+              positions.push(x + f.c[ci][0], y + f.c[ci][1], z + f.c[ci][2]);
+              normals.push(f.n[0], f.n[1], f.n[2]);
+              colors.push(stickColor.r * f.b, stickColor.g * f.b, stickColor.b * f.b);
+              uvs.push(whiteUV.u0, whiteUV.v0);
+              sparkles.push(0); waterFlags.push(0); oreColors.push(1, 0.95, 0.8);
+            }
+            indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+            vertexCount += 4;
+          }
+          continue;
+        }
+
+        // Button rendering
+        if (isButton(block)) {
+          const btnColor = blockDef.color;
+          const whiteUV = getWhiteUV();
+          // Small stone button on surface
+          const bx0 = 0.35, bx1 = 0.65;
+          const by0 = 0.25, by1 = 0.5;
+          const bz0 = 0.4, bz1 = 0.6;
+          const btnFaces: { c: [number,number,number][]; n: [number,number,number]; b: number }[] = [
+            { c: [[bx0,by1,bz1],[bx1,by1,bz1],[bx1,by1,bz0],[bx0,by1,bz0]], n: [0,1,0], b: 1.0 },
+            { c: [[bx0,by0,bz0],[bx1,by0,bz0],[bx1,by0,bz1],[bx0,by0,bz1]], n: [0,-1,0], b: 0.7 },
+            { c: [[bx1,by0,bz0],[bx1,by1,bz0],[bx1,by1,bz1],[bx1,by0,bz1]], n: [1,0,0], b: 0.85 },
+            { c: [[bx0,by0,bz1],[bx0,by1,bz1],[bx0,by1,bz0],[bx0,by0,bz0]], n: [-1,0,0], b: 0.85 },
+            { c: [[bx1,by0,bz1],[bx1,by1,bz1],[bx0,by1,bz1],[bx0,by0,bz1]], n: [0,0,1], b: 0.9 },
+            { c: [[bx0,by0,bz0],[bx0,by1,bz0],[bx1,by1,bz0],[bx1,by0,bz0]], n: [0,0,-1], b: 0.9 },
+          ];
+          for (const f of btnFaces) {
+            for (let ci = 0; ci < 4; ci++) {
+              positions.push(x + f.c[ci][0], y + f.c[ci][1], z + f.c[ci][2]);
+              normals.push(f.n[0], f.n[1], f.n[2]);
+              colors.push(btnColor.r * f.b, btnColor.g * f.b, btnColor.b * f.b);
+              uvs.push(whiteUV.u0, whiteUV.v0);
+              sparkles.push(0); waterFlags.push(0); oreColors.push(1, 0.95, 0.8);
+            }
+            indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+            vertexCount += 4;
           }
           continue;
         }
@@ -894,6 +993,7 @@ export function buildChunkMesh(
             const v = atlas.v0 + face.uvs[ci][1] * (atlas.v1 - atlas.v0);
             uvs.push(u, v);
             sparkles.push(sparkle);
+            waterFlags.push(isWater);
             oreColors.push(
               oreColor ? oreColor.r : 1.0,
               oreColor ? oreColor.g : 0.95,
@@ -917,6 +1017,7 @@ export function buildChunkMesh(
   geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setAttribute('aSparkle', new THREE.Float32BufferAttribute(sparkles, 1));
+  geometry.setAttribute('aIsWater', new THREE.Float32BufferAttribute(waterFlags, 1));
   geometry.setAttribute('aOreColor', new THREE.Float32BufferAttribute(oreColors, 3));
   geometry.setIndex(indices);
   geometry.computeBoundingSphere();

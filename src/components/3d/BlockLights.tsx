@@ -1,43 +1,21 @@
-import { useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
-import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { BlockType, getBlock } from '../../core/voxel/BlockRegistry';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
+import { updateVoxelShaderUniforms, PointLightData } from '../../core/voxel/VoxelShader';
 
 interface LightEntry {
   x: number;
   y: number;
   z: number;
-  color: string;
+  colorR: number;
+  colorG: number;
+  colorB: number;
+  intensity: number;
+  distance: number;
   isTorch: boolean;
-}
-
-function TorchLight({ light }: { light: LightEntry }) {
-  const ref = useRef<THREE.PointLight>(null);
-  // Use a stable random offset per torch so they don't all flicker in sync
-  const phaseOffset = useMemo(() => Math.random() * Math.PI * 2, []);
-
-  useFrame((state) => {
-    if (!ref.current) return;
-    if (light.isTorch) {
-      const t = state.clock.elapsedTime;
-      // Gentle flickering: combine two sine waves for organic feel
-      const flicker = 0.85 + 0.15 * Math.sin(t * 6 + phaseOffset) * Math.sin(t * 9.3 + phaseOffset * 2);
-      ref.current.intensity = 0.6 * flicker;
-    }
-  });
-
-  return (
-    <pointLight
-      ref={ref}
-      position={[light.x, light.y, light.z]}
-      color={light.color}
-      intensity={light.isTorch ? 0.6 : 1.2}
-      distance={12}
-      decay={2}
-    />
-  );
+  phaseOffset: number;
 }
 
 export function BlockLights() {
@@ -60,13 +38,18 @@ export function BlockLights() {
             if (!def.emitsLight) continue;
 
             const isTorch = block === BlockType.TORCH;
-            const color = block === BlockType.LAMP ? '#ffdd88' : '#ffaa33';
+            const isLamp = block === BlockType.LAMP;
             result.push({
               x: ox + x + 0.5,
-              y: y + 0.5,
+              y: y + (isTorch ? 0.8 : 0.5),
               z: oz + z + 0.5,
-              color,
+              colorR: isTorch ? 1.0 : 1.0,
+              colorG: isTorch ? 0.67 : 0.87,
+              colorB: isTorch ? 0.2 : 0.53,
+              intensity: isLamp ? 1.2 : 0.6,
+              distance: 12,
               isTorch,
+              phaseOffset: Math.random() * Math.PI * 2,
             });
           }
         }
@@ -76,14 +59,39 @@ export function BlockLights() {
     return result;
   }, [chunks]);
 
-  return (
-    <>
-      {lights.map((light) => (
-        <TorchLight
-          key={`${light.x}-${light.y}-${light.z}`}
-          light={light}
-        />
-      ))}
-    </>
-  );
+  // Push light data to the voxel shader every frame (with flickering)
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+    const pointLights: PointLightData[] = [];
+
+    // Sort by distance to camera, take closest 16
+    const camPos = state.camera.position;
+    const sorted = lights
+      .map((l) => ({
+        ...l,
+        distSq: (l.x - camPos.x) ** 2 + (l.y - camPos.y) ** 2 + (l.z - camPos.z) ** 2,
+      }))
+      .sort((a, b) => a.distSq - b.distSq)
+      .slice(0, 16);
+
+    for (const light of sorted) {
+      let intensity = light.intensity;
+      if (light.isTorch) {
+        // Gentle flickering
+        const flicker = 0.85 + 0.15 * Math.sin(t * 6 + light.phaseOffset) * Math.sin(t * 9.3 + light.phaseOffset * 2);
+        intensity *= flicker;
+      }
+      pointLights.push({
+        position: [light.x, light.y, light.z],
+        color: [light.colorR, light.colorG, light.colorB],
+        intensity,
+        distance: light.distance,
+      });
+    }
+
+    updateVoxelShaderUniforms({ pointLights });
+  });
+
+  // No more Three.js pointLight nodes needed - the shader handles it all
+  return null;
 }

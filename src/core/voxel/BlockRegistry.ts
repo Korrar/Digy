@@ -96,6 +96,10 @@ export enum BlockType {
   CHEST = 80,
   // Warning light (placeable on minecart)
   WARNING_LIGHT = 81,
+  // Lever & Button (redstone-lite)
+  LEVER = 82,
+  LEVER_ON = 83,
+  BUTTON = 84,
 }
 
 export interface BlockDefinition {
@@ -145,6 +149,12 @@ export interface BlockDefinition {
   isChest?: boolean;
   /** Render as torch (thin stick with flame) */
   isTorch?: boolean;
+  /** Render as wall lever */
+  isLever?: boolean;
+  /** Lever is in ON state */
+  leverOn?: boolean;
+  /** Render as wall button */
+  isButton?: boolean;
 }
 
 const BLOCKS: Map<BlockType, BlockDefinition> = new Map();
@@ -246,6 +256,11 @@ register({ id: BlockType.COBBLE_STAIRS_W, name: 'Cobble Stairs', color: new THRE
 // Warning light (siren/beacon for minecarts)
 register({ id: BlockType.WARNING_LIGHT, name: 'Warning Light', color: new THREE.Color(0xffcc00), hardness: 0, transparent: true, drops: BlockType.WARNING_LIGHT, stackSize: 1, isItem: true, isPlaceableItem: true, icon: 'warning_light' });
 
+// Lever & Button
+register({ id: BlockType.LEVER, name: 'Lever', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: true, drops: BlockType.LEVER, stackSize: 64, isLever: true, icon: 'lever' });
+register({ id: BlockType.LEVER_ON, name: 'Lever', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: true, drops: BlockType.LEVER, stackSize: 0, isLever: true, leverOn: true });
+register({ id: BlockType.BUTTON, name: 'Button', color: new THREE.Color(0x808080), hardness: 0.5, transparent: true, drops: BlockType.BUTTON, stackSize: 64, isButton: true, icon: 'button' });
+
 // Chest
 register({ id: BlockType.CHEST, name: 'Chest', color: new THREE.Color(0xb8945a), hardness: 1.5, transparent: true, drops: BlockType.CHEST, stackSize: 64, isChest: true, icon: 'chest' });
 
@@ -282,7 +297,7 @@ export function isTransparent(type: BlockType): boolean {
 
 export function isSolid(type: BlockType): boolean {
   const def = getBlock(type);
-  return type !== BlockType.AIR && type !== BlockType.WATER && !def.crossedQuad && !def.isFlat && !def.isTorch;
+  return type !== BlockType.AIR && type !== BlockType.WATER && !def.crossedQuad && !def.isFlat && !def.isTorch && !def.isLever && !def.isButton;
 }
 
 export function isCrossedQuad(type: BlockType): boolean {
@@ -345,6 +360,14 @@ export function isDoor(type: BlockType): boolean {
 
 export function isChest(type: BlockType): boolean {
   return getBlock(type).isChest === true;
+}
+
+export function isLever(type: BlockType): boolean {
+  return getBlock(type).isLever === true;
+}
+
+export function isButton(type: BlockType): boolean {
+  return getBlock(type).isButton === true;
 }
 
 export function isDoorItem(type: BlockType): boolean {
