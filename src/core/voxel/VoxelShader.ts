@@ -43,14 +43,28 @@ void main() {
     worldPos.y += wave1 + wave2 + wave3 - 0.1;
   }
 
-  // Animated torch flame: sway vertices side to side
+  // Animated torch flame: realistic sway and flicker
   if (aSparkle < -0.5) {
-    float sway = sin(worldPos.x * 10.0 + uTime * 6.0) * 0.02 + sin(uTime * 8.0 + worldPos.z * 8.0) * 0.015;
-    worldPos.x += sway;
-    worldPos.z += sway * 0.7;
-    // Stretch flame upward slightly
-    float flicker = sin(uTime * 12.0 + worldPos.x * 5.0) * 0.02;
-    worldPos.y += flicker;
+    // Height within flame (0=base, 1=tip) - more sway at top
+    float flameH = fract(worldPos.y * 2.0);
+    float swayAmount = flameH * flameH; // quadratic - tips move most
+
+    // Multi-frequency sway for organic movement
+    float sway1 = sin(worldPos.x * 8.0 + uTime * 5.0) * 0.025;
+    float sway2 = sin(uTime * 7.3 + worldPos.z * 6.0) * 0.018;
+    float sway3 = sin(uTime * 11.0 + worldPos.x * 12.0) * 0.008; // high freq flutter
+    worldPos.x += (sway1 + sway3) * swayAmount;
+    worldPos.z += (sway2 + sway3 * 0.6) * swayAmount;
+
+    // Vertical stretch/compress - flame "licks" upward
+    float stretch = sin(uTime * 9.0 + worldPos.x * 4.0) * 0.03 * swayAmount;
+    float pulse = sin(uTime * 14.0) * 0.015 * swayAmount;
+    worldPos.y += stretch + pulse;
+
+    // Slight pinch at tip
+    float pinch = 1.0 - flameH * 0.15;
+    worldPos.x = mix(worldPos.x, floor(worldPos.x) + 0.5, (1.0 - pinch) * 0.3);
+    worldPos.z = mix(worldPos.z, floor(worldPos.z) + 0.5, (1.0 - pinch) * 0.3);
   }
 
   // Animated lava: slower, thicker waves
@@ -202,14 +216,31 @@ void main() {
     }
   }
 
-  // Animated torch flame: flickering glow (sparkle < -0.5 marks flame vertices)
+  // Animated torch flame: realistic multi-layer glow
   if (vSparkle < -0.5) {
-    float flicker = 0.8 + 0.2 * sin(uTime * 10.0 + vWorldPosition.x * 7.0) * sin(uTime * 13.0 + vWorldPosition.z * 5.0);
+    float flameH = fract(vWorldPosition.y * 2.0);
+
+    // Multi-frequency flicker for natural fire
+    float flicker1 = sin(uTime * 10.0 + vWorldPosition.x * 7.0) * sin(uTime * 13.0 + vWorldPosition.z * 5.0);
+    float flicker2 = sin(uTime * 17.0 + vWorldPosition.z * 9.0) * 0.5;
+    float flicker3 = sin(uTime * 23.0 + vWorldPosition.x * 11.0) * 0.25;
+    float flicker = 0.7 + 0.3 * (flicker1 + flicker2 + flicker3) / 1.75;
+
+    // Color gradient: white-yellow core -> orange -> red at tips
+    vec3 coreColor = vec3(1.0, 0.95, 0.7);   // bright white-yellow
+    vec3 midColor = vec3(1.0, 0.55, 0.1);     // orange
+    vec3 tipColor = vec3(0.8, 0.2, 0.05);     // red-orange
+    vec3 flameColor = mix(coreColor, midColor, smoothstep(0.0, 0.4, flameH));
+    flameColor = mix(flameColor, tipColor, smoothstep(0.4, 0.9, flameH));
+
+    // Intensity fades toward tip
+    float intensity = (1.0 - flameH * 0.6) * flicker;
     float pulse = 0.9 + 0.1 * sin(uTime * 6.0);
-    // Make flame emissive (self-illuminating)
-    color = baseColor * 2.0 * flicker * pulse;
-    // Add bright core
-    color += vec3(0.3, 0.15, 0.0) * flicker;
+
+    // Emissive flame
+    color = flameColor * 2.2 * intensity * pulse;
+    // Hot bright core at base
+    color += vec3(0.4, 0.25, 0.05) * (1.0 - flameH) * flicker;
   }
 
   // Tone mapping (simple Reinhard)

@@ -14,7 +14,7 @@ interface AmbientParticle {
   vz: number;
   life: number;
   maxLife: number;
-  type: 'smoke' | 'lava_spark' | 'rail_spark';
+  type: 'smoke' | 'lava_spark' | 'rail_spark' | 'ember';
 }
 
 const MAX_AMBIENT_PARTICLES = 300;
@@ -32,7 +32,7 @@ export function AmbientParticles({ center }: { center: [number, number, number] 
 
   // Cache emitter positions (recalculate when chunks change)
   const emitters = useMemo(() => {
-    const result: { x: number; y: number; z: number; type: 'smoke' | 'lava_spark' | 'rail_spark' }[] = [];
+    const result: { x: number; y: number; z: number; type: 'smoke' | 'lava_spark' | 'rail_spark' | 'ember' }[] = [];
     chunks.forEach((entry, key) => {
       const [cx, cz] = key.split(',').map(Number);
       const ox = cx * CHUNK_SIZE;
@@ -43,6 +43,7 @@ export function AmbientParticles({ center }: { center: [number, number, number] 
             const bt = entry.data.getBlock(lx, ly, lz);
             if (bt === BlockType.TORCH) {
               result.push({ x: ox + lx + 0.5, y: ly + 0.9, z: oz + lz + 0.5, type: 'smoke' });
+              result.push({ x: ox + lx + 0.5, y: ly + 0.85, z: oz + lz + 0.5, type: 'ember' });
             } else if (bt === BlockType.LAVA) {
               // Only emit from surface lava (air above)
               const above = ly < 31 ? entry.data.getBlock(lx, ly + 1, lz) : BlockType.AIR;
@@ -88,16 +89,31 @@ export function AmbientParticles({ center }: { center: [number, number, number] 
         switch (emitter.type) {
           case 'smoke':
             particles.push({
-              x: emitter.x + (Math.random() - 0.5) * 0.15,
+              x: emitter.x + (Math.random() - 0.5) * 0.1,
               y: emitter.y,
-              z: emitter.z + (Math.random() - 0.5) * 0.15,
-              vx: (Math.random() - 0.5) * 0.2,
-              vy: 0.5 + Math.random() * 0.5,
-              vz: (Math.random() - 0.5) * 0.2,
-              life: 1.0 + Math.random() * 0.5,
-              maxLife: 1.5,
+              z: emitter.z + (Math.random() - 0.5) * 0.1,
+              vx: (Math.random() - 0.5) * 0.15,
+              vy: 0.3 + Math.random() * 0.4,
+              vz: (Math.random() - 0.5) * 0.15,
+              life: 1.5 + Math.random() * 1.0,
+              maxLife: 2.5,
               type: 'smoke',
             });
+            break;
+          case 'ember':
+            if (Math.random() < 0.35) {
+              particles.push({
+                x: emitter.x + (Math.random() - 0.5) * 0.1,
+                y: emitter.y,
+                z: emitter.z + (Math.random() - 0.5) * 0.1,
+                vx: (Math.random() - 0.5) * 0.4,
+                vy: 0.8 + Math.random() * 1.2,
+                vz: (Math.random() - 0.5) * 0.4,
+                life: 0.6 + Math.random() * 0.8,
+                maxLife: 1.4,
+                type: 'ember',
+              });
+            }
             break;
           case 'lava_spark':
             if (Math.random() < 0.3) { // Less frequent
@@ -152,11 +168,18 @@ export function AmbientParticles({ center }: { center: [number, number, number] 
       if (p.type === 'lava_spark') {
         p.vy -= 5 * delta; // gravity
       } else if (p.type === 'smoke') {
-        p.vy *= 0.98; // decelerate
-        p.vx += (Math.random() - 0.5) * 0.5 * delta; // drift
-        p.vz += (Math.random() - 0.5) * 0.5 * delta;
+        p.vy *= 0.97; // decelerate slowly - rises longer
+        p.vx += (Math.random() - 0.5) * 0.3 * delta; // gentle drift
+        p.vz += (Math.random() - 0.5) * 0.3 * delta;
+        // Slight lateral expansion as smoke rises
+        p.vx *= 1.0 + 0.3 * delta;
+        p.vz *= 1.0 + 0.3 * delta;
       } else if (p.type === 'rail_spark') {
         p.vy -= 8 * delta;
+      } else if (p.type === 'ember') {
+        p.vy -= 1.5 * delta; // light gravity
+        p.vx += (Math.random() - 0.5) * 1.5 * delta; // erratic drift
+        p.vz += (Math.random() - 0.5) * 1.5 * delta;
       }
 
       p.x += p.vx * delta;
@@ -174,11 +197,20 @@ export function AmbientParticles({ center }: { center: [number, number, number] 
         posAttr.array[i * 3 + 2] = p.z;
 
         if (p.type === 'smoke') {
-          const alpha = t * 0.6;
-          colAttr.array[i * 3] = 0.3 * alpha;
-          colAttr.array[i * 3 + 1] = 0.3 * alpha;
-          colAttr.array[i * 3 + 2] = 0.35 * alpha;
-          sizeAttr.array[i] = 0.08 + (1 - t) * 0.12;
+          // Fade: bright start (hot smoke) -> gray -> transparent
+          const alpha = Math.sin(t * Math.PI) * 0.7; // bell curve fade
+          const warmth = t * t; // warm tint fades as smoke cools
+          colAttr.array[i * 3] = (0.45 + warmth * 0.3) * alpha;
+          colAttr.array[i * 3 + 1] = (0.42 + warmth * 0.1) * alpha;
+          colAttr.array[i * 3 + 2] = 0.4 * alpha;
+          sizeAttr.array[i] = 0.1 + (1 - t) * 0.25; // grows as it rises
+        } else if (p.type === 'ember') {
+          // Bright orange-yellow fading to red
+          const fade = t * t;
+          colAttr.array[i * 3] = 1.0 * fade;
+          colAttr.array[i * 3 + 1] = (0.6 * t) * fade;
+          colAttr.array[i * 3 + 2] = (0.1 * t * t) * fade;
+          sizeAttr.array[i] = 0.04 * fade;
         } else if (p.type === 'lava_spark') {
           colAttr.array[i * 3] = 1.0 * t;
           colAttr.array[i * 3 + 1] = 0.4 * t;
