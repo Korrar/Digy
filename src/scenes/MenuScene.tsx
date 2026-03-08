@@ -12,7 +12,7 @@ export function MenuScene() {
   return (
     <div style={{
       width: '100vw',
-      minHeight: '100vh',
+      height: '100vh',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
