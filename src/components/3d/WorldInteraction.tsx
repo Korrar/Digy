@@ -3,7 +3,7 @@ import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
-import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest } from '../../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, canPlaceMinecart } from '../../core/voxel/BlockRegistry';
 import { computeRailBlockType, shouldRailUpdate } from '../../core/voxel/ChunkMesher';
 import { soundManager } from '../../systems/SoundManager';
 import { spawnParticles } from './DiggingParticles';
@@ -268,6 +268,19 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
           removeBlock(selectedIdx, 1);
           soundManager.playPlaceSound();
         }
+        return;
+      }
+
+      // Handle warning light placement - attach to nearby minecart
+      if (selectedBlock === BlockType.WARNING_LIGHT) {
+        const hit = raycast();
+        if (!hit) return;
+        const [bx, , bz] = hit.blockPos;
+        window.dispatchEvent(new CustomEvent('digy:attachWarningLight', {
+          detail: { x: bx + 0.5, z: bz + 0.5 }
+        }));
+        removeBlock(selectedIdx, 1);
+        soundManager.playPlaceSound();
         return;
       }
 

@@ -11,6 +11,7 @@ interface Minecart {
   position: THREE.Vector3;
   velocity: THREE.Vector3;
   onRail: boolean;
+  hasWarningLight: boolean;
 }
 
 let cartIdCounter = 0;
@@ -98,13 +99,70 @@ export function buildMinecartGeometry(): THREE.BufferGeometry {
   return merged;
 }
 
-function MinecartMesh({ cart, onPush }: { cart: Minecart; onPush: (id: number) => void }) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const currentRotY = useRef(0);
+// Build warning light geometry (two small beacon domes on the minecart sides)
+export function buildWarningLightGeometry(): THREE.BufferGeometry {
+  const allPos: number[] = [];
+  const allNorm: number[] = [];
+  const allCol: number[] = [];
+  const allIdx: number[] = [];
+  let vOff = 0;
 
-  useFrame(() => {
-    if (!meshRef.current) return;
-    meshRef.current.position.copy(cart.position);
+  const baseColor = new THREE.Color(0x444444);
+  const lensColor = new THREE.Color(0xffcc00);
+
+  // Two light housings on left and right sides of the cart
+  const positions = [
+    [-0.25, 0.38, 0],  // left
+    [0.25, 0.38, 0],   // right
+  ];
+
+  for (const pos of positions) {
+    // Base mount (small dark box)
+    const mount = new THREE.BoxGeometry(0.08, 0.04, 0.08);
+    mount.translate(pos[0], pos[1] - 0.02, pos[2]);
+
+    // Lens dome (small sphere-like cylinder)
+    const lens = new THREE.CylinderGeometry(0.05, 0.06, 0.06, 8);
+    lens.translate(pos[0], pos[1] + 0.03, pos[2]);
+
+    const parts: [THREE.BufferGeometry, THREE.Color][] = [
+      [mount, baseColor],
+      [lens, lensColor],
+    ];
+
+    for (const [geo, col] of parts) {
+      const p = geo.attributes.position;
+      const n = geo.attributes.normal;
+      const idx = geo.index!;
+      for (let i = 0; i < p.count; i++) {
+        allPos.push(p.getX(i), p.getY(i), p.getZ(i));
+        allNorm.push(n.getX(i), n.getY(i), n.getZ(i));
+        allCol.push(col.r, col.g, col.b);
+      }
+      for (let i = 0; i < idx.count; i++) allIdx.push(idx.getX(i) + vOff);
+      vOff += p.count;
+      geo.dispose();
+    }
+  }
+
+  const merged = new THREE.BufferGeometry();
+  merged.setAttribute('position', new THREE.Float32BufferAttribute(allPos, 3));
+  merged.setAttribute('normal', new THREE.Float32BufferAttribute(allNorm, 3));
+  merged.setAttribute('color', new THREE.Float32BufferAttribute(allCol, 3));
+  merged.setIndex(allIdx);
+  merged.computeBoundingSphere();
+  return merged;
+}
+
+function MinecartMesh({ cart, onPush }: { cart: Minecart; onPush: (id: number) => void }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const currentRotY = useRef(0);
+  const lightLeftRef = useRef<THREE.PointLight>(null);
+  const lightRightRef = useRef<THREE.PointLight>(null);
+
+  useFrame((state) => {
+    if (!groupRef.current) return;
+    groupRef.current.position.copy(cart.position);
 
     // Face direction of velocity with smooth interpolation for curves
     if (cart.velocity.lengthSq() > 0.0001) {
@@ -115,7 +173,17 @@ function MinecartMesh({ cart, onPush }: { cart: Minecart; onPush: (id: number) =
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
       currentRotY.current += diff * 0.25;
-      meshRef.current.rotation.y = currentRotY.current;
+      groupRef.current.rotation.y = currentRotY.current;
+    }
+
+    // Animate warning lights: alternate flashing at ~2Hz
+    if (cart.hasWarningLight && lightLeftRef.current && lightRightRef.current) {
+      const t = state.clock.elapsedTime;
+      // Flash cycle: 2Hz alternating between left and right
+      const phase = (t * 4) % 2; // 0-2 range, 4 = 2Hz * 2 lights
+      const leftOn = phase < 1;
+      lightLeftRef.current.intensity = leftOn ? 2.0 : 0.1;
+      lightRightRef.current.intensity = leftOn ? 0.1 : 2.0;
     }
   });
 
@@ -126,11 +194,39 @@ function MinecartMesh({ cart, onPush }: { cart: Minecart; onPush: (id: number) =
   }, [cart.id, onPush]);
 
   const geometry = useMemo(() => buildMinecartGeometry(), []);
+  const warningGeo = useMemo(() => cart.hasWarningLight ? buildWarningLightGeometry() : null, [cart.hasWarningLight]);
 
   return (
-    <mesh ref={meshRef} geometry={geometry} onClick={handleClick} castShadow>
-      <meshLambertMaterial vertexColors />
-    </mesh>
+    <group ref={groupRef}>
+      <mesh geometry={geometry} onClick={handleClick} castShadow>
+        <meshLambertMaterial vertexColors />
+      </mesh>
+      {cart.hasWarningLight && warningGeo && (
+        <>
+          <mesh geometry={warningGeo} castShadow>
+            <meshLambertMaterial vertexColors />
+          </mesh>
+          {/* Left warning light */}
+          <pointLight
+            ref={lightLeftRef}
+            position={[-0.25, 0.45, 0]}
+            color="#ffcc00"
+            intensity={2.0}
+            distance={8}
+            decay={2}
+          />
+          {/* Right warning light */}
+          <pointLight
+            ref={lightRightRef}
+            position={[0.25, 0.45, 0]}
+            color="#ffcc00"
+            intensity={0.1}
+            distance={8}
+            decay={2}
+          />
+        </>
+      )}
+    </group>
   );
 }
 
@@ -149,11 +245,39 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
         position: new THREE.Vector3(detail.x, detail.y, detail.z),
         velocity: new THREE.Vector3(0, 0, 0),
         onRail: detail.onRail ?? false,
+        hasWarningLight: detail.hasWarningLight ?? false,
       });
       setCartVersion((v) => v + 1);
     };
     window.addEventListener('digy:spawnMinecart', handler);
-    return () => window.removeEventListener('digy:spawnMinecart', handler);
+
+    // Listen for warning light attachment to existing minecarts
+    const warningHandler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      const { x, z } = detail;
+      // Find closest minecart within 1.5 blocks
+      let closest: Minecart | null = null;
+      let closestDist = 1.5;
+      for (const cart of cartsRef.current) {
+        const dx = cart.position.x - x;
+        const dz = cart.position.z - z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closest = cart;
+        }
+      }
+      if (closest && !closest.hasWarningLight) {
+        closest.hasWarningLight = true;
+        setCartVersion((v) => v + 1);
+      }
+    };
+    window.addEventListener('digy:attachWarningLight', warningHandler);
+
+    return () => {
+      window.removeEventListener('digy:spawnMinecart', handler);
+      window.removeEventListener('digy:attachWarningLight', warningHandler);
+    };
   }, []);
 
   // Check if position is on a rail (regular or powered)

@@ -248,6 +248,21 @@ export const IconChest = ({ size = 16, color = '#b8945a', style }: IconProps) =>
   </svg>
 );
 
+// Warning Light / Siren
+export const IconWarningLight = ({ size = 16, color = '#ffcc00', style }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" style={style} xmlns="http://www.w3.org/2000/svg">
+    {/* Base */}
+    <rect x="4" y="10" width="8" height="3" rx="1" fill="#666" />
+    {/* Dome */}
+    <path d="M5 10C5 7 6.5 5 8 5C9.5 5 11 7 11 10" fill={color} />
+    {/* Light rays */}
+    <path d="M3 7L4.5 8M11.5 8L13 7M8 3V5" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+    {/* Two light dots */}
+    <circle cx="6.5" cy="8" r="1" fill="#fff" opacity="0.8" />
+    <circle cx="9.5" cy="8" r="1" fill="#fff" opacity="0.8" />
+  </svg>
+);
+
 // Map of icon IDs to components for BlockRegistry
 const ICON_MAP: Record<string, React.FC<IconProps>> = {
   pickaxe: IconPickaxe,
@@ -267,6 +282,7 @@ const ICON_MAP: Record<string, React.FC<IconProps>> = {
   powered_rail: IconPoweredRail,
   torch: IconTorch,
   chest: IconChest,
+  warning_light: IconWarningLight,
 };
 
 export function ItemIcon({ iconId, size = 16, color, style }: { iconId?: string; size?: number | string; color?: string; style?: React.CSSProperties }) {
