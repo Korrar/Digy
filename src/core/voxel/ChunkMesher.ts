@@ -148,12 +148,42 @@ export function computeRailShape(
   // 4-way: always south-east (Minecraft south-east rule)
   if (count === 4) return 'curve_se';
 
-  // T-junction: curve with south-east priority
+  // T-junction: smart connectivity using 2nd-degree neighbors
+  // When two T-junctions are adjacent, each should curve AWAY from the other
+  // to form an S-curve. Check diagonal neighbors to determine which pair to connect.
   if (count === 3) {
-    if (hasSouth && hasEast) return 'curve_se';
-    if (hasSouth && hasWest) return 'curve_sw';
-    if (hasNorth && hasEast) return 'curve_ne';
-    return 'curve_nw';
+    if (hasNorth && hasSouth && hasEast && !hasWest) {
+      // N+S+E: odd=E, choose N or S to pair with E
+      const sEastRail = isFlat(getBlockAt(x + 1, y, z + 1));
+      const nEastRail = isFlat(getBlockAt(x + 1, y, z - 1));
+      if (sEastRail && !nEastRail) return 'curve_ne'; // S has E-path, N needs E
+      if (nEastRail && !sEastRail) return 'curve_se'; // N has E-path, S needs E
+      return 'curve_se'; // fallback: south-east priority
+    }
+    if (hasNorth && hasSouth && !hasEast && hasWest) {
+      // N+S+W: odd=W, choose N or S to pair with W
+      const sWestRail = isFlat(getBlockAt(x - 1, y, z + 1));
+      const nWestRail = isFlat(getBlockAt(x - 1, y, z - 1));
+      if (sWestRail && !nWestRail) return 'curve_nw'; // S has W-path, N needs W
+      if (nWestRail && !sWestRail) return 'curve_sw'; // N has W-path, S needs W
+      return 'curve_sw'; // fallback: south priority
+    }
+    if (hasNorth && !hasSouth && hasEast && hasWest) {
+      // N+E+W: odd=N, choose E or W to pair with N
+      const wNorthRail = isFlat(getBlockAt(x - 1, y, z - 1));
+      const eNorthRail = isFlat(getBlockAt(x + 1, y, z - 1));
+      if (wNorthRail && !eNorthRail) return 'curve_ne'; // W has N-path, E needs N
+      if (eNorthRail && !wNorthRail) return 'curve_nw'; // E has N-path, W needs N
+      return 'curve_ne'; // fallback: east priority
+    }
+    if (!hasNorth && hasSouth && hasEast && hasWest) {
+      // S+E+W: odd=S, choose E or W to pair with S
+      const wSouthRail = isFlat(getBlockAt(x - 1, y, z + 1));
+      const eSouthRail = isFlat(getBlockAt(x + 1, y, z + 1));
+      if (wSouthRail && !eSouthRail) return 'curve_se'; // W has S-path, E needs S
+      if (eSouthRail && !wSouthRail) return 'curve_sw'; // E has S-path, W needs S
+      return 'curve_se'; // fallback: south-east priority
+    }
   }
 
   // 2 neighbors

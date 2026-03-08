@@ -219,6 +219,79 @@ describe('Rail shape computation - pure Minecraft rules', () => {
     expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('ns');
   });
 
+  // === T-junction smart connectivity (2nd-degree neighbor check) ===
+  it('T-junction N+S+W: two adjacent T-junctions form S-curve (top=curve_nw, bottom=curve_sw)', () => {
+    // Layout:
+    //   z=3:       NS(5,3)
+    //   z=4:  EW(4,4)  RAIL(5,4)  ← T-junction N+S+W, should be curve_nw
+    //   z=5:  EW(4,5)  RAIL(5,5)  ← T-junction N+S+W, should be curve_sw
+    //   z=6:       NS(5,6)
+    const chunk = new ChunkData(0, 0);
+    chunk.setBlock(5, 6, 3, BlockType.RAIL); // NS line north
+    chunk.setBlock(4, 6, 4, BlockType.RAIL); // EW line at z=4
+    chunk.setBlock(5, 6, 4, BlockType.RAIL); // top T-junction
+    chunk.setBlock(4, 6, 5, BlockType.RAIL); // EW line at z=5
+    chunk.setBlock(5, 6, 5, BlockType.RAIL); // bottom T-junction
+    chunk.setBlock(5, 6, 6, BlockType.RAIL); // NS line south
+
+    // Top rail (5,4) has N+S+W: S-neighbor (5,5) also has W-neighbor (4,5)
+    // → S has its own W path, so connect N+W = curve_nw
+    expect(computeRailShape(chunkGetter(chunk), 5, 6, 4)).toBe('curve_nw');
+
+    // Bottom rail (5,5) has N+S+W: N-neighbor (5,4) also has W-neighbor (4,4)
+    // → N has its own W path, so connect S+W = curve_sw
+    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('curve_sw');
+  });
+
+  it('T-junction N+S+E: two adjacent T-junctions form S-curve (top=curve_ne, bottom=curve_se)', () => {
+    const chunk = new ChunkData(0, 0);
+    chunk.setBlock(5, 6, 3, BlockType.RAIL); // NS line north
+    chunk.setBlock(6, 6, 4, BlockType.RAIL); // EW line at z=4
+    chunk.setBlock(5, 6, 4, BlockType.RAIL); // top T-junction
+    chunk.setBlock(6, 6, 5, BlockType.RAIL); // EW line at z=5
+    chunk.setBlock(5, 6, 5, BlockType.RAIL); // bottom T-junction
+    chunk.setBlock(5, 6, 6, BlockType.RAIL); // NS line south
+
+    expect(computeRailShape(chunkGetter(chunk), 5, 6, 4)).toBe('curve_ne');
+    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('curve_se');
+  });
+
+  it('T-junction E+W+N: two adjacent T-junctions form S-curve (left=curve_nw, right=curve_ne)', () => {
+    const chunk = new ChunkData(0, 0);
+    chunk.setBlock(3, 6, 5, BlockType.RAIL); // EW line west
+    chunk.setBlock(4, 6, 4, BlockType.RAIL); // NS line at x=4
+    chunk.setBlock(4, 6, 5, BlockType.RAIL); // left T-junction
+    chunk.setBlock(5, 6, 4, BlockType.RAIL); // NS line at x=5
+    chunk.setBlock(5, 6, 5, BlockType.RAIL); // right T-junction
+    chunk.setBlock(6, 6, 5, BlockType.RAIL); // EW line east
+
+    expect(computeRailShape(chunkGetter(chunk), 4, 6, 5)).toBe('curve_nw');
+    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('curve_ne');
+  });
+
+  it('T-junction E+W+S: two adjacent T-junctions form S-curve (left=curve_sw, right=curve_se)', () => {
+    const chunk = new ChunkData(0, 0);
+    chunk.setBlock(3, 6, 5, BlockType.RAIL); // EW line west
+    chunk.setBlock(4, 6, 6, BlockType.RAIL); // NS line at x=4
+    chunk.setBlock(4, 6, 5, BlockType.RAIL); // left T-junction
+    chunk.setBlock(5, 6, 6, BlockType.RAIL); // NS line at x=5
+    chunk.setBlock(5, 6, 5, BlockType.RAIL); // right T-junction
+    chunk.setBlock(6, 6, 5, BlockType.RAIL); // EW line east
+
+    expect(computeRailShape(chunkGetter(chunk), 4, 6, 5)).toBe('curve_sw');
+    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('curve_se');
+  });
+
+  it('T-junction without diagonal neighbor falls back to default priority', () => {
+    // N+S+W but no diagonal rails → fallback to curve_sw (south priority)
+    const chunk = new ChunkData(0, 0);
+    chunk.setBlock(5, 6, 4, BlockType.RAIL); // N
+    chunk.setBlock(5, 6, 5, BlockType.RAIL); // rail under test
+    chunk.setBlock(5, 6, 6, BlockType.RAIL); // S
+    chunk.setBlock(4, 6, 5, BlockType.RAIL); // W
+    expect(computeRailShape(chunkGetter(chunk), 5, 6, 5)).toBe('curve_sw');
+  });
+
   it('straight line: middle rail stays straight despite nearby rails', () => {
     // Long NS line with a side rail
     const chunk = new ChunkData(0, 0);
