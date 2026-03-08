@@ -183,7 +183,7 @@ function leavesTexture(seed: number): PixelFunc {
   return (px, py) => pixels[py * TEX_SIZE + px];
 }
 
-function oreTexture(baseR: number, baseG: number, baseB: number, oreR: number, oreG: number, oreB: number, seed: number): PixelFunc {
+function oreTexture(_baseR: number, _baseG: number, _baseB: number, oreR: number, oreG: number, oreB: number, seed: number): PixelFunc {
   const rng = seededRandom(seed);
   const pixels: [number, number, number][] = [];
   // Stone base with ore patches

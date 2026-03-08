@@ -324,7 +324,11 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
       const py = by + hit.normal[1];
       const pz = bz + hit.normal[2];
 
-      if (!isSolid(getBlockW(px, py, pz)) && !isFlat(getBlockW(px, py, pz))) {
+      const targetBlock = getBlockW(px, py, pz);
+      // Prevent placing rails on existing rails (would cause floating rail glitch)
+      if (isFlat(selectedBlock) && isFlat(targetBlock)) return;
+
+      if (!isSolid(targetBlock)) {
         // Rail placement: compute and store correct shape, then update neighbors
         if (selectedBlock === BlockType.RAIL) {
           const hasRailN = isFlat(getBlockW(px, py, pz - 1));

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { BlockType } from '../core/voxel/BlockRegistry';
-import { InventorySlot } from './inventoryStore';
+import type { InventorySlot } from './inventoryStore';
 
 const CHEST_SIZE = 27; // 3 rows of 9
 
