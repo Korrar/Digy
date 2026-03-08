@@ -249,9 +249,7 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
   const wasRidingRef = useRef(false);
 
   // Physics update
-  useFrame((_, delta) => {
-    const clampedDelta = Math.min(delta, 0.1); // Clamp to prevent jumps on frame spikes
-    const dt = clampedDelta * 60; // Normalize to 60fps-equivalent steps
+  useFrame(() => {
     const friction = 0.97;
     const gravity = 0.015;
     const railFriction = 0.995; // Less friction on rails
@@ -260,11 +258,10 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
       const onRail = isOnRail(cart.position.x, cart.position.y, cart.position.z);
       cart.onRail = onRail;
 
-      // Apply friction (exponential decay, frame-rate independent)
+      // Apply friction
       const f = onRail ? railFriction : friction;
-      const frictionFactor = Math.pow(f, dt);
-      cart.velocity.x *= frictionFactor;
-      cart.velocity.z *= frictionFactor;
+      cart.velocity.x *= f;
+      cart.velocity.z *= f;
 
       // Rail steering: constrain velocity direction based on rail shape
       if (onRail && cart.velocity.lengthSq() > 0.00001) {
@@ -279,13 +276,12 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
 
         if (shape === 'ns') {
           // Constrain to Z axis
-          cart.velocity.x *= Math.pow(0.8, dt);
+          cart.velocity.x *= 0.8;
         } else if (shape === 'ew') {
           // Constrain to X axis
-          cart.velocity.z *= Math.pow(0.8, dt);
+          cart.velocity.z *= 0.8;
         } else {
           // Curved rail: steer the cart along the arc
-          // Arc-based steering: advance position along the circular arc
           const localX = cart.position.x - bx;
           const localZ = cart.position.z - bz;
 
@@ -318,7 +314,7 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
             const sign = dot >= 0 ? 1 : -1;
 
             // Advance angle: angular_speed = linear_speed / radius
-            const angularSpeed = (speed / idealR) * dt;
+            const angularSpeed = speed / idealR;
             const nextAngle = angle + sign * angularSpeed;
 
             // Next position on arc
@@ -340,7 +336,7 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
       const onPowered = isOnPoweredRail(cart.position.x, cart.position.y, cart.position.z);
       if (onPowered && cart.velocity.lengthSq() > 0.00001) {
         const boostDir = cart.velocity.clone().normalize();
-        cart.velocity.addScaledVector(boostDir, 0.04 * dt);
+        cart.velocity.addScaledVector(boostDir, 0.04);
         // Cap max speed on powered rail
         const speed = Math.sqrt(cart.velocity.x * cart.velocity.x + cart.velocity.z * cart.velocity.z);
         if (speed > 0.35) {
@@ -360,12 +356,12 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
       if (Math.abs(slope) > 0 && cart.velocity.lengthSq() > 0.00001) {
         // Accelerate downhill, decelerate uphill
         const dir = cart.velocity.clone().normalize();
-        cart.velocity.addScaledVector(dir, slope * gravity * dt);
+        cart.velocity.addScaledVector(dir, slope * gravity);
       }
 
       // Move
-      cart.position.x += cart.velocity.x * dt;
-      cart.position.z += cart.velocity.z * dt;
+      cart.position.x += cart.velocity.x;
+      cart.position.z += cart.velocity.z;
 
       // Snap to terrain height
       const targetY = getTerrainHeight(cart.position.x, cart.position.z);
@@ -374,8 +370,8 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
       } else {
         // Gravity: fall to terrain
         if (cart.position.y > targetY + 0.05) {
-          cart.velocity.y = (cart.velocity.y || 0) - gravity * dt;
-          cart.position.y += cart.velocity.y * dt;
+          cart.velocity.y = (cart.velocity.y || 0) - gravity;
+          cart.position.y += cart.velocity.y;
         } else {
           cart.position.y = targetY - 0.02;
           cart.velocity.y = 0;
