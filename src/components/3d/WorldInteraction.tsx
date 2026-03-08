@@ -3,15 +3,16 @@ import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
-import { BlockType, getBlock, isSolid } from '../../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType } from '../../core/voxel/BlockRegistry';
 import { soundManager } from '../../systems/SoundManager';
 import { spawnParticles } from './DiggingParticles';
 import { processGravity } from '../../systems/SandPhysics';
 import { checkWaterDrain } from '../../systems/WaterFlow';
 import { useDevStore } from '../../stores/devStore';
+import { useCombatStore } from '../../stores/combatStore';
 
 interface WorldInteractionProps {
-  mode: 'mine' | 'build';
+  mode: 'mine' | 'build' | 'explore';
 }
 
 export function WorldInteraction({ mode }: WorldInteractionProps) {
@@ -98,7 +99,14 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
           }
 
           const def = getBlock(result.blockType);
-          miningTimeRef.current += delta;
+          // Tool speed bonus from equipped pickaxe
+          const selected = getSelectedBlock();
+          let toolMultiplier = 1;
+          if (selected && isToolPickaxe(selected)) {
+            const toolDef = getBlock(selected);
+            toolMultiplier = toolDef.toolSpeed ?? 1;
+          }
+          miningTimeRef.current += delta * toolMultiplier;
           const hardness = useDevStore.getState().fastMining ? 0.05 : def.hardness;
           const progress = Math.min(miningTimeRef.current / Math.max(hardness, 0.05), 1);
           setMiningProgress(progress);
@@ -116,6 +124,12 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
             if (def.drops !== BlockType.AIR) {
               addBlock(def.drops, 1);
             }
+            // Leaves have a chance to drop apples
+            if (result.blockType === BlockType.LEAVES && Math.random() < 0.15) {
+              addBlock(BlockType.APPLE, 1);
+            }
+            // XP for mining
+            useCombatStore.getState().addXp(1);
             // Play break sound and emit burst particles
             soundManager.playBreakSound(result.blockType);
             spawnParticles(result.blockPos, result.blockType, true);
@@ -141,10 +155,23 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
   const handlePointerDown = useCallback(() => {
     isPointerDownRef.current = true;
     if (mode === 'build') {
-      const result = raycast();
-      if (!result) return;
       const selectedBlock = getSelectedBlock();
       if (!selectedBlock) return;
+
+      // If it's food, eat it instead of placing
+      if (isFood(selectedBlock)) {
+        const foodDef = getBlock(selectedBlock);
+        useCombatStore.getState().heal(foodDef.healAmount ?? 0);
+        removeBlock(selectedIdx, 1);
+        soundManager.playPlaceSound();
+        return;
+      }
+
+      // Don't place non-block items
+      if (isItemType(selectedBlock)) return;
+
+      const result = raycast();
+      if (!result) return;
 
       const [bx, by, bz] = result.blockPos;
       const px = bx + result.normal[0];

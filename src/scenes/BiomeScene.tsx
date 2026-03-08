@@ -20,13 +20,23 @@ import { updateVoxelShaderUniforms } from '../core/voxel/VoxelShader';
 import { useFireflies, FIREFLY_COUNT } from '../components/3d/Fireflies';
 import { useAnimals, BIOME_ANIMALS } from '../components/3d/Animals';
 import { useWeather } from '../components/3d/Weather';
+import { TappablesRenderer } from '../components/3d/Tappables';
+import { EnemiesRenderer } from '../components/3d/Enemies';
+import { CraftingPanel } from '../components/ui/CraftingPanel';
+import { LootPopup } from '../components/ui/LootPopup';
+import { HealthBar } from '../components/ui/HealthBar';
+import { useTappablesStore } from '../stores/tappablesStore';
+import { useCombatStore } from '../stores/combatStore';
+import { useCraftingStore } from '../stores/craftingStore';
+import { ambientMusic } from '../systems/AmbientMusic';
+import { MinecartRenderer } from '../components/3d/Minecarts';
+import { ModeToggle } from '../components/ui/ModeToggle';
 
-function getTimeEmoji(timeOfDay: number): string {
-  // 0=midnight, 0.25=sunrise, 0.5=noon, 0.75=sunset
-  if (timeOfDay > 0.2 && timeOfDay < 0.3) return '🌅';
-  if (timeOfDay >= 0.3 && timeOfDay < 0.7) return '☀️';
-  if (timeOfDay >= 0.7 && timeOfDay < 0.8) return '🌇';
-  return '🌙';
+function getTimeIndicator(timeOfDay: number): string {
+  if (timeOfDay > 0.2 && timeOfDay < 0.3) return 'sunrise';
+  if (timeOfDay >= 0.3 && timeOfDay < 0.7) return 'day';
+  if (timeOfDay >= 0.7 && timeOfDay < 0.8) return 'sunset';
+  return 'night';
 }
 
 function getSkyColor(baseSkyColor: string, sunIntensity: number): string {
@@ -58,19 +68,25 @@ export function BiomeScene() {
   const isTouch = useTouchDetect();
 
   const biome = useMemo(() => createBiome(biomeType, biomeSeed), [biomeType, biomeSeed]);
-  const [timeIndicator, setTimeIndicator] = useState('☀️');
+  const [timeIndicator, setTimeIndicator] = useState('day');
+  const [gameMode, setGameMode] = useState<'mine' | 'explore'>('mine');
   const [skyColor, setSkyColor] = useState(biome.config.skyColor);
 
   const handleTimeChange = useCallback((timeOfDay: number, sunIntensity: number) => {
-    setTimeIndicator(getTimeEmoji(timeOfDay));
+    setTimeIndicator(getTimeIndicator(timeOfDay));
     const newSkyColor = getSkyColor(biome.config.skyColor, sunIntensity);
     setSkyColor(newSkyColor);
     updateVoxelShaderUniforms({ fogColor: new THREE.Color(newSkyColor) });
   }, [biome.config.skyColor]);
 
+  const clearTappables = useTappablesStore((s) => s.clearTappables);
+  const resetCombat = useCombatStore((s) => s.resetCombat);
+
   useEffect(() => {
     generateWorld(biomeType, biomeSeed, 1);
     settleWorld();
+    // Start ambient music for biome
+    ambientMusic.start(biomeType as any);
     // Set shader uniforms for cave (static lighting, no DayNightCycle)
     if (biomeType === 'cave') {
       updateVoxelShaderUniforms({
@@ -82,16 +98,28 @@ export function BiomeScene() {
         fogColor: new THREE.Color(biome.config.skyColor),
       });
     }
-    return () => clearWorld();
-  }, [biomeType, biomeSeed, generateWorld, clearWorld, biome]);
+    return () => {
+      clearWorld();
+      clearTappables();
+      resetCombat();
+      ambientMusic.stop();
+    };
+  }, [biomeType, biomeSeed, generateWorld, clearWorld, biome, clearTappables, resetCombat]);
+
+  const toggleCrafting = useCraftingStore((s) => s.toggleCrafting);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'e' || e.key === 'E') toggleInventory();
+      if (e.key === 'c' || e.key === 'C') toggleCrafting();
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        setGameMode((m) => m === 'mine' ? 'explore' : 'mine');
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [toggleInventory]);
+  }, [toggleInventory, toggleCrafting]);
 
   const chunkEntries = useMemo(() => {
     const result: { key: string; cx: number; cz: number; geometry: THREE.BufferGeometry }[] = [];
@@ -153,7 +181,8 @@ export function BiomeScene() {
           <ChunkMesh key={c.key} cx={c.cx} cz={c.cz} geometry={c.geometry} />
         ))}
 
-        <WorldInteraction mode="mine" />
+        <WorldInteraction mode={gameMode} />
+        <MinecartRenderer center={[8, 8, 8]} />
         <ParticleSystem />
         {(biomeType === 'forest' || biomeType === 'swamp') && (
           <FirefliesRenderer center={[8, 0, 8]} />
@@ -162,13 +191,19 @@ export function BiomeScene() {
           <AnimalRenderer biomeType={biomeType} center={[8, 8, 8]} />
         )}
         <WeatherRenderer biomeType={biomeType} center={[8, 8, 8]} />
+        <TappablesRenderer biomeType={biomeType} center={[8, 8, 8]} />
+        <EnemiesRenderer biomeType={biomeType} center={[8, 8, 8]} />
 
         <fog attach="fog" args={[skyColor, 30, 80]} />
       </Canvas>
 
-      <HUD timeIndicator={biomeType !== 'cave' ? timeIndicator : undefined} />
+      <HUD mode={gameMode} timeIndicator={biomeType !== 'cave' ? timeIndicator : undefined} />
+      <HealthBar />
+      <ModeToggle mode={gameMode} onToggle={() => setGameMode((m) => m === 'mine' ? 'explore' : 'mine')} />
       <Hotbar />
       <InventoryPanel />
+      <CraftingPanel />
+      <LootPopup />
       {isTouch && (
         <MobileControls
           onDigStart={handleDigStart}
