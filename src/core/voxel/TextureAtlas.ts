@@ -513,6 +513,210 @@ function waterTexture(seed: number): PixelFunc {
   return (px, py) => pixels[py * TEX_SIZE + px];
 }
 
+// === New biome block textures ===
+
+function jungleWoodSide(seed: number): PixelFunc {
+  const rng = seededRandom(seed);
+  const pixels: [number, number, number][] = [];
+  for (let y = 0; y < TEX_SIZE; y++) {
+    const stripe = (y % 3 === 0) ? -10 : 0;
+    for (let x = 0; x < TEX_SIZE; x++) {
+      const vine = (x === 3 || x === 11) && rng() > 0.6 ? 15 : 0;
+      pixels.push([
+        Math.floor(90 + rng() * 15 + stripe - vine),
+        Math.floor(58 + rng() * 12 + stripe + vine * 2),
+        Math.floor(26 + rng() * 8 + stripe * 0.5),
+      ]);
+    }
+  }
+  return (px, py) => pixels[py * TEX_SIZE + px];
+}
+
+function jungleLeavesTexture(seed: number): PixelFunc {
+  const rng = seededRandom(seed);
+  const pixels: [number, number, number][] = [];
+  for (let i = 0; i < TEX_SIZE * TEX_SIZE; i++) {
+    const isHole = rng() > 0.65;
+    if (isHole) {
+      pixels.push([Math.floor(15 + rng() * 15), Math.floor(70 + rng() * 30), Math.floor(10 + rng() * 15)]);
+    } else {
+      pixels.push([Math.floor(26 + rng() * 20), Math.floor(110 + rng() * 40), Math.floor(26 + rng() * 15)]);
+    }
+  }
+  return (px, py) => pixels[py * TEX_SIZE + px];
+}
+
+function myceliumTexture(seed: number): PixelFunc {
+  const rng = seededRandom(seed);
+  const pixels: [number, number, number][] = [];
+  for (let y = 0; y < TEX_SIZE; y++) {
+    for (let x = 0; x < TEX_SIZE; x++) {
+      if (y <= 2 + Math.floor(rng() * 2)) {
+        // Purple-gray mycelium top
+        pixels.push([Math.floor(107 + rng() * 25), Math.floor(90 + rng() * 20), Math.floor(122 + rng() * 30)]);
+      } else {
+        // Dirt below
+        pixels.push(vary(rng, 139, 105, 20, 0.08));
+      }
+    }
+  }
+  return (px, py) => pixels[py * TEX_SIZE + px];
+}
+
+function mushroomBlockRedTexture(seed: number): PixelFunc {
+  const rng = seededRandom(seed);
+  const pixels: [number, number, number][] = [];
+  for (let y = 0; y < TEX_SIZE; y++) {
+    for (let x = 0; x < TEX_SIZE; x++) {
+      // Red cap with white spots
+      const spotDist1 = Math.sqrt((x - 4) ** 2 + (y - 4) ** 2);
+      const spotDist2 = Math.sqrt((x - 11) ** 2 + (y - 10) ** 2);
+      const spotDist3 = Math.sqrt((x - 7) ** 2 + (y - 13) ** 2);
+      const isSpot = spotDist1 < 2.2 || spotDist2 < 1.8 || spotDist3 < 1.5;
+      if (isSpot) {
+        pixels.push([Math.floor(230 + rng() * 25), Math.floor(230 + rng() * 20), Math.floor(220 + rng() * 20)]);
+      } else {
+        pixels.push([Math.floor(190 + rng() * 30), Math.floor(35 + rng() * 20), Math.floor(30 + rng() * 15)]);
+      }
+    }
+  }
+  return (px, py) => pixels[py * TEX_SIZE + px];
+}
+
+function mushroomBlockBrownTexture(seed: number): PixelFunc {
+  const rng = seededRandom(seed);
+  const pixels: [number, number, number][] = [];
+  for (let i = 0; i < TEX_SIZE * TEX_SIZE; i++) {
+    const shade = 0.85 + rng() * 0.3;
+    pixels.push([
+      Math.floor(139 * shade),
+      Math.floor(110 * shade),
+      Math.floor(74 * shade + rng() * 10),
+    ]);
+  }
+  return (px, py) => pixels[py * TEX_SIZE + px];
+}
+
+function mushroomStemTexture(seed: number): PixelFunc {
+  const rng = seededRandom(seed);
+  const pixels: [number, number, number][] = [];
+  for (let y = 0; y < TEX_SIZE; y++) {
+    const stripe = (y % 4 === 0) ? -8 : 0;
+    for (let x = 0; x < TEX_SIZE; x++) {
+      const v = 200 + Math.floor(rng() * 20 + stripe);
+      pixels.push([v, Math.floor(v * 0.95), Math.floor(v * 0.87)]);
+    }
+  }
+  return (px, py) => pixels[py * TEX_SIZE + px];
+}
+
+function basaltTexture(seed: number): PixelFunc {
+  const rng = seededRandom(seed);
+  const pixels: [number, number, number][] = [];
+  for (let y = 0; y < TEX_SIZE; y++) {
+    for (let x = 0; x < TEX_SIZE; x++) {
+      const base = 50 + Math.floor(rng() * 20);
+      const crack = rng() > 0.9 ? -15 : 0;
+      const v = base + crack;
+      pixels.push([v, v, Math.floor(v * 1.05)]);
+    }
+  }
+  return (px, py) => pixels[py * TEX_SIZE + px];
+}
+
+function obsidianTexture(seed: number): PixelFunc {
+  const rng = seededRandom(seed);
+  const pixels: [number, number, number][] = [];
+  for (let y = 0; y < TEX_SIZE; y++) {
+    for (let x = 0; x < TEX_SIZE; x++) {
+      const base = 20 + Math.floor(rng() * 15);
+      // Subtle purple sheen
+      const sheen = rng() > 0.85 ? 15 : 0;
+      pixels.push([base + sheen, Math.floor(base * 0.7), base + sheen * 2]);
+    }
+  }
+  return (px, py) => pixels[py * TEX_SIZE + px];
+}
+
+function magmaTexture(seed: number): PixelFunc {
+  const rng = seededRandom(seed);
+  const pixels: [number, number, number][] = [];
+  for (let y = 0; y < TEX_SIZE; y++) {
+    for (let x = 0; x < TEX_SIZE; x++) {
+      // Dark crust with glowing cracks
+      const crackChance = Math.sin(x * 1.2 + y * 0.8) * 0.5 + 0.5;
+      const isCrack = rng() > 0.7 && crackChance > 0.4;
+      if (isCrack) {
+        pixels.push([Math.floor(200 + rng() * 55), Math.floor(60 + rng() * 40), Math.floor(rng() * 15)]);
+      } else {
+        const v = 40 + Math.floor(rng() * 20);
+        pixels.push([v + 20, v, v]);
+      }
+    }
+  }
+  return (px, py) => pixels[py * TEX_SIZE + px];
+}
+
+function cherryWoodSide(seed: number): PixelFunc {
+  const rng = seededRandom(seed);
+  const pixels: [number, number, number][] = [];
+  for (let y = 0; y < TEX_SIZE; y++) {
+    const stripe = (y % 3 === 0) ? -10 : 0;
+    for (let x = 0; x < TEX_SIZE; x++) {
+      pixels.push([
+        Math.floor(154 + rng() * 15 + stripe),
+        Math.floor(90 + rng() * 12 + stripe),
+        Math.floor(90 + rng() * 12 + stripe),
+      ]);
+    }
+  }
+  return (px, py) => pixels[py * TEX_SIZE + px];
+}
+
+function cherryLeavesTexture(seed: number): PixelFunc {
+  const rng = seededRandom(seed);
+  const pixels: [number, number, number][] = [];
+  for (let i = 0; i < TEX_SIZE * TEX_SIZE; i++) {
+    const isLight = rng() > 0.6;
+    if (isLight) {
+      pixels.push([Math.floor(255), Math.floor(170 + rng() * 30), Math.floor(200 + rng() * 20)]);
+    } else {
+      pixels.push([Math.floor(230 + rng() * 25), Math.floor(140 + rng() * 30), Math.floor(170 + rng() * 30)]);
+    }
+  }
+  return (px, py) => pixels[py * TEX_SIZE + px];
+}
+
+function acaciaWoodSide(seed: number): PixelFunc {
+  const rng = seededRandom(seed);
+  const pixels: [number, number, number][] = [];
+  for (let y = 0; y < TEX_SIZE; y++) {
+    const stripe = (y % 3 === 0) ? -12 : 0;
+    for (let x = 0; x < TEX_SIZE; x++) {
+      pixels.push([
+        Math.floor(107 + rng() * 15 + stripe),
+        Math.floor(58 + rng() * 12 + stripe),
+        Math.floor(42 + rng() * 10 + stripe * 0.5),
+      ]);
+    }
+  }
+  return (px, py) => pixels[py * TEX_SIZE + px];
+}
+
+function acaciaLeavesTexture(seed: number): PixelFunc {
+  const rng = seededRandom(seed);
+  const pixels: [number, number, number][] = [];
+  for (let i = 0; i < TEX_SIZE * TEX_SIZE; i++) {
+    const isHole = rng() > 0.7;
+    if (isHole) {
+      pixels.push([Math.floor(60 + rng() * 20), Math.floor(100 + rng() * 20), Math.floor(20 + rng() * 15)]);
+    } else {
+      pixels.push([Math.floor(90 + rng() * 20), Math.floor(138 + rng() * 30), Math.floor(42 + rng() * 15)]);
+    }
+  }
+  return (px, py) => pixels[py * TEX_SIZE + px];
+}
+
 // Block face key: "blockType_face"
 type FaceKey = string;
 
@@ -613,6 +817,37 @@ function getTextureFunc(block: BlockType, face: 'top' | 'side' | 'bottom'): Pixe
     case BlockType.DOOR_OAK_BOTTOM_OPEN:
     case BlockType.DOOR_OAK_TOP_OPEN:
       return planksTexture(seed);
+    case BlockType.JUNGLE_WOOD:
+      if (face === 'top' || face === 'bottom') return woodTop(seed);
+      return jungleWoodSide(seed);
+    case BlockType.JUNGLE_LEAVES:
+      return jungleLeavesTexture(seed);
+    case BlockType.MYCELIUM:
+      if (face === 'top') return myceliumTexture(seed);
+      if (face === 'bottom') return dirtTexture(seed);
+      return myceliumTexture(seed + 50);
+    case BlockType.MUSHROOM_BLOCK_RED:
+      return mushroomBlockRedTexture(seed);
+    case BlockType.MUSHROOM_BLOCK_BROWN:
+      return mushroomBlockBrownTexture(seed);
+    case BlockType.GIANT_MUSHROOM_STEM:
+      return mushroomStemTexture(seed);
+    case BlockType.BASALT:
+      return basaltTexture(seed);
+    case BlockType.OBSIDIAN:
+      return obsidianTexture(seed);
+    case BlockType.MAGMA:
+      return magmaTexture(seed);
+    case BlockType.CHERRY_WOOD:
+      if (face === 'top' || face === 'bottom') return woodTop(seed);
+      return cherryWoodSide(seed);
+    case BlockType.CHERRY_LEAVES:
+      return cherryLeavesTexture(seed);
+    case BlockType.ACACIA_WOOD:
+      if (face === 'top' || face === 'bottom') return woodTop(seed);
+      return acaciaWoodSide(seed);
+    case BlockType.ACACIA_LEAVES:
+      return acaciaLeavesTexture(seed);
     default:
       // Fallback: solid color from block definition
       return solidWithNoise(128, 128, 128, 0.06, seed);
@@ -638,6 +873,12 @@ function buildAtlas(): { texture: THREE.Texture; map: Map<FaceKey, AtlasEntry> }
     BlockType.OAK_STAIRS_N, BlockType.OAK_STAIRS_S, BlockType.OAK_STAIRS_E, BlockType.OAK_STAIRS_W,
     BlockType.COBBLE_STAIRS_N, BlockType.COBBLE_STAIRS_S, BlockType.COBBLE_STAIRS_E, BlockType.COBBLE_STAIRS_W,
     BlockType.DOOR_OAK_BOTTOM, BlockType.DOOR_OAK_TOP, BlockType.DOOR_OAK_BOTTOM_OPEN, BlockType.DOOR_OAK_TOP_OPEN,
+    // New biome blocks
+    BlockType.JUNGLE_WOOD, BlockType.JUNGLE_LEAVES,
+    BlockType.MYCELIUM, BlockType.MUSHROOM_BLOCK_RED, BlockType.MUSHROOM_BLOCK_BROWN, BlockType.GIANT_MUSHROOM_STEM,
+    BlockType.BASALT, BlockType.OBSIDIAN, BlockType.MAGMA,
+    BlockType.CHERRY_WOOD, BlockType.CHERRY_LEAVES,
+    BlockType.ACACIA_WOOD, BlockType.ACACIA_LEAVES,
   ];
 
   const faces: ('top' | 'side' | 'bottom')[] = ['top', 'side', 'bottom'];
