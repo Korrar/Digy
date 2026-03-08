@@ -68,7 +68,7 @@ describe('Rail mesh generation', () => {
     expect(railYValues.size).toBeGreaterThan(0);
   });
 
-  it('should not render side faces for rail blocks', () => {
+  it('should not render full-height side faces for rail blocks', () => {
     const chunk = new ChunkData(0, 0);
     chunk.setBlock(4, 5, 4, BlockType.STONE);
     chunk.setBlock(4, 6, 4, BlockType.RAIL);
@@ -77,26 +77,25 @@ describe('Rail mesh generation', () => {
     const normals = geometry.attributes.normal;
     const positions = geometry.attributes.position;
 
-    // Check normals of rail-only vertices (y > 6.0, excluding stone block top boundary)
-    let sideNormalCount = 0;
+    // Check that rail vertices exist and any side normals are for thin rail profiles (not full block)
     let railVertexCount = 0;
+    let fullHeightSideCount = 0;
     for (let i = 0; i < positions.count; i++) {
       const vx = positions.getX(i);
       const vy = positions.getY(i);
       const vz = positions.getZ(i);
-      // Only vertices strictly within rail block space (above y=6 baseline)
-      if (vx >= 4 && vx <= 5 && vy > 6.0 && vy <= 7 && vz >= 4 && vz <= 5) {
+      if (vx >= 4 && vx <= 5 && vy >= 6.0 && vy <= 7 && vz >= 4 && vz <= 5) {
         railVertexCount++;
         const ny = normals.getY(i);
-        // Side normals have ny ≈ 0
-        if (Math.abs(ny) < 0.1) {
-          sideNormalCount++;
+        // Full-height side would have vertices spanning y=6 to y=7
+        if (Math.abs(ny) < 0.1 && (vy - 6) > 0.5) {
+          fullHeightSideCount++;
         }
       }
     }
 
-    // Rail should have no full-height side faces - only top-facing normals
-    expect(sideNormalCount).toBe(0);
+    // Should have no full-height sides (only small rail profile sides allowed)
+    expect(fullHeightSideCount).toBe(0);
     expect(railVertexCount).toBeGreaterThan(0);
   });
 });

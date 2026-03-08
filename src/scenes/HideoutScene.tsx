@@ -7,6 +7,7 @@ import { useInventoryStore } from '../stores/inventoryStore';
 import { ChunkMesh } from '../components/3d/ChunkMesh';
 import { WorldInteraction } from '../components/3d/WorldInteraction';
 import { ParticleSystem } from '../components/3d/DiggingParticles';
+import { BlockLights } from '../components/3d/BlockLights';
 import { DayNightCycle } from '../components/3d/DayNightCycle';
 import { Hotbar } from '../components/ui/Hotbar';
 import { HUD } from '../components/ui/HUD';
@@ -27,7 +28,7 @@ function getTimeEmoji(timeOfDay: number): string {
 }
 
 export function HideoutScene() {
-  const [mode, setMode] = useState<'mine' | 'build'>('build');
+  const [mode, setMode] = useState<'mine' | 'build' | 'explore'>('build');
   const chunks = useWorldStore((s) => s.chunks);
   const clearWorld = useWorldStore((s) => s.clearWorld);
   const toggleInventory = useInventoryStore((s) => s.toggleInventory);
@@ -46,7 +47,7 @@ export function HideoutScene() {
   }, []);
 
   const toggleMode = useCallback(() => {
-    setMode((m) => m === 'mine' ? 'build' : 'mine');
+    setMode((m) => m === 'mine' ? 'build' : m === 'build' ? 'explore' : 'mine');
   }, []);
 
   useEffect(() => {
@@ -125,6 +126,7 @@ export function HideoutScene() {
         ))}
 
         <WorldInteraction mode={mode} />
+        <BlockLights />
         <ParticleSystem />
 
         <gridHelper args={[HIDEOUT_SIZE, HIDEOUT_SIZE, '#334455', '#223344']} position={[HIDEOUT_SIZE / 2, 0, HIDEOUT_SIZE / 2]} />

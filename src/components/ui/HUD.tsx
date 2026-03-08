@@ -70,8 +70,8 @@ export function HUD({ mode, onModeToggle, timeIndicator }: HUDProps) {
         </div>
         <div style={{ display: 'flex', gap: 6, pointerEvents: 'auto' }}>
           {scene === 'hideout' && onModeToggle && (
-            <button onClick={onModeToggle} style={btnStyle}>
-              {mode === 'mine' ? <IconPickaxe size={18} color="#fff" /> : <IconHammer size={18} color="#fff" />}
+            <button onClick={onModeToggle} style={btnStyle} title={`Tryb: ${mode === 'mine' ? 'Kopanie' : mode === 'build' ? 'Budowanie' : 'Obserwacja'}`}>
+              {mode === 'mine' ? <IconPickaxe size={18} color="#fff" /> : mode === 'build' ? <IconHammer size={18} color="#fff" /> : <span style={{ fontSize: 16 }}>👁</span>}
             </button>
           )}
           <button onClick={() => setMusicOn(ambientMusic.toggle())} style={btnStyle}>
