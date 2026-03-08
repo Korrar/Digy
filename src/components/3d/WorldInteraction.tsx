@@ -3,7 +3,7 @@ import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
-import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor } from '../../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat } from '../../core/voxel/BlockRegistry';
 import { soundManager } from '../../systems/SoundManager';
 import { spawnParticles } from './DiggingParticles';
 import { processGravity } from '../../systems/SandPhysics';
@@ -280,6 +280,29 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
       const pz = bz + hit.normal[2];
 
       if (!isSolid(getBlockW(px, py, pz))) {
+        // Rail placement: orient based on camera direction when no neighbors
+        if (selectedBlock === BlockType.RAIL) {
+          const hasRailN = isFlat(getBlockW(px, py, pz - 1));
+          const hasRailS = isFlat(getBlockW(px, py, pz + 1));
+          const hasRailE = isFlat(getBlockW(px + 1, py, pz));
+          const hasRailW = isFlat(getBlockW(px - 1, py, pz));
+          const railNeighbors = (hasRailN?1:0) + (hasRailS?1:0) + (hasRailE?1:0) + (hasRailW?1:0);
+          if (railNeighbors === 0) {
+            // No rail neighbors: orient based on camera facing direction
+            const camDir = new THREE.Vector3();
+            camera.getWorldDirection(camDir);
+            if (Math.abs(camDir.x) > Math.abs(camDir.z)) {
+              setBlockW(px, py, pz, BlockType.RAIL_EW);
+            } else {
+              setBlockW(px, py, pz, BlockType.RAIL);
+            }
+          } else {
+            setBlockW(px, py, pz, BlockType.RAIL);
+          }
+          removeBlock(selectedIdx, 1);
+          soundManager.playPlaceSound();
+          return;
+        }
         setBlockW(px, py, pz, selectedBlock);
         removeBlock(selectedIdx, 1);
         soundManager.playPlaceSound();
