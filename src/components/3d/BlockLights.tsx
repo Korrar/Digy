@@ -3,7 +3,8 @@ import { useFrame } from '@react-three/fiber';
 import { useWorldStore } from '../../stores/worldStore';
 import { BlockType, getBlock } from '../../core/voxel/BlockRegistry';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
-import { updateVoxelShaderUniforms, PointLightData } from '../../core/voxel/VoxelShader';
+import { updateVoxelShaderUniforms } from '../../core/voxel/VoxelShader';
+import type { PointLightData } from '../../core/voxel/VoxelShader';
 
 interface LightEntry {
   x: number;
