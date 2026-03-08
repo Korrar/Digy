@@ -125,8 +125,7 @@ function MinecartMesh({ cart, onPush }: { cart: Minecart; onPush: (id: number) =
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function MinecartRenderer({ center }: { center: [number, number, number] }) {
+export function MinecartRenderer({ center: _center }: { center: [number, number, number] }) {
   const cartsRef = useRef<Minecart[]>([]);
   const [, setCartVersion] = useState(0);
   const getBlock = useWorldStore((s) => s.getBlock);
