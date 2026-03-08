@@ -373,7 +373,6 @@ export function buildChunkMesh(
           addTorchFace([[sx0,sy1,sz0],[sx1,sy1,sz0],[sx1,sy1,sz1],[sx0,sy1,sz1]], [0,1,0], stickColor);
 
           // Flame: 2 crossed quads (X shape) for glow effect
-          const flameMid = fy0 + fh * 0.5;
           // Crossed quad 1
           addTorchFace([[fx0,fy0,fz0],[fx1,fy0,fz1],[fx1,fy1,fz1],[fx0,fy1,fz0]], [-0.707,0,0.707], flameColor);
           addTorchFace([[fx1,fy0,fz1],[fx0,fy0,fz0],[fx0,fy1,fz0],[fx1,fy1,fz1]], [0.707,0,-0.707], flameColor);
