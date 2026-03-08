@@ -279,7 +279,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
       const py = by + hit.normal[1];
       const pz = bz + hit.normal[2];
 
-      if (!isSolid(getBlockW(px, py, pz))) {
+      if (!isSolid(getBlockW(px, py, pz)) && !(isFlat(getBlockW(px, py, pz)) && selectedBlock === BlockType.RAIL)) {
         // Rail placement: orient based on camera direction when no neighbors
         if (selectedBlock === BlockType.RAIL) {
           const hasRailN = isFlat(getBlockW(px, py, pz - 1));
