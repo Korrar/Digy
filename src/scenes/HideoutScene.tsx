@@ -8,7 +8,9 @@ import { ChunkMesh } from '../components/3d/ChunkMesh';
 import { WorldInteraction } from '../components/3d/WorldInteraction';
 import { ParticleSystem } from '../components/3d/DiggingParticles';
 import { BlockLights } from '../components/3d/BlockLights';
+import { MinecartRenderer } from '../components/3d/Minecarts';
 import { DayNightCycle } from '../components/3d/DayNightCycle';
+import { ambientMusic } from '../systems/AmbientMusic';
 import { Hotbar } from '../components/ui/Hotbar';
 import { HUD } from '../components/ui/HUD';
 import { InventoryPanel } from '../components/ui/InventoryPanel';
@@ -52,7 +54,11 @@ export function HideoutScene() {
 
   useEffect(() => {
     initHideout();
-    return () => clearWorld();
+    ambientMusic.start('cave');
+    return () => {
+      clearWorld();
+      ambientMusic.stop();
+    };
   }, []);
 
   useEffect(() => {
@@ -127,6 +133,7 @@ export function HideoutScene() {
 
         <WorldInteraction mode={mode} />
         <BlockLights />
+        <MinecartRenderer center={[8, 3, 8]} />
         <ParticleSystem />
 
         <gridHelper args={[HIDEOUT_SIZE, HIDEOUT_SIZE, '#334455', '#223344']} position={[HIDEOUT_SIZE / 2, 0, HIDEOUT_SIZE / 2]} />
