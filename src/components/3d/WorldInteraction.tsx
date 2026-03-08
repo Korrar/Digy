@@ -172,12 +172,12 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
     isPointerDownRef.current = true;
     if (mode === 'build') {
       // Door toggle: click door with empty hand or non-placeable item
-      const result = raycast();
-      if (result && isDoor(result.blockType)) {
+      const doorCheck = raycast();
+      if (doorCheck && isDoor(doorCheck.blockType)) {
         const selectedBlock = getSelectedBlock();
         if (!selectedBlock || isItemType(selectedBlock)) {
-          const [bx, by, bz] = result.blockPos;
-          const doorDef = getBlock(result.blockType);
+          const [bx, by, bz] = doorCheck.blockPos;
+          const doorDef = getBlock(doorCheck.blockType);
           const isUpper = doorDef.doorUpper === true;
           const isOpen = doorDef.doorOpen === true;
           // Toggle both halves
@@ -207,9 +207,9 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
 
       // Handle minecart placement - place on top of the targeted block
       if (selectedBlock === BlockType.MINECART) {
-        const result = raycast();
-        if (!result) return;
-        const [bx, by, bz] = result.blockPos;
+        const hit = raycast();
+        if (!hit) return;
+        const [bx, by, bz] = hit.blockPos;
         const surfaceBlock = getBlockW(bx, by, bz);
         const isRail = surfaceBlock === BlockType.RAIL || surfaceBlock === BlockType.POWERED_RAIL;
         // Place minecart on top of the targeted solid/rail block
@@ -228,16 +228,16 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
 
       // Handle stair placement - orient based on clicked face
       if (isStairsItem(selectedBlock)) {
-        const result = raycast();
-        if (!result) return;
-        const [bx, by, bz] = result.blockPos;
-        const px = bx + result.normal[0];
-        const py = by + result.normal[1];
-        const pz = bz + result.normal[2];
+        const hit = raycast();
+        if (!hit) return;
+        const [bx, by, bz] = hit.blockPos;
+        const px = bx + hit.normal[0];
+        const py = by + hit.normal[1];
+        const pz = bz + hit.normal[2];
         if (!isSolid(getBlockW(px, py, pz))) {
           // Determine stair direction from face normal (step rises away from clicked face)
           let dir: 'n' | 's' | 'e' | 'w' = 'n';
-          const [nx, , nz] = result.normal;
+          const [nx, , nz] = hit.normal;
           if (Math.abs(nx) > Math.abs(nz)) {
             dir = nx > 0 ? 'e' : 'w';
           } else if (Math.abs(nz) > 0) {
@@ -252,12 +252,12 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
 
       // Handle door placement - places 2-high door
       if (isDoorItem(selectedBlock)) {
-        const result = raycast();
-        if (!result) return;
-        const [bx, by, bz] = result.blockPos;
-        const px = bx + result.normal[0];
-        const py = by + result.normal[1];
-        const pz = bz + result.normal[2];
+        const hit = raycast();
+        if (!hit) return;
+        const [bx, by, bz] = hit.blockPos;
+        const px = bx + hit.normal[0];
+        const py = by + hit.normal[1];
+        const pz = bz + hit.normal[2];
         // Need 2 empty blocks (bottom and top)
         if (!isSolid(getBlockW(px, py, pz)) && !isSolid(getBlockW(px, py + 1, pz))) {
           setBlockW(px, py, pz, BlockType.DOOR_OAK_BOTTOM);
@@ -271,13 +271,13 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
       // Don't place non-block items
       if (isItemType(selectedBlock)) return;
 
-      const result = raycast();
-      if (!result) return;
+      const hit = raycast();
+      if (!hit) return;
 
-      const [bx, by, bz] = result.blockPos;
-      const px = bx + result.normal[0];
-      const py = by + result.normal[1];
-      const pz = bz + result.normal[2];
+      const [bx, by, bz] = hit.blockPos;
+      const px = bx + hit.normal[0];
+      const py = by + hit.normal[1];
+      const pz = bz + hit.normal[2];
 
       if (!isSolid(getBlockW(px, py, pz))) {
         setBlockW(px, py, pz, selectedBlock);

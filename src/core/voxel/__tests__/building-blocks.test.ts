@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { BlockType, getBlock, isSolid, isTransparent } from '../BlockRegistry';
+import * as THREE from 'three';
+import { BlockType, getBlock, isTransparent } from '../BlockRegistry';
 import { ChunkData } from '../ChunkData';
 import { buildChunkMesh } from '../ChunkMesher';
-import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../../utils/constants';
 
 function createTestChunk(): ChunkData {
   return new ChunkData(0, 0);
