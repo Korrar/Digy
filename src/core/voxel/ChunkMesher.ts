@@ -108,21 +108,21 @@ function computeAO(
 export type RailShape = 'ns' | 'ew' | 'curve_ne' | 'curve_nw' | 'curve_se' | 'curve_sw';
 
 /**
- * Compute the rail shape for a block using neighbor detection + line-extension priority.
+ * Compute the rail shape using pure Minecraft rules.
+ * Shape is determined solely by adjacent rail neighbors (4 cardinal directions).
  *
- * When 2 perpendicular neighbors exist (would normally form a curve), we check if one
- * of them is part of an existing straight line (has a continuation rail beyond it in
- * the same axis). If so, we prefer extending that line (straight) over curving.
- * When both or neither are part of a line, we use the stored block type hint
- * (RAIL = NS preference, RAIL_EW = EW preference from player's camera direction).
- *
- * Rules:
+ * Rules (Minecraft Java Edition):
  * - 0 neighbors: use stored block type (RAIL → NS, RAIL_EW → EW)
- * - 1 neighbor: extend in that direction (NS or EW)
- * - 2 opposite neighbors: straight (NS or EW)
- * - 2 perpendicular neighbors: extend existing line, or use camera hint, or curve
- * - 3+ neighbors: curve with south-east priority (T-junction / 4-way)
+ * - 1 neighbor: extend toward that neighbor (NS or EW)
+ * - 2 opposite neighbors (N+S or E+W): straight
+ * - 2 perpendicular neighbors: curve connecting both
+ * - 3 neighbors (T-junction): curve with south-east priority
+ * - 4 neighbors: always curve south-east
  * - Powered rails: always straight, never curve
+ *
+ * In Minecraft, track shape is controlled by placement order:
+ * existing rails auto-reorient when a new rail is placed next to them
+ * (handled automatically since computeRailShape runs during mesh rebuild).
  */
 export function computeRailShape(
   getBlockAt: (x: number, y: number, z: number) => BlockType,
@@ -161,26 +161,7 @@ export function computeRailShape(
     // Opposite neighbors: always straight
     if (hasNorth && hasSouth) return 'ns';
     if (hasEast && hasWest) return 'ew';
-
-    // Perpendicular neighbors: check if one is part of an existing line.
-    // A neighbor is "part of a line" if there's another rail beyond it in the same axis.
-    // e.g., north neighbor at (x,y,z-1) is part of a NS line if (x,y,z-2) is also a rail.
-    const nsHasLine = (hasNorth && isFlat(getBlockAt(x, y, z - 2))) ||
-                      (hasSouth && isFlat(getBlockAt(x, y, z + 2)));
-    const ewHasLine = (hasEast && isFlat(getBlockAt(x + 2, y, z))) ||
-                      (hasWest && isFlat(getBlockAt(x - 2, y, z)));
-
-    if (nsHasLine && !ewHasLine) return 'ns';
-    if (ewHasLine && !nsHasLine) return 'ew';
-
-    // Both are lines or neither is a line: use camera direction hint
-    const prefersEW = block === BlockType.RAIL_EW;
-    if (nsHasLine && ewHasLine) {
-      // Both are lines: camera hint breaks the tie
-      return prefersEW ? 'ew' : 'ns';
-    }
-
-    // Neither is a line: curve normally
+    // Perpendicular neighbors: always curve
     if (hasSouth && hasEast) return 'curve_se';
     if (hasSouth && hasWest) return 'curve_sw';
     if (hasNorth && hasEast) return 'curve_ne';
@@ -194,6 +175,7 @@ export function computeRailShape(
   }
 
   // 0 neighbors: use stored block type for orientation
+  // RAIL_EW was placed when player faced east/west
   if (block === BlockType.RAIL_EW) return 'ew';
   return 'ns';
 }

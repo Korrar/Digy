@@ -280,13 +280,22 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
       const pz = bz + hit.normal[2];
 
       if (!isSolid(getBlockW(px, py, pz))) {
-        // Rail placement: always store camera direction as orientation hint
-        // RAIL = NS preference, RAIL_EW = EW preference
+        // Rail placement: orient based on camera direction when no neighbors
         if (selectedBlock === BlockType.RAIL) {
-          const camDir = new THREE.Vector3();
-          camera.getWorldDirection(camDir);
-          if (Math.abs(camDir.x) > Math.abs(camDir.z)) {
-            setBlockW(px, py, pz, BlockType.RAIL_EW);
+          const hasRailN = isFlat(getBlockW(px, py, pz - 1));
+          const hasRailS = isFlat(getBlockW(px, py, pz + 1));
+          const hasRailE = isFlat(getBlockW(px + 1, py, pz));
+          const hasRailW = isFlat(getBlockW(px - 1, py, pz));
+          const railNeighbors = (hasRailN?1:0) + (hasRailS?1:0) + (hasRailE?1:0) + (hasRailW?1:0);
+          if (railNeighbors === 0) {
+            // No rail neighbors: orient based on camera facing direction
+            const camDir = new THREE.Vector3();
+            camera.getWorldDirection(camDir);
+            if (Math.abs(camDir.x) > Math.abs(camDir.z)) {
+              setBlockW(px, py, pz, BlockType.RAIL_EW);
+            } else {
+              setBlockW(px, py, pz, BlockType.RAIL);
+            }
           } else {
             setBlockW(px, py, pz, BlockType.RAIL);
           }
