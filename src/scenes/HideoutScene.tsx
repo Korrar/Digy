@@ -15,6 +15,7 @@ import { Hotbar } from '../components/ui/Hotbar';
 import { HUD } from '../components/ui/HUD';
 import { InventoryPanel } from '../components/ui/InventoryPanel';
 import { ChestPanel } from '../components/ui/ChestPanel';
+import { CraftingPanel } from '../components/ui/CraftingPanel';
 import { MobileControls, useTouchDetect } from '../components/ui/MobileControls';
 import { ChunkData, chunkKey } from '../core/voxel/ChunkData';
 import { buildChunkMesh } from '../core/voxel/ChunkMesher';
@@ -146,6 +147,7 @@ export function HideoutScene() {
       <Hotbar />
       <InventoryPanel />
       <ChestPanel />
+      <CraftingPanel />
       {isTouch && (
         <MobileControls
           onDigStart={handleDigStart}
