@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BlockType, getBlock, getBlockColor, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest, isTorch } from './BlockRegistry';
+import { BlockType, getBlock, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest, isTorch } from './BlockRegistry';
 import { ChunkData } from './ChunkData';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
 import { getAtlasUV, getWhiteUV } from './TextureAtlas';
@@ -35,33 +35,6 @@ function hash3(x: number, y: number, z: number): number {
   return (h & 0x7fffffff) / 0x7fffffff;
 }
 
-function getTextureVariation(block: BlockType): number {
-  switch (block) {
-    case BlockType.GRASS: return 0.12;
-    case BlockType.DIRT: return 0.10;
-    case BlockType.STONE: return 0.15;
-    case BlockType.SAND: return 0.08;
-    case BlockType.SANDSTONE: return 0.10;
-    case BlockType.GRAVEL: return 0.18;
-    case BlockType.COBBLESTONE: return 0.16;
-    case BlockType.SNOW: return 0.04;
-    case BlockType.WOOD: return 0.08;
-    case BlockType.LEAVES: return 0.14;
-    case BlockType.COAL_ORE: return 0.20;
-    case BlockType.IRON_ORE: return 0.18;
-    case BlockType.GOLD_ORE: return 0.15;
-    case BlockType.DIAMOND_ORE: return 0.12;
-    case BlockType.ICE: return 0.06;
-    case BlockType.CACTUS: return 0.10;
-    case BlockType.WATER: return 0.05;
-    case BlockType.PLANKS: return 0.08;
-    case BlockType.STONE_BRICKS: return 0.12;
-    case BlockType.CLAY: return 0.06;
-    case BlockType.MUD: return 0.14;
-    case BlockType.BOOKSHELF: return 0.10;
-    default: return 0.05;
-  }
-}
 
 function computeAO(
   chunk: ChunkData,
@@ -658,8 +631,6 @@ export function buildChunkMesh(
 
         // Slab rendering (half-height block)
         if (isSlab(block)) {
-          const slabColor = blockDef.color;
-          const variation = getTextureVariation(block);
 
           // Half-height faces (same structure as FACES but y goes 0 to 0.5)
           const SLAB_FACES: Face[] = [
@@ -713,7 +684,7 @@ export function buildChunkMesh(
           const addBoxFaces = (
             x0: number, y0: number, z0: number,
             x1: number, y1: number, z1: number,
-            col: THREE.Color
+            _col: THREE.Color
           ) => {
             // top
             const boxFaces: { corners: [number,number,number][]; normal: [number,number,number]; brightness: number }[] = [
@@ -793,7 +764,7 @@ export function buildChunkMesh(
           const addBoxFaces = (
             x0: number, y0: number, z0: number,
             x1: number, y1: number, z1: number,
-            col: THREE.Color
+            _col: THREE.Color
           ) => {
             const boxFaces: { corners: [number,number,number][]; normal: [number,number,number]; brightness: number }[] = [
               { corners: [[x0,y1,z1],[x1,y1,z1],[x1,y1,z0],[x0,y1,z0]], normal: [0,1,0], brightness: 1.0 },
@@ -843,7 +814,7 @@ export function buildChunkMesh(
           const addBoxFaces = (
             x0: number, y0: number, z0: number,
             x1: number, y1: number, z1: number,
-            col: THREE.Color
+            _col: THREE.Color
           ) => {
             const boxFaces: { corners: [number,number,number][]; normal: [number,number,number]; brightness: number }[] = [
               { corners: [[x0,y1,z1],[x1,y1,z1],[x1,y1,z0],[x0,y1,z0]], normal: [0,1,0], brightness: 1.0 },
@@ -883,7 +854,6 @@ export function buildChunkMesh(
         }
 
         // Normal cube rendering
-        const variation = getTextureVariation(block);
 
         for (const face of FACES) {
           const nx = x + face.dir[0];

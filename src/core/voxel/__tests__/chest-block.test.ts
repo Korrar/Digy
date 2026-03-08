@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import * as THREE from 'three';
 import { BlockType, getBlock, isChest, isSolid, isTransparent } from '../BlockRegistry';
 import { ChunkData } from '../ChunkData';
 import { buildChunkMesh } from '../ChunkMesher';

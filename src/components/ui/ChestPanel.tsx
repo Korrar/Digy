@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useChestStore, CHEST_SIZE } from '../../stores/chestStore';
-import { useInventoryStore, InventorySlot } from '../../stores/inventoryStore';
+import { useInventoryStore, type InventorySlot } from '../../stores/inventoryStore';
 import { getBlock, BlockType } from '../../core/voxel/BlockRegistry';
 import { HOTBAR_SIZE, INVENTORY_SIZE } from '../../utils/constants';
 import { ItemIcon } from './Icons';
