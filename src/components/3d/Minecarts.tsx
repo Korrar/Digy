@@ -125,6 +125,7 @@ function MinecartMesh({ cart, onPush }: { cart: Minecart; onPush: (id: number) =
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function MinecartRenderer({ center }: { center: [number, number, number] }) {
   const cartsRef = useRef<Minecart[]>([]);
   const [, setCartVersion] = useState(0);
@@ -211,6 +212,9 @@ export function MinecartRenderer({ center }: { center: [number, number, number] 
     if ((hasE || hasW) && !hasN && !hasS) return 'ew';
     return 'ns';
   }, [getBlock]);
+
+  // Track whether any cart is moving on rails for sound
+  const wasRidingRef = useRef(false);
 
   // Physics update
   useFrame(() => {
@@ -340,21 +344,23 @@ export function MinecartRenderer({ center }: { center: [number, number, number] 
       cart.position.x = Math.max(-1, Math.min(17, cart.position.x));
       cart.position.z = Math.max(-1, Math.min(17, cart.position.z));
     }
+
+    // Minecart riding sound: play when any cart moves on rails
+    const anyRiding = cartsRef.current.some(
+      (c) => c.onRail && c.velocity.lengthSq() > 0.001
+    );
+    if (anyRiding && !wasRidingRef.current) {
+      soundManager.playMinecartRiding();
+    } else if (!anyRiding && wasRidingRef.current) {
+      soundManager.stopMinecartRiding();
+    }
+    wasRidingRef.current = anyRiding;
   });
 
-  // Spawn an initial test cart
+  // Cleanup riding sound on unmount
   useEffect(() => {
-    if (cartsRef.current.length === 0) {
-      const terrainY = getTerrainHeight(center[0], center[2]);
-      cartsRef.current.push({
-        id: cartIdCounter++,
-        position: new THREE.Vector3(center[0], terrainY + 0.05, center[2]),
-        velocity: new THREE.Vector3(0, 0, 0),
-        onRail: false,
-      });
-      setCartVersion((v) => v + 1);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => { soundManager.stopMinecartRiding(); };
+  }, []);
 
   return (
     <group>

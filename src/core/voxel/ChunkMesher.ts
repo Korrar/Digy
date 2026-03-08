@@ -311,16 +311,15 @@ export function buildChunkMesh(
             // curve_se: connects +Z (south) and +X (east) -> pivot at (1, 1)
             // curve_sw: connects +Z (south) and -X (west) -> pivot at (0, 1)
 
-            let pivotX: number, pivotZ: number, startAngle: number;
+            let pivotX: number, pivotZ: number, startAngle: number, angleSpan: number;
             switch (shape) {
-              case 'curve_ne': pivotX = 1; pivotZ = 0; startAngle = Math.PI; break;       // 180 -> 270
-              case 'curve_nw': pivotX = 0; pivotZ = 0; startAngle = -Math.PI / 2; break;  // 270 -> 360
-              case 'curve_se': pivotX = 1; pivotZ = 1; startAngle = Math.PI / 2; break;   // 90 -> 180
-              case 'curve_sw': pivotX = 0; pivotZ = 1; startAngle = 0; break;             // 0 -> 90
+              case 'curve_ne': pivotX = 1; pivotZ = 0; startAngle = Math.PI; angleSpan = -Math.PI / 2; break;
+              case 'curve_nw': pivotX = 0; pivotZ = 0; startAngle = 0; angleSpan = Math.PI / 2; break;
+              case 'curve_se': pivotX = 1; pivotZ = 1; startAngle = Math.PI; angleSpan = Math.PI / 2; break;
+              case 'curve_sw': pivotX = 0; pivotZ = 1; startAngle = 0; angleSpan = -Math.PI / 2; break;
             }
 
             const CURVE_SEGMENTS = 5;
-            const angleSpan = Math.PI / 2;
 
             // Curved ties
             for (let s = 0; s < CURVE_SEGMENTS; s++) {

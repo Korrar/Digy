@@ -173,12 +173,14 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
         if (!result) return;
         const [bx, by, bz] = result.blockPos;
         const surfaceBlock = getBlockW(bx, by, bz);
+        const isRail = surfaceBlock === BlockType.RAIL || surfaceBlock === BlockType.POWERED_RAIL;
         // Place minecart on top of the targeted solid/rail block
-        if (isSolid(surfaceBlock) || surfaceBlock === BlockType.RAIL || surfaceBlock === BlockType.POWERED_RAIL) {
-          const spawnY = by + 1;
+        if (isSolid(surfaceBlock) || isRail) {
+          // Rails are flat - cart sits directly on them; solid blocks - cart sits on top
+          const spawnY = isRail ? by : by + 1;
           // Dispatch minecart spawn event
           window.dispatchEvent(new CustomEvent('digy:spawnMinecart', {
-            detail: { x: bx + 0.5, y: spawnY + 0.05, z: bz + 0.5, onRail: surfaceBlock === BlockType.RAIL || surfaceBlock === BlockType.POWERED_RAIL }
+            detail: { x: bx + 0.5, y: spawnY + 0.05, z: bz + 0.5, onRail: isRail }
           }));
           removeBlock(selectedIdx, 1);
           soundManager.playPlaceSound();
