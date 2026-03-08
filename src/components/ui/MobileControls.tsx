@@ -7,7 +7,7 @@ interface MobileControlsProps {
   onDigEnd: () => void;
   onInventoryToggle: () => void;
   onModeToggle?: () => void;
-  mode?: 'mine' | 'build';
+  mode?: 'mine' | 'build' | 'explore';
 }
 
 export function useTouchDetect(): boolean {
