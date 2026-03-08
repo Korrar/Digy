@@ -246,12 +246,12 @@ export function MinecartRenderer({ center }: { center: [number, number, number] 
           // Constrain to X axis
           cart.velocity.z *= 0.8;
         } else {
-          // Curved rail: steer the cart along the curve
-          // Calculate position within the block (0-1)
+          // Curved rail: steer the cart along the arc
+          // Arc-based steering: advance position along the circular arc
           const localX = cart.position.x - bx;
           const localZ = cart.position.z - bz;
 
-          // Get curve pivot
+          // Get curve pivot (center of curvature at block corner)
           let pivotX: number, pivotZ: number;
           switch (shape) {
             case 'curve_ne': pivotX = 1; pivotZ = 0; break;
@@ -260,31 +260,40 @@ export function MinecartRenderer({ center }: { center: [number, number, number] 
             case 'curve_sw': pivotX = 0; pivotZ = 1; break;
           }
 
-          // Direction tangent to the curve at current position
           const dx = localX - pivotX;
           const dz = localZ - pivotZ;
           const dist = Math.sqrt(dx * dx + dz * dz);
           if (dist > 0.01) {
-            // Tangent is perpendicular to radius
-            let tangentX = -dz / dist;
-            let tangentZ = dx / dist;
-
-            // Choose direction that matches current velocity
-            const dot = tangentX * cart.velocity.x + tangentZ * cart.velocity.z;
-            if (dot < 0) {
-              tangentX = -tangentX;
-              tangentZ = -tangentZ;
-            }
-
-            // Steer towards tangent direction
-            cart.velocity.x = tangentX * speed;
-            cart.velocity.z = tangentZ * speed;
-
-            // Pull towards the ideal radius (0.5 from pivot)
             const idealR = 0.5;
-            const rDiff = dist - idealR;
-            cart.position.x -= (dx / dist) * rDiff * 0.1;
-            cart.position.z -= (dz / dist) * rDiff * 0.1;
+
+            // Snap position to ideal radius
+            const snappedX = pivotX + (dx / dist) * idealR;
+            const snappedZ = pivotZ + (dz / dist) * idealR;
+
+            // Current angle on the arc
+            const angle = Math.atan2(dz, dx);
+
+            // Determine rotation direction from current velocity
+            const tangentX = -Math.sin(angle);
+            const tangentZ = Math.cos(angle);
+            const dot = tangentX * cart.velocity.x + tangentZ * cart.velocity.z;
+            const sign = dot >= 0 ? 1 : -1;
+
+            // Advance angle: angular_speed = linear_speed / radius
+            const angularSpeed = speed / idealR;
+            const nextAngle = angle + sign * angularSpeed;
+
+            // Next position on arc
+            const nextX = pivotX + Math.cos(nextAngle) * idealR;
+            const nextZ = pivotZ + Math.sin(nextAngle) * idealR;
+
+            // Set velocity as chord from snapped position to next arc position
+            cart.velocity.x = nextX - snappedX;
+            cart.velocity.z = nextZ - snappedZ;
+
+            // Apply snapped position (velocity will advance it along the arc)
+            cart.position.x = bx + snappedX;
+            cart.position.z = bz + snappedZ;
           }
         }
       }
@@ -340,9 +349,9 @@ export function MinecartRenderer({ center }: { center: [number, number, number] 
         cart.velocity.set(0, 0, 0);
       }
 
-      // Keep in bounds
-      cart.position.x = Math.max(-1, Math.min(17, cart.position.x));
-      cart.position.z = Math.max(-1, Math.min(17, cart.position.z));
+      // Keep in reasonable bounds (multi-chunk world)
+      cart.position.x = Math.max(-64, Math.min(128, cart.position.x));
+      cart.position.z = Math.max(-64, Math.min(128, cart.position.z));
     }
 
     // Minecart riding sound: play when any cart moves on rails
