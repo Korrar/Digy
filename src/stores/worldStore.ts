@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import * as THREE from 'three';
 import { ChunkData, chunkKey } from '../core/voxel/ChunkData';
 import { buildChunkMesh } from '../core/voxel/ChunkMesher';
-import { BlockType } from '../core/voxel/BlockRegistry';
+import { BlockType, isFlat } from '../core/voxel/BlockRegistry';
 import { type BiomeType, createBiome } from '../core/terrain/biomes';
 import { placeStructures } from '../core/terrain/StructureGenerator';
 import { CHUNK_SIZE } from '../utils/constants';
@@ -108,6 +108,25 @@ export const useWorldStore = create<WorldState>((set, get) => ({
     if (lx === CHUNK_SIZE - 1) get().rebuildChunkMesh(cx + 1, cz);
     if (lz === 0) get().rebuildChunkMesh(cx, cz - 1);
     if (lz === CHUNK_SIZE - 1) get().rebuildChunkMesh(cx, cz + 1);
+
+    // When placing or breaking rails, also rebuild chunks containing adjacent rails
+    // so they can update their shape (curves, T-junctions)
+    const getBlock = get().getBlock;
+    const hasAdjacentRail = isFlat(getBlock(wx+1, wy, wz)) || isFlat(getBlock(wx-1, wy, wz)) ||
+      isFlat(getBlock(wx, wy, wz+1)) || isFlat(getBlock(wx, wy, wz-1));
+    if (isFlat(type) || hasAdjacentRail) {
+      const neighbors = [[wx-1, wz], [wx+1, wz], [wx, wz-1], [wx, wz+1]];
+      const rebuilt = new Set([chunkKey(cx, cz)]);
+      for (const [nx, nz] of neighbors) {
+        const ncx = Math.floor(nx / CHUNK_SIZE);
+        const ncz = Math.floor(nz / CHUNK_SIZE);
+        const key = chunkKey(ncx, ncz);
+        if (!rebuilt.has(key)) {
+          rebuilt.add(key);
+          get().rebuildChunkMesh(ncx, ncz);
+        }
+      }
+    }
 
     // Force re-render
     set({ chunks: new Map(get().chunks) });

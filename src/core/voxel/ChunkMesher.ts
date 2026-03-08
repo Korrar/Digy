@@ -216,20 +216,42 @@ export function buildChunkMesh(
           const hasEast = isRailBlock(x + 1, y, z);  // +X
           const hasWest = isRailBlock(x - 1, y, z);  // -X
 
-          // Determine rail shape: 'ns' | 'ew' | 'curve_ne' | 'curve_nw' | 'curve_se' | 'curve_sw'
+          // Determine rail shape using Minecraft-style rules:
+          // - 0 or 1 neighbor: straight (ns default, ew if only east/west)
+          // - 2 neighbors: straight if opposite sides, curve to connect if adjacent
+          // - 3 neighbors (T-junction): curve with priority south > east > west > north
+          // - 4 neighbors: always curve south-east
           type RailShape = 'ns' | 'ew' | 'curve_ne' | 'curve_nw' | 'curve_se' | 'curve_sw';
           let shape: RailShape = 'ns'; // default: straight north-south
 
           // Powered rails don't curve
           if (!isPowered) {
-            if (hasNorth && hasEast && !hasSouth && !hasWest) shape = 'curve_ne';
-            else if (hasNorth && hasWest && !hasSouth && !hasEast) shape = 'curve_nw';
-            else if (hasSouth && hasEast && !hasNorth && !hasWest) shape = 'curve_se';
-            else if (hasSouth && hasWest && !hasNorth && !hasEast) shape = 'curve_sw';
-            else if (hasEast || hasWest) {
-              if (!hasNorth && !hasSouth) shape = 'ew';
-              else shape = 'ns'; // prefer NS when both axes have neighbors
+            const count = (hasNorth ? 1 : 0) + (hasSouth ? 1 : 0) + (hasEast ? 1 : 0) + (hasWest ? 1 : 0);
+
+            if (count === 4) {
+              // 4-way intersection: always south-east (Minecraft rule)
+              shape = 'curve_se';
+            } else if (count === 3) {
+              // T-junction: curve with Minecraft priority (south > east > west > north)
+              // Pick the two directions to connect via curve
+              if (hasSouth && hasEast) shape = 'curve_se';
+              else if (hasSouth && hasWest) shape = 'curve_sw';
+              else if (hasNorth && hasEast) shape = 'curve_ne';
+              else if (hasNorth && hasWest) shape = 'curve_nw';
+            } else if (count === 2) {
+              // 2 neighbors: straight if opposite, curve if adjacent
+              if (hasNorth && hasSouth) shape = 'ns';
+              else if (hasEast && hasWest) shape = 'ew';
+              else if (hasSouth && hasEast) shape = 'curve_se';
+              else if (hasSouth && hasWest) shape = 'curve_sw';
+              else if (hasNorth && hasEast) shape = 'curve_ne';
+              else if (hasNorth && hasWest) shape = 'curve_nw';
+            } else if (count === 1) {
+              // 1 neighbor: straight in that direction
+              if (hasEast || hasWest) shape = 'ew';
+              else shape = 'ns';
             }
+            // count === 0: default 'ns'
           } else {
             // Powered rails: only straight, pick orientation
             if ((hasEast || hasWest) && !hasNorth && !hasSouth) shape = 'ew';
