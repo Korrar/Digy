@@ -35,6 +35,21 @@ import { BlockLights } from '../components/3d/BlockLights';
 import { StarrySky } from '../components/3d/StarrySky';
 import { ModeToggle } from '../components/ui/ModeToggle';
 import { AmbientParticles } from '../components/3d/AmbientParticles';
+import { WaterPlane } from '../components/3d/WaterPlane';
+
+/** Water color per biome */
+const BIOME_WATER_COLOR: Record<string, string> = {
+  forest: '#2a6090',
+  desert: '#4090a0',
+  mountains: '#3070a0',
+  swamp: '#304030',
+  tundra: '#5080a0',
+  jungle: '#206050',
+  mushroom: '#3a4060',
+  volcanic: '#402010',
+  savanna: '#4090a0',
+  cherry: '#5070a0',
+};
 
 function getTimeIndicator(timeOfDay: number): string {
   if (timeOfDay > 0.2 && timeOfDay < 0.3) return 'sunrise';
@@ -202,6 +217,15 @@ export function BiomeScene() {
         <WeatherRenderer biomeType={biomeType} center={[8, 8, 8]} />
         <TappablesRenderer biomeType={biomeType} center={[8, 8, 8]} />
         <EnemiesRenderer biomeType={biomeType} center={[8, 8, 8]} />
+
+        {biomeType !== 'cave' && (
+          <WaterPlane
+            waterLevel={3.4}
+            size={80}
+            position={[8, 8]}
+            color={BIOME_WATER_COLOR[biomeType] || '#2a6090'}
+          />
+        )}
 
         <fog attach="fog" args={[skyColor, 30, 80]} />
       </Canvas>
