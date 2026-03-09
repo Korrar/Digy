@@ -262,6 +262,7 @@ export function buildChunkMesh(
   const waterFlags: number[] = [];
   const lavaFlags: number[] = [];
   const cableFlags: number[] = [];
+  const glassFlags: number[] = [];
   const indices: number[] = [];
   let vertexCount = 0;
 
@@ -281,6 +282,7 @@ export function buildChunkMesh(
         const isWater = block === BlockType.WATER ? 1.0 : 0.0;
         const isLavaBlock = block === BlockType.LAVA ? 1.0 : 0.0;
         const cableVal = block === BlockType.CABLE_POWERED ? 2.0 : (block === BlockType.CABLE ? 1.0 : 0.0);
+        const isGlassBlock = block === BlockType.GLASS || block === BlockType.ICE ? 1.0 : 0.0;
         const oreColor = blockDef.oreColor;
 
         // Crossed quad rendering for vegetation
@@ -308,7 +310,7 @@ export function buildChunkMesh(
               const lv = corner[1] > 0.5 ? 1 : 0;
               uvs.push(wuv.u0 + lu * (wuv.u1 - wuv.u0), wuv.v0 + lv * (wuv.v1 - wuv.v0));
               sparkles.push(0);
-              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
+              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); glassFlags.push(0);
               oreColors.push(1.0, 0.95, 0.8);
             }
 
@@ -365,7 +367,7 @@ export function buildChunkMesh(
               uvs.push(wuv.u0 + lu * (wuv.u1 - wuv.u0), wuv.v0 + lv * (wuv.v1 - wuv.v0));
               // Use sparkle = -1.0 to mark flame vertices (shader detects this)
               sparkles.push(isFlame ? -1.0 : 0);
-              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
+              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); glassFlags.push(0);
               oreColors.push(1.0, 0.95, 0.8);
             }
             indices.push(
@@ -424,7 +426,7 @@ export function buildChunkMesh(
               const lv = ci < 2 ? 0 : 1;
               uvs.push(railWhite.u0 + lu * (railWhite.u1 - railWhite.u0), railWhite.v0 + lv * (railWhite.v1 - railWhite.v0));
               sparkles.push(0);
-              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
+              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); glassFlags.push(0);
               oreColors.push(1.0, 0.95, 0.8);
             }
             indices.push(
@@ -634,7 +636,7 @@ export function buildChunkMesh(
               const lv = ci < 2 ? 0 : 1;
               uvs.push(chestAtlas.u0 + lu * (chestAtlas.u1 - chestAtlas.u0), chestAtlas.v0 + lv * (chestAtlas.v1 - chestAtlas.v0));
               sparkles.push(0);
-              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
+              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); glassFlags.push(0);
               oreColors.push(0, 0, 0);
             }
             indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
@@ -682,7 +684,7 @@ export function buildChunkMesh(
               const v = slabAtlas.v0 + face.uvs[ci][1] * (slabAtlas.v1 - slabAtlas.v0);
               uvs.push(u, v);
               sparkles.push(0);
-              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
+              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); glassFlags.push(0);
               oreColors.push(1.0, 0.95, 0.8);
             }
             indices.push(vertexCount, vertexCount + 1, vertexCount + 2, vertexCount, vertexCount + 2, vertexCount + 3);
@@ -722,7 +724,7 @@ export function buildChunkMesh(
                 const lv = ci < 2 ? 0 : 1;
                 uvs.push(fAtlas.u0 + lu * (fAtlas.u1 - fAtlas.u0), fAtlas.v0 + lv * (fAtlas.v1 - fAtlas.v0));
                 sparkles.push(0);
-                waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
+                waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); glassFlags.push(0);
                 oreColors.push(1.0, 0.95, 0.8);
               }
               indices.push(vertexCount, vertexCount + 1, vertexCount + 2, vertexCount, vertexCount + 2, vertexCount + 3);
@@ -802,7 +804,7 @@ export function buildChunkMesh(
                 const lv = ci < 2 ? 0 : 1;
                 uvs.push(fAtlas.u0 + lu * (fAtlas.u1 - fAtlas.u0), fAtlas.v0 + lv * (fAtlas.v1 - fAtlas.v0));
                 sparkles.push(0);
-                waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
+                waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); glassFlags.push(0);
                 oreColors.push(1.0, 0.95, 0.8);
               }
               indices.push(vertexCount, vertexCount + 1, vertexCount + 2, vertexCount, vertexCount + 2, vertexCount + 3);
@@ -853,7 +855,7 @@ export function buildChunkMesh(
                 const lv = ci < 2 ? 0 : 1;
                 uvs.push(fAtlas.u0 + lu * (fAtlas.u1 - fAtlas.u0), fAtlas.v0 + lv * (fAtlas.v1 - fAtlas.v0));
                 sparkles.push(0);
-                waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
+                waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); glassFlags.push(0);
                 oreColors.push(1.0, 0.95, 0.8);
               }
               indices.push(vertexCount, vertexCount + 1, vertexCount + 2, vertexCount, vertexCount + 2, vertexCount + 3);
@@ -896,7 +898,7 @@ export function buildChunkMesh(
               normals.push(f.n[0], f.n[1], f.n[2]);
               colors.push(baseColor.r * f.b, baseColor.g * f.b, baseColor.b * f.b);
               uvs.push(whiteUV.u0, whiteUV.v0);
-              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); oreColors.push(1, 0.95, 0.8);
+              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); glassFlags.push(0); oreColors.push(1, 0.95, 0.8);
             }
             indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
             vertexCount += 4;
@@ -922,7 +924,7 @@ export function buildChunkMesh(
               normals.push(f.n[0], f.n[1], f.n[2]);
               colors.push(stickColor.r * f.b, stickColor.g * f.b, stickColor.b * f.b);
               uvs.push(whiteUV.u0, whiteUV.v0);
-              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); oreColors.push(1, 0.95, 0.8);
+              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); glassFlags.push(0); oreColors.push(1, 0.95, 0.8);
             }
             indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
             vertexCount += 4;
@@ -952,7 +954,7 @@ export function buildChunkMesh(
               normals.push(f.n[0], f.n[1], f.n[2]);
               colors.push(btnColor.r * f.b, btnColor.g * f.b, btnColor.b * f.b);
               uvs.push(whiteUV.u0, whiteUV.v0);
-              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); oreColors.push(1, 0.95, 0.8);
+              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); glassFlags.push(0); oreColors.push(1, 0.95, 0.8);
             }
             indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
             vertexCount += 4;
@@ -1000,7 +1002,7 @@ export function buildChunkMesh(
               normals.push(0, 1, 0);
               colors.push(cCol.r * b * brightness, cCol.g * b * brightness, cCol.b * b * brightness);
               uvs.push(whiteUV.u0, whiteUV.v0);
-              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(cableVal); oreColors.push(1, 0.95, 0.8);
+              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(cableVal); glassFlags.push(0); oreColors.push(1, 0.95, 0.8);
             }
             indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
             vertexCount += 4;
@@ -1013,7 +1015,7 @@ export function buildChunkMesh(
               normals.push(0, -1, 0);
               colors.push(cCol.r * b * brightness * 0.7, cCol.g * b * brightness * 0.7, cCol.b * b * brightness * 0.7);
               uvs.push(whiteUV.u0, whiteUV.v0);
-              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(cableVal); oreColors.push(1, 0.95, 0.8);
+              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(cableVal); glassFlags.push(0); oreColors.push(1, 0.95, 0.8);
             }
             indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
             vertexCount += 4;
@@ -1059,7 +1061,8 @@ export function buildChunkMesh(
         // Piston rendering (body block with wooden/stone face plate)
         if (isPiston(block)) {
           const bodyColor = blockDef.color;
-          const plateColor = new THREE.Color(0x707070); // stone face plate
+          const isSticky = blockDef.isStickyPiston === true;
+          const plateColor = isSticky ? new THREE.Color(0x5a8a2d) : new THREE.Color(0x707070); // green slime or stone face
           const rodColor = new THREE.Color(0x5a3a1a); // dark wood rod
           const extended = blockDef.pistonExtended === true;
 
@@ -1096,7 +1099,7 @@ export function buildChunkMesh(
               colors.push(face.col.r * face.brightness, face.col.g * face.brightness, face.col.b * face.brightness);
               uvs.push(pistonAtlas.u0, pistonAtlas.v0);
               sparkles.push(0);
-              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
+              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); glassFlags.push(0);
               oreColors.push(0, 0, 0);
             }
             indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
@@ -1107,7 +1110,7 @@ export function buildChunkMesh(
 
         // Piston Head rendering (flat plate on top of rod)
         if (isPistonHead(block)) {
-          const plateColor = new THREE.Color(0x707070);
+          const plateColor = blockDef.isStickyPiston ? new THREE.Color(0x5a8a2d) : new THREE.Color(0x707070);
           const rodColor = new THREE.Color(0x5a3a1a);
           const rodR = 0.125;
 
@@ -1135,7 +1138,7 @@ export function buildChunkMesh(
               colors.push(face.col.r * face.brightness, face.col.g * face.brightness, face.col.b * face.brightness);
               uvs.push(phAtlas.u0, phAtlas.v0);
               sparkles.push(0);
-              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
+              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); glassFlags.push(0);
               oreColors.push(0, 0, 0);
             }
             indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
@@ -1182,7 +1185,7 @@ export function buildChunkMesh(
               colors.push(face.col.r * face.brightness, face.col.g * face.brightness, face.col.b * face.brightness);
               uvs.push(signAtlas.u0, signAtlas.v0);
               sparkles.push(0);
-              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0);
+              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); glassFlags.push(0);
               oreColors.push(0, 0, 0);
             }
             indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
@@ -1233,7 +1236,7 @@ export function buildChunkMesh(
             const v = atlas.v0 + face.uvs[ci][1] * (atlas.v1 - atlas.v0);
             uvs.push(u, v);
             sparkles.push(sparkle);
-            waterFlags.push(isWater); lavaFlags.push(isLavaBlock); cableFlags.push(cableVal);
+            waterFlags.push(isWater); lavaFlags.push(isLavaBlock); cableFlags.push(cableVal); glassFlags.push(isGlassBlock);
             oreColors.push(
               oreColor ? oreColor.r : 1.0,
               oreColor ? oreColor.g : 0.95,
@@ -1260,6 +1263,7 @@ export function buildChunkMesh(
   geometry.setAttribute('aIsWater', new THREE.Float32BufferAttribute(waterFlags, 1));
   geometry.setAttribute('aIsLava', new THREE.Float32BufferAttribute(lavaFlags, 1));
   geometry.setAttribute('aIsCable', new THREE.Float32BufferAttribute(cableFlags, 1));
+  geometry.setAttribute('aIsGlass', new THREE.Float32BufferAttribute(glassFlags, 1));
   geometry.setAttribute('aOreColor', new THREE.Float32BufferAttribute(oreColors, 3));
   geometry.setIndex(indices);
   geometry.computeBoundingSphere();

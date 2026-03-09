@@ -9,6 +9,7 @@ attribute vec3 aOreColor;
 attribute float aIsWater;
 attribute float aIsLava;
 attribute float aIsCable;
+attribute float aIsGlass;
 
 varying vec3 vColor;
 varying vec3 vNormal;
@@ -20,6 +21,7 @@ varying vec2 vUv;
 varying float vIsWater;
 varying float vIsLava;
 varying float vIsCable;
+varying float vIsGlass;
 
 uniform float uTime;
 
@@ -32,6 +34,7 @@ void main() {
   vIsWater = aIsWater;
   vIsLava = aIsLava;
   vIsCable = aIsCable;
+  vIsGlass = aIsGlass;
 
   vec4 worldPos = modelMatrix * vec4(position, 1.0);
 
@@ -115,6 +118,7 @@ varying vec2 vUv;
 varying float vIsWater;
 varying float vIsLava;
 varying float vIsCable;
+varying float vIsGlass;
 
 // Hash for sparkle
 float hash(vec3 p) {
@@ -286,6 +290,18 @@ void main() {
     color += vec3(0.4, 0.25, 0.05) * (1.0 - flameH) * flicker;
   }
 
+  // Glass: semi-transparent with subtle specular highlights and tint
+  if (vIsGlass > 0.5) {
+    vec3 glassReflect = reflect(-viewDir, normal);
+    float glassFresnel = pow(1.0 - max(dot(viewDir, normal), 0.0), 4.0);
+    float glassSpec = pow(max(dot(viewDir, reflect(-directionalLightDirection, normal)), 0.0), 64.0) * 0.4;
+    // Subtle sky reflection on glass surface
+    float glassSkyGrad = glassReflect.y * 0.5 + 0.5;
+    vec3 glassSkyCol = mix(fogColor * 0.5, vec3(0.6, 0.75, 1.0), glassSkyGrad);
+    color = mix(color, glassSkyCol, glassFresnel * 0.3);
+    color += directionalLightColor * glassSpec * directionalLightIntensity;
+  }
+
   // Tone mapping (simple Reinhard)
   color = color / (color + vec3(1.0));
 
@@ -293,8 +309,9 @@ void main() {
   float fogFactor = smoothstep(fogNear, fogFar, vFogDepth);
   color = mix(color, fogColor, fogFactor);
 
-  // Transparency for water/lava
+  // Transparency for water/lava/glass
   float alpha = 1.0;
+  if (vIsGlass > 0.5) alpha = 0.35;
   if (vIsWater > 0.5) alpha = 0.8;
   if (vIsLava > 0.5) alpha = 0.95;
   gl_FragColor = vec4(color, alpha);
