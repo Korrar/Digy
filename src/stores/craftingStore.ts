@@ -87,6 +87,10 @@ const ALL_RECIPES: CraftingRecipe[] = [
   { id: 'tnt', name: 'TNT', ingredients: [{ type: BlockType.SAND, count: 4 }, { type: BlockType.COAL, count: 5 }], result: { type: BlockType.TNT, count: 1 }, craftTime: 10, category: 'blocks' },
   // Pressure Plate
   { id: 'pressure_plate', name: 'Pressure Plate', ingredients: [{ type: BlockType.STONE, count: 2 }], result: { type: BlockType.PRESSURE_PLATE, count: 1 }, craftTime: 3, category: 'blocks' },
+  // Repeater
+  { id: 'repeater', name: 'Repeater', ingredients: [{ type: BlockType.STONE, count: 3 }, { type: BlockType.CABLE, count: 2 }, { type: BlockType.TORCH, count: 1 }], result: { type: BlockType.REPEATER, count: 1 }, craftTime: 5, category: 'blocks' },
+  // Comparator
+  { id: 'comparator', name: 'Comparator', ingredients: [{ type: BlockType.STONE, count: 3 }, { type: BlockType.CABLE, count: 2 }, { type: BlockType.TORCH, count: 2 }], result: { type: BlockType.COMPARATOR, count: 1 }, craftTime: 5, category: 'blocks' },
   // Detector Rail
   { id: 'detector_rail', name: 'Detector Rail', ingredients: [{ type: BlockType.IRON_INGOT, count: 3 }, { type: BlockType.COBBLESTONE, count: 1 }], result: { type: BlockType.DETECTOR_RAIL, count: 4 }, craftTime: 8, category: 'blocks' },
 ];

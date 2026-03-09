@@ -151,6 +151,28 @@ export enum BlockType {
   // Detector Rail (pressure plate on rail - sends signal when minecart passes)
   DETECTOR_RAIL = 118,
   DETECTOR_RAIL_ON = 119,
+
+  // Repeater (one-way signal gate with delay, oriented by direction)
+  REPEATER = 120,       // inventory item
+  REPEATER_N = 121,
+  REPEATER_S = 122,
+  REPEATER_E = 123,
+  REPEATER_W = 124,
+  REPEATER_N_ON = 125,
+  REPEATER_S_ON = 126,
+  REPEATER_E_ON = 127,
+  REPEATER_W_ON = 128,
+
+  // Comparator (logic gate: compare/subtract modes, oriented by direction)
+  COMPARATOR = 129,     // inventory item
+  COMPARATOR_N = 130,
+  COMPARATOR_S = 131,
+  COMPARATOR_E = 132,
+  COMPARATOR_W = 133,
+  COMPARATOR_N_ON = 134,
+  COMPARATOR_S_ON = 135,
+  COMPARATOR_E_ON = 136,
+  COMPARATOR_W_ON = 137,
 }
 
 export interface BlockDefinition {
@@ -232,6 +254,18 @@ export interface BlockDefinition {
   isDetectorRail?: boolean;
   /** Detector rail is activated */
   detectorRailOn?: boolean;
+  /** Render as repeater (directional one-way signal gate) */
+  isRepeater?: boolean;
+  /** Repeater direction (signal flows from back to front in this direction) */
+  repeaterDir?: 'n' | 's' | 'e' | 'w';
+  /** Repeater is outputting power */
+  repeaterOn?: boolean;
+  /** Render as comparator (logic gate) */
+  isComparator?: boolean;
+  /** Comparator direction */
+  comparatorDir?: 'n' | 's' | 'e' | 'w';
+  /** Comparator is outputting power */
+  comparatorOn?: boolean;
 }
 
 const BLOCKS: Map<BlockType, BlockDefinition> = new Map();
@@ -403,6 +437,30 @@ register({ id: BlockType.PRESSURE_PLATE_ON, name: 'Pressure Plate', color: new T
 register({ id: BlockType.DETECTOR_RAIL, name: 'Detector Rail', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: true, drops: BlockType.DETECTOR_RAIL, stackSize: 64, isFlat: true, isDetectorRail: true, icon: 'rail' });
 register({ id: BlockType.DETECTOR_RAIL_ON, name: 'Detector Rail', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: true, drops: BlockType.DETECTOR_RAIL, stackSize: 0, isFlat: true, isDetectorRail: true, detectorRailOn: true });
 
+// Repeater - inventory item
+register({ id: BlockType.REPEATER, name: 'Repeater', color: new THREE.Color(0x909090), hardness: 0, transparent: true, drops: BlockType.REPEATER, stackSize: 64, isItem: true, icon: 'repeater' });
+// Repeater - placed blocks (4 directions × 2 states)
+register({ id: BlockType.REPEATER_N, name: 'Repeater', color: new THREE.Color(0x909090), hardness: 0.5, transparent: true, drops: BlockType.REPEATER, stackSize: 0, isRepeater: true, repeaterDir: 'n' });
+register({ id: BlockType.REPEATER_S, name: 'Repeater', color: new THREE.Color(0x909090), hardness: 0.5, transparent: true, drops: BlockType.REPEATER, stackSize: 0, isRepeater: true, repeaterDir: 's' });
+register({ id: BlockType.REPEATER_E, name: 'Repeater', color: new THREE.Color(0x909090), hardness: 0.5, transparent: true, drops: BlockType.REPEATER, stackSize: 0, isRepeater: true, repeaterDir: 'e' });
+register({ id: BlockType.REPEATER_W, name: 'Repeater', color: new THREE.Color(0x909090), hardness: 0.5, transparent: true, drops: BlockType.REPEATER, stackSize: 0, isRepeater: true, repeaterDir: 'w' });
+register({ id: BlockType.REPEATER_N_ON, name: 'Repeater', color: new THREE.Color(0x909090), hardness: 0.5, transparent: true, drops: BlockType.REPEATER, stackSize: 0, isRepeater: true, repeaterDir: 'n', repeaterOn: true, emitsLight: true });
+register({ id: BlockType.REPEATER_S_ON, name: 'Repeater', color: new THREE.Color(0x909090), hardness: 0.5, transparent: true, drops: BlockType.REPEATER, stackSize: 0, isRepeater: true, repeaterDir: 's', repeaterOn: true, emitsLight: true });
+register({ id: BlockType.REPEATER_E_ON, name: 'Repeater', color: new THREE.Color(0x909090), hardness: 0.5, transparent: true, drops: BlockType.REPEATER, stackSize: 0, isRepeater: true, repeaterDir: 'e', repeaterOn: true, emitsLight: true });
+register({ id: BlockType.REPEATER_W_ON, name: 'Repeater', color: new THREE.Color(0x909090), hardness: 0.5, transparent: true, drops: BlockType.REPEATER, stackSize: 0, isRepeater: true, repeaterDir: 'w', repeaterOn: true, emitsLight: true });
+
+// Comparator - inventory item
+register({ id: BlockType.COMPARATOR, name: 'Comparator', color: new THREE.Color(0x909090), hardness: 0, transparent: true, drops: BlockType.COMPARATOR, stackSize: 64, isItem: true, icon: 'comparator' });
+// Comparator - placed blocks (4 directions × 2 states)
+register({ id: BlockType.COMPARATOR_N, name: 'Comparator', color: new THREE.Color(0x909090), hardness: 0.5, transparent: true, drops: BlockType.COMPARATOR, stackSize: 0, isComparator: true, comparatorDir: 'n' });
+register({ id: BlockType.COMPARATOR_S, name: 'Comparator', color: new THREE.Color(0x909090), hardness: 0.5, transparent: true, drops: BlockType.COMPARATOR, stackSize: 0, isComparator: true, comparatorDir: 's' });
+register({ id: BlockType.COMPARATOR_E, name: 'Comparator', color: new THREE.Color(0x909090), hardness: 0.5, transparent: true, drops: BlockType.COMPARATOR, stackSize: 0, isComparator: true, comparatorDir: 'e' });
+register({ id: BlockType.COMPARATOR_W, name: 'Comparator', color: new THREE.Color(0x909090), hardness: 0.5, transparent: true, drops: BlockType.COMPARATOR, stackSize: 0, isComparator: true, comparatorDir: 'w' });
+register({ id: BlockType.COMPARATOR_N_ON, name: 'Comparator', color: new THREE.Color(0x909090), hardness: 0.5, transparent: true, drops: BlockType.COMPARATOR, stackSize: 0, isComparator: true, comparatorDir: 'n', comparatorOn: true, emitsLight: true });
+register({ id: BlockType.COMPARATOR_S_ON, name: 'Comparator', color: new THREE.Color(0x909090), hardness: 0.5, transparent: true, drops: BlockType.COMPARATOR, stackSize: 0, isComparator: true, comparatorDir: 's', comparatorOn: true, emitsLight: true });
+register({ id: BlockType.COMPARATOR_E_ON, name: 'Comparator', color: new THREE.Color(0x909090), hardness: 0.5, transparent: true, drops: BlockType.COMPARATOR, stackSize: 0, isComparator: true, comparatorDir: 'e', comparatorOn: true, emitsLight: true });
+register({ id: BlockType.COMPARATOR_W_ON, name: 'Comparator', color: new THREE.Color(0x909090), hardness: 0.5, transparent: true, drops: BlockType.COMPARATOR, stackSize: 0, isComparator: true, comparatorDir: 'w', comparatorOn: true, emitsLight: true });
+
 // Update ore drops to drop raw materials
 BLOCKS.get(BlockType.COAL_ORE)!.drops = BlockType.COAL;
 BLOCKS.get(BlockType.DIAMOND_ORE)!.drops = BlockType.DIAMOND;
@@ -427,7 +485,7 @@ export function isTransparent(type: BlockType): boolean {
 
 export function isSolid(type: BlockType): boolean {
   const def = getBlock(type);
-  return type !== BlockType.AIR && type !== BlockType.WATER && type !== BlockType.LAVA && !def.crossedQuad && !def.isFlat && !def.isTorch && !def.isLever && !def.isButton && !def.isCable && !def.isPistonHead && !def.isSign && !def.isPressurePlate;
+  return type !== BlockType.AIR && type !== BlockType.WATER && type !== BlockType.LAVA && !def.crossedQuad && !def.isFlat && !def.isTorch && !def.isLever && !def.isButton && !def.isCable && !def.isPistonHead && !def.isSign && !def.isPressurePlate && !def.isRepeater && !def.isComparator;
 }
 
 export function isCrossedQuad(type: BlockType): boolean {
@@ -538,6 +596,103 @@ export function isPressurePlate(type: BlockType): boolean {
 
 export function isDetectorRail(type: BlockType): boolean {
   return getBlock(type).isDetectorRail === true;
+}
+
+export function isRepeater(type: BlockType): boolean {
+  return getBlock(type).isRepeater === true;
+}
+
+export function isRepeaterItem(type: BlockType): boolean {
+  return type === BlockType.REPEATER;
+}
+
+export function isComparator(type: BlockType): boolean {
+  return getBlock(type).isComparator === true;
+}
+
+export function isComparatorItem(type: BlockType): boolean {
+  return type === BlockType.COMPARATOR;
+}
+
+/** Get the oriented repeater block type for a direction */
+export function getOrientedRepeater(dir: 'n' | 's' | 'e' | 'w'): BlockType {
+  switch (dir) {
+    case 'n': return BlockType.REPEATER_N;
+    case 's': return BlockType.REPEATER_S;
+    case 'e': return BlockType.REPEATER_E;
+    case 'w': return BlockType.REPEATER_W;
+  }
+}
+
+/** Get the oriented comparator block type for a direction */
+export function getOrientedComparator(dir: 'n' | 's' | 'e' | 'w'): BlockType {
+  switch (dir) {
+    case 'n': return BlockType.COMPARATOR_N;
+    case 's': return BlockType.COMPARATOR_S;
+    case 'e': return BlockType.COMPARATOR_E;
+    case 'w': return BlockType.COMPARATOR_W;
+  }
+}
+
+/** Get the ON variant of a repeater block */
+export function getRepeaterOn(type: BlockType): BlockType {
+  switch (type) {
+    case BlockType.REPEATER_N: case BlockType.REPEATER_N_ON: return BlockType.REPEATER_N_ON;
+    case BlockType.REPEATER_S: case BlockType.REPEATER_S_ON: return BlockType.REPEATER_S_ON;
+    case BlockType.REPEATER_E: case BlockType.REPEATER_E_ON: return BlockType.REPEATER_E_ON;
+    case BlockType.REPEATER_W: case BlockType.REPEATER_W_ON: return BlockType.REPEATER_W_ON;
+    default: return type;
+  }
+}
+
+/** Get the OFF variant of a repeater block */
+export function getRepeaterOff(type: BlockType): BlockType {
+  switch (type) {
+    case BlockType.REPEATER_N: case BlockType.REPEATER_N_ON: return BlockType.REPEATER_N;
+    case BlockType.REPEATER_S: case BlockType.REPEATER_S_ON: return BlockType.REPEATER_S;
+    case BlockType.REPEATER_E: case BlockType.REPEATER_E_ON: return BlockType.REPEATER_E;
+    case BlockType.REPEATER_W: case BlockType.REPEATER_W_ON: return BlockType.REPEATER_W;
+    default: return type;
+  }
+}
+
+/** Get the ON variant of a comparator block */
+export function getComparatorOn(type: BlockType): BlockType {
+  switch (type) {
+    case BlockType.COMPARATOR_N: case BlockType.COMPARATOR_N_ON: return BlockType.COMPARATOR_N_ON;
+    case BlockType.COMPARATOR_S: case BlockType.COMPARATOR_S_ON: return BlockType.COMPARATOR_S_ON;
+    case BlockType.COMPARATOR_E: case BlockType.COMPARATOR_E_ON: return BlockType.COMPARATOR_E_ON;
+    case BlockType.COMPARATOR_W: case BlockType.COMPARATOR_W_ON: return BlockType.COMPARATOR_W_ON;
+    default: return type;
+  }
+}
+
+/** Get the OFF variant of a comparator block */
+export function getComparatorOff(type: BlockType): BlockType {
+  switch (type) {
+    case BlockType.COMPARATOR_N: case BlockType.COMPARATOR_N_ON: return BlockType.COMPARATOR_N;
+    case BlockType.COMPARATOR_S: case BlockType.COMPARATOR_S_ON: return BlockType.COMPARATOR_S;
+    case BlockType.COMPARATOR_E: case BlockType.COMPARATOR_E_ON: return BlockType.COMPARATOR_E;
+    case BlockType.COMPARATOR_W: case BlockType.COMPARATOR_W_ON: return BlockType.COMPARATOR_W;
+    default: return type;
+  }
+}
+
+/**
+ * Get the input/output direction offsets for a repeater/comparator.
+ * Direction is the "facing" direction (output direction).
+ * N = output toward -Z, input from +Z
+ * S = output toward +Z, input from -Z
+ * E = output toward +X, input from -X
+ * W = output toward -X, input from +X
+ */
+export function getDirectionOffsets(dir: 'n' | 's' | 'e' | 'w'): { input: [number, number, number]; output: [number, number, number]; sideA: [number, number, number]; sideB: [number, number, number] } {
+  switch (dir) {
+    case 'n': return { input: [0, 0, 1], output: [0, 0, -1], sideA: [1, 0, 0], sideB: [-1, 0, 0] };
+    case 's': return { input: [0, 0, -1], output: [0, 0, 1], sideA: [1, 0, 0], sideB: [-1, 0, 0] };
+    case 'e': return { input: [-1, 0, 0], output: [1, 0, 0], sideA: [0, 0, 1], sideB: [0, 0, -1] };
+    case 'w': return { input: [1, 0, 0], output: [-1, 0, 0], sideA: [0, 0, 1], sideB: [0, 0, -1] };
+  }
 }
 
 /** Get the oriented stair block type for a stair inventory item + direction */

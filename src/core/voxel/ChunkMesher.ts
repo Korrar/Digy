@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BlockType, getBlock, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest, isTorch, isLever, isButton, isCable, isPiston, isPistonHead, isSign, isPressurePlate, isDetectorRail } from './BlockRegistry';
+import { BlockType, getBlock, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest, isTorch, isLever, isButton, isCable, isPiston, isPistonHead, isSign, isPressurePlate, isDetectorRail, isRepeater, isComparator } from './BlockRegistry';
 import { ChunkData } from './ChunkData';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
 import { getAtlasUV, getWhiteUV } from './TextureAtlas';
@@ -1285,6 +1285,180 @@ export function buildChunkMesh(
           }
           indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
           vertexCount += 4;
+          continue;
+        }
+
+        // Repeater rendering (flat slab on ground with directional torch indicators)
+        if (isRepeater(block)) {
+          const rDef = getBlock(block);
+          const isOn = rDef.repeaterOn === true;
+          const dir = rDef.repeaterDir ?? 'n';
+          const whiteUV = getWhiteUV();
+          const baseColor = new THREE.Color(0x606060); // dark stone base
+          const torchColorOff = new THREE.Color(0x661111); // dim red torch
+          const torchColorOn = new THREE.Color(0xff3333); // bright red torch
+          const torchColor = isOn ? torchColorOn : torchColorOff;
+          const arrowColor = new THREE.Color(isOn ? 0xcc4444 : 0x444444);
+
+          // Base slab (flat on floor, slightly raised)
+          const baseH = 0.12;
+          const inset = 0.05;
+          const baseFaces: { c: [number,number,number][]; n: [number,number,number]; b: number }[] = [
+            { c: [[inset,baseH,1-inset],[1-inset,baseH,1-inset],[1-inset,baseH,inset],[inset,baseH,inset]], n: [0,1,0], b: 1.0 },
+            { c: [[inset,0,inset],[1-inset,0,inset],[1-inset,0,1-inset],[inset,0,1-inset]], n: [0,-1,0], b: 0.7 },
+            { c: [[1-inset,0,inset],[1-inset,baseH,inset],[1-inset,baseH,1-inset],[1-inset,0,1-inset]], n: [1,0,0], b: 0.85 },
+            { c: [[inset,0,1-inset],[inset,baseH,1-inset],[inset,baseH,inset],[inset,0,inset]], n: [-1,0,0], b: 0.85 },
+            { c: [[1-inset,0,1-inset],[1-inset,baseH,1-inset],[inset,baseH,1-inset],[inset,0,1-inset]], n: [0,0,1], b: 0.9 },
+            { c: [[inset,0,inset],[inset,baseH,inset],[1-inset,baseH,inset],[1-inset,0,inset]], n: [0,0,-1], b: 0.9 },
+          ];
+          for (const f of baseFaces) {
+            for (let ci = 0; ci < 4; ci++) {
+              positions.push(x + f.c[ci][0], y + f.c[ci][1], z + f.c[ci][2]);
+              normals.push(f.n[0], f.n[1], f.n[2]);
+              colors.push(baseColor.r * f.b, baseColor.g * f.b, baseColor.b * f.b);
+              uvs.push(whiteUV.u0, whiteUV.v0);
+              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(isOn ? 2.0 : 0); glassFlags.push(0); oreColors.push(0, 0, 0);
+            }
+            indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+            vertexCount += 4;
+          }
+
+          // Two torches on the base - positions depend on direction
+          // Input torch (back) and output torch (front)
+          const torchR = 0.07;
+          const torchH = 0.22;
+          // Direction-dependent positions: [inputX, inputZ, outputX, outputZ]
+          let tIn: [number, number], tOut: [number, number];
+          let arrowStart: [number, number], arrowEnd: [number, number];
+          switch (dir) {
+            case 'n': tIn = [0.5, 0.7]; tOut = [0.5, 0.3]; arrowStart = [0.5, 0.6]; arrowEnd = [0.5, 0.2]; break;
+            case 's': tIn = [0.5, 0.3]; tOut = [0.5, 0.7]; arrowStart = [0.5, 0.4]; arrowEnd = [0.5, 0.8]; break;
+            case 'e': tIn = [0.3, 0.5]; tOut = [0.7, 0.5]; arrowStart = [0.4, 0.5]; arrowEnd = [0.8, 0.5]; break;
+            case 'w': tIn = [0.7, 0.5]; tOut = [0.3, 0.5]; arrowStart = [0.6, 0.5]; arrowEnd = [0.2, 0.5]; break;
+          }
+
+          // Draw two torch dots on top surface
+          for (const [tx, tz] of [tIn, tOut]) {
+            const topFace: [number,number,number][] = [
+              [tx - torchR, baseH + torchH, tz + torchR],
+              [tx + torchR, baseH + torchH, tz + torchR],
+              [tx + torchR, baseH + torchH, tz - torchR],
+              [tx - torchR, baseH + torchH, tz - torchR],
+            ];
+            for (let ci = 0; ci < 4; ci++) {
+              positions.push(x + topFace[ci][0], y + topFace[ci][1], z + topFace[ci][2]);
+              normals.push(0, 1, 0);
+              colors.push(torchColor.r, torchColor.g, torchColor.b);
+              uvs.push(whiteUV.u0, whiteUV.v0);
+              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(isOn ? 2.0 : 0); glassFlags.push(0); oreColors.push(0, 0, 0);
+            }
+            indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+            vertexCount += 4;
+          }
+
+          // Direction arrow stripe on top surface
+          const aw = 0.04; // arrow half-width
+          let arrowFace: [number,number,number][];
+          if (dir === 'n' || dir === 's') {
+            arrowFace = [
+              [arrowStart[0] - aw, baseH + 0.005, arrowEnd[1]],
+              [arrowStart[0] + aw, baseH + 0.005, arrowEnd[1]],
+              [arrowEnd[0] + aw, baseH + 0.005, arrowStart[1]],
+              [arrowEnd[0] - aw, baseH + 0.005, arrowStart[1]],
+            ];
+          } else {
+            arrowFace = [
+              [arrowStart[0], baseH + 0.005, arrowStart[1] - aw],
+              [arrowEnd[0], baseH + 0.005, arrowEnd[1] - aw],
+              [arrowEnd[0], baseH + 0.005, arrowEnd[1] + aw],
+              [arrowStart[0], baseH + 0.005, arrowStart[1] + aw],
+            ];
+          }
+          for (let ci = 0; ci < 4; ci++) {
+            positions.push(x + arrowFace[ci][0], y + arrowFace[ci][1], z + arrowFace[ci][2]);
+            normals.push(0, 1, 0);
+            colors.push(arrowColor.r, arrowColor.g, arrowColor.b);
+            uvs.push(whiteUV.u0, whiteUV.v0);
+            sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(isOn ? 2.0 : 0); glassFlags.push(0); oreColors.push(0, 0, 0);
+          }
+          indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+          vertexCount += 4;
+          continue;
+        }
+
+        // Comparator rendering (flat slab with 3 torch indicators in triangle)
+        if (isComparator(block)) {
+          const cDef = getBlock(block);
+          const isOn = cDef.comparatorOn === true;
+          const dir = cDef.comparatorDir ?? 'n';
+          const whiteUV = getWhiteUV();
+          const baseColor = new THREE.Color(0x606060);
+          const torchColorOff = new THREE.Color(0x661111);
+          const torchColorOn = new THREE.Color(0xff3333);
+          const frontTorchColor = isOn ? torchColorOn : torchColorOff;
+
+          // Base slab (same as repeater)
+          const baseH = 0.12;
+          const inset = 0.05;
+          const baseFaces: { c: [number,number,number][]; n: [number,number,number]; b: number }[] = [
+            { c: [[inset,baseH,1-inset],[1-inset,baseH,1-inset],[1-inset,baseH,inset],[inset,baseH,inset]], n: [0,1,0], b: 1.0 },
+            { c: [[inset,0,inset],[1-inset,0,inset],[1-inset,0,1-inset],[inset,0,1-inset]], n: [0,-1,0], b: 0.7 },
+            { c: [[1-inset,0,inset],[1-inset,baseH,inset],[1-inset,baseH,1-inset],[1-inset,0,1-inset]], n: [1,0,0], b: 0.85 },
+            { c: [[inset,0,1-inset],[inset,baseH,1-inset],[inset,baseH,inset],[inset,0,inset]], n: [-1,0,0], b: 0.85 },
+            { c: [[1-inset,0,1-inset],[1-inset,baseH,1-inset],[inset,baseH,1-inset],[inset,0,1-inset]], n: [0,0,1], b: 0.9 },
+            { c: [[inset,0,inset],[inset,baseH,inset],[1-inset,baseH,inset],[1-inset,0,inset]], n: [0,0,-1], b: 0.9 },
+          ];
+          for (const f of baseFaces) {
+            for (let ci = 0; ci < 4; ci++) {
+              positions.push(x + f.c[ci][0], y + f.c[ci][1], z + f.c[ci][2]);
+              normals.push(f.n[0], f.n[1], f.n[2]);
+              colors.push(baseColor.r * f.b, baseColor.g * f.b, baseColor.b * f.b);
+              uvs.push(whiteUV.u0, whiteUV.v0);
+              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(isOn ? 2.0 : 0); glassFlags.push(0); oreColors.push(0, 0, 0);
+            }
+            indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+            vertexCount += 4;
+          }
+
+          // Three torches: 1 front (output), 2 back sides (inputs)
+          const torchR = 0.07;
+          const torchH = 0.22;
+          let tFront: [number, number], tBackL: [number, number], tBackR: [number, number];
+          switch (dir) {
+            case 'n':
+              tFront = [0.5, 0.25]; tBackL = [0.25, 0.75]; tBackR = [0.75, 0.75]; break;
+            case 's':
+              tFront = [0.5, 0.75]; tBackL = [0.75, 0.25]; tBackR = [0.25, 0.25]; break;
+            case 'e':
+              tFront = [0.75, 0.5]; tBackL = [0.25, 0.25]; tBackR = [0.25, 0.75]; break;
+            case 'w':
+              tFront = [0.25, 0.5]; tBackL = [0.75, 0.75]; tBackR = [0.75, 0.25]; break;
+          }
+
+          // Draw three torches
+          const torches: { pos: [number, number]; col: THREE.Color }[] = [
+            { pos: tFront, col: frontTorchColor },
+            { pos: tBackL, col: torchColorOff },
+            { pos: tBackR, col: torchColorOff },
+          ];
+          for (const torch of torches) {
+            const [tx, tz] = torch.pos;
+            const topFace: [number,number,number][] = [
+              [tx - torchR, baseH + torchH, tz + torchR],
+              [tx + torchR, baseH + torchH, tz + torchR],
+              [tx + torchR, baseH + torchH, tz - torchR],
+              [tx - torchR, baseH + torchH, tz - torchR],
+            ];
+            for (let ci = 0; ci < 4; ci++) {
+              positions.push(x + topFace[ci][0], y + topFace[ci][1], z + topFace[ci][2]);
+              normals.push(0, 1, 0);
+              colors.push(torch.col.r, torch.col.g, torch.col.b);
+              uvs.push(whiteUV.u0, whiteUV.v0);
+              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(isOn ? 2.0 : 0); glassFlags.push(0); oreColors.push(0, 0, 0);
+            }
+            indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+            vertexCount += 4;
+          }
           continue;
         }
 
