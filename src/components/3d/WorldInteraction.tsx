@@ -236,28 +236,23 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
   const handlePointerDown = useCallback(() => {
     isPointerDownRef.current = true;
     if (mode === 'build') {
-      // Chest open: click chest with empty hand or non-placeable item
-      const chestCheck = raycast();
-      if (chestCheck && isChest(chestCheck.blockType)) {
-        const selectedBlock = getSelectedBlock();
-        if (!selectedBlock || isItemType(selectedBlock)) {
-          const [cx, cy, cz] = chestCheck.blockPos;
-          useChestStore.getState().openChest(cx, cy, cz);
+      // Interactive blocks: always interact regardless of held item
+      const interactCheck = raycast();
+      if (interactCheck) {
+        const [bx, by, bz] = interactCheck.blockPos;
+
+        // Chest open
+        if (isChest(interactCheck.blockType)) {
+          useChestStore.getState().openChest(bx, by, bz);
           soundManager.playPlaceSound();
           return;
         }
-      }
 
-      // Door toggle: click door with empty hand or non-placeable item
-      const doorCheck = raycast();
-      if (doorCheck && isDoor(doorCheck.blockType)) {
-        const selectedBlock = getSelectedBlock();
-        if (!selectedBlock || isItemType(selectedBlock)) {
-          const [bx, by, bz] = doorCheck.blockPos;
-          const doorDef = getBlock(doorCheck.blockType);
+        // Door toggle
+        if (isDoor(interactCheck.blockType)) {
+          const doorDef = getBlock(interactCheck.blockType);
           const isUpper = doorDef.doorUpper === true;
           const isOpen = doorDef.doorOpen === true;
-          // Toggle both halves
           if (isUpper) {
             setBlockW(bx, by, bz, isOpen ? BlockType.DOOR_OAK_TOP : BlockType.DOOR_OAK_TOP_OPEN);
             setBlockW(bx, by - 1, bz, isOpen ? BlockType.DOOR_OAK_BOTTOM : BlockType.DOOR_OAK_BOTTOM_OPEN);
@@ -268,34 +263,22 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
           soundManager.playPlaceSound();
           return;
         }
-      }
 
-      // Lever toggle: click lever with empty hand
-      const leverCheck = raycast();
-      if (leverCheck && isLever(leverCheck.blockType)) {
-        const selBlock = getSelectedBlock();
-        if (!selBlock || isItemType(selBlock)) {
-          const [bx, by, bz] = leverCheck.blockPos;
-          const leverDef = getBlock(leverCheck.blockType);
+        // Lever toggle
+        if (isLever(interactCheck.blockType)) {
+          const leverDef = getBlock(interactCheck.blockType);
           const isOn = leverDef.leverOn === true;
           setBlockW(bx, by, bz, isOn ? BlockType.LEVER : BlockType.LEVER_ON);
           soundManager.playPlaceSound();
-          // Emit event for powered rails and other systems
-          // Propagate power through cables
           propagateCablePower(bx, by, bz, !isOn);
           window.dispatchEvent(new CustomEvent('digy:leverToggle', {
             detail: { x: bx, y: by, z: bz, on: !isOn }
           }));
           return;
         }
-      }
 
-      // Button press: click button, temporarily activates (1.5s pulse)
-      const buttonCheck = raycast();
-      if (buttonCheck && isButton(buttonCheck.blockType)) {
-        const selBlock = getSelectedBlock();
-        if (!selBlock || isItemType(selBlock)) {
-          const [bx, by, bz] = buttonCheck.blockPos;
+        // Button press
+        if (isButton(interactCheck.blockType)) {
           soundManager.playPlaceSound();
           window.dispatchEvent(new CustomEvent('digy:buttonPress', {
             detail: { x: bx, y: by, z: bz }
