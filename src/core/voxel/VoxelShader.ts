@@ -127,22 +127,37 @@ void main() {
   // Sample texture atlas
   vec4 texColor = texture2D(uAtlas, vUv);
 
-  // Ambient
-  vec3 ambient = ambientLightColor * ambientLightIntensity;
+  vec3 normal = normalize(vNormal);
+  vec3 viewDir = normalize(cameraPosition - vWorldPosition);
 
-  // Diffuse (directional light - sun)
-  float diff = max(dot(vNormal, directionalLightDirection), 0.0);
-  vec3 diffuse = directionalLightColor * directionalLightIntensity * diff;
+  // Ambient with height-based AO
+  float heightAO = smoothstep(0.0, 8.0, vWorldPosition.y) * 0.25 + 0.75;
+  vec3 ambient = ambientLightColor * ambientLightIntensity * heightAO;
 
-  // Moon light
-  float moonDiff = max(dot(vNormal, moonLightDirection), 0.0);
-  vec3 moonLight = moonLightColor * moonLightIntensity * moonDiff;
+  // Diffuse with wrap lighting for softer shadows
+  float NdotL = dot(normal, directionalLightDirection);
+  float wrapDiffuse = max(0.0, (NdotL + 0.3) / 1.3);
+  vec3 diffuse = directionalLightColor * directionalLightIntensity * wrapDiffuse;
 
-  // Hemisphere-like fill from below (subtle)
-  float hemi = dot(vNormal, vec3(0.0, -1.0, 0.0)) * 0.5 + 0.5;
-  vec3 hemiFill = vec3(0.06, 0.05, 0.08) * hemi;
+  // Blinn-Phong specular (subtle, mainly on wet/shiny surfaces)
+  vec3 halfDir = normalize(directionalLightDirection + viewDir);
+  float spec = pow(max(dot(normal, halfDir), 0.0), 32.0) * 0.12;
+  // Only show specular on top-facing surfaces
+  spec *= smoothstep(0.7, 1.0, normal.y);
+  vec3 specular = directionalLightColor * directionalLightIntensity * spec;
 
-  // Point light contributions (torches, lamps)
+  // Moon light with wrap
+  float moonNdotL = dot(normal, moonLightDirection);
+  float moonWrap = max(0.0, (moonNdotL + 0.2) / 1.2);
+  vec3 moonLight = moonLightColor * moonLightIntensity * moonWrap;
+
+  // Sky light (subtle blue from above) + ground bounce (warm from below)
+  float skyFactor = max(dot(normal, vec3(0.0, 1.0, 0.0)), 0.0) * 0.06;
+  vec3 skyLight = vec3(0.5, 0.7, 1.0) * skyFactor;
+  float bounceFactor = max(dot(normal, vec3(0.0, -1.0, 0.0)), 0.0) * 0.04;
+  vec3 bounceLight = vec3(1.0, 0.85, 0.6) * bounceFactor;
+
+  // Point light contributions (torches, lamps) with specular
   vec3 pointLightTotal = vec3(0.0);
   for (int i = 0; i < ${MAX_POINT_LIGHTS}; i++) {
     if (i >= pointLightCount) break;
@@ -152,18 +167,23 @@ void main() {
     float dist = length(toLight);
     float attenuation = 1.0 / (1.0 + 0.15 * dist + 0.05 * dist * dist);
     attenuation *= max(0.0, 1.0 - dist / 14.0);
-    float nDotL = max(dot(vNormal, normalize(toLight)), 0.0);
+    vec3 lightDir = normalize(toLight);
+    float nDotL = max(dot(normal, lightDir), 0.0);
     float contribution = nDotL * 0.7 + 0.3;
     pointLightTotal += lightCol * attenuation * contribution;
+    // Point light specular (warm glow)
+    vec3 plHalf = normalize(lightDir + viewDir);
+    float plSpec = pow(max(dot(normal, plHalf), 0.0), 16.0) * 0.08 * attenuation;
+    pointLightTotal += lightCol * plSpec;
   }
 
   // Minimum light floor to prevent pitch black
-  vec3 totalLight = ambient + diffuse + moonLight + hemiFill + pointLightTotal;
+  vec3 totalLight = ambient + diffuse + moonLight + skyLight + bounceLight + pointLightTotal;
   totalLight = max(totalLight, vec3(0.08, 0.07, 0.12));
 
   // Multiply texture color by vertex color (AO/brightness) and lighting
   vec3 baseColor = texColor.rgb * vColor;
-  vec3 color = baseColor * totalLight;
+  vec3 color = baseColor * totalLight + specular;
 
   // Sparkle effect for ores
   if (vSparkle > 0.0) {
@@ -181,12 +201,35 @@ void main() {
     color += sparkleColor * sparkleBrightness * vSparkle * sparkleThreshold * 0.8;
   }
 
-  // Animated water: shimmer + flow effect
+  // Animated water: enhanced reflections, caustics, Fresnel
   if (vIsWater > 0.5) {
-    float shimmer = sin(vWorldPosition.x * 3.0 + uTime * 2.0) * sin(vWorldPosition.z * 3.5 + uTime * 1.7) * 0.08;
-    color += vec3(shimmer * 0.3, shimmer * 0.5, shimmer);
-    float fresnel = abs(dot(vNormal, vec3(0.0, 1.0, 0.0)));
-    color *= 0.85 + 0.15 * fresnel;
+    // Fresnel - edges more reflective
+    float fresnel = pow(1.0 - max(dot(viewDir, normal), 0.0), 3.0);
+    fresnel = mix(0.15, 0.85, fresnel);
+
+    // Caustic patterns on water surface
+    float caustic1 = sin(vWorldPosition.x * 3.0 + uTime * 2.0) * cos(vWorldPosition.z * 3.0 + uTime * 1.5) * 0.5 + 0.5;
+    float caustic2 = sin(vWorldPosition.x * 5.0 - uTime * 1.0) * cos(vWorldPosition.z * 4.0 + uTime * 2.5) * 0.5 + 0.5;
+    float caustics = caustic1 * caustic2 * 0.12 * directionalLightIntensity;
+
+    // Sky reflection approximation
+    vec3 reflectDir = reflect(-viewDir, normal);
+    float skyGradient = reflectDir.y * 0.5 + 0.5;
+    vec3 skyReflect = mix(fogColor, vec3(0.5, 0.7, 1.0), skyGradient);
+
+    // Sun specular on water (bright highlight)
+    vec3 sunReflect = reflect(-directionalLightDirection, normal);
+    float sunSpec = pow(max(dot(viewDir, sunReflect), 0.0), 256.0) * 1.5;
+    float sunGlare = pow(max(dot(viewDir, sunReflect), 0.0), 16.0) * 0.2;
+
+    // Blend water color with sky reflection
+    color = mix(color, skyReflect, fresnel * 0.5);
+    color += vec3(caustics);
+    color += directionalLightColor * (sunSpec + sunGlare) * directionalLightIntensity;
+
+    // Foam at shallow areas (brighter edges)
+    float foam = smoothstep(0.85, 1.0, normal.y) * 0.05;
+    color += vec3(foam);
   }
 
   // Animated lava: pulsing glow, flowing hot surface
