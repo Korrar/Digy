@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BlockType, getBlock, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest, isTorch, isLever, isButton, isCable, isPiston, isPistonHead, isSign } from './BlockRegistry';
+import { BlockType, getBlock, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest, isTorch, isLever, isButton, isCable, isPiston, isPistonHead, isSign, isPressurePlate, isDetectorRail } from './BlockRegistry';
 import { ChunkData } from './ChunkData';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
 import { getAtlasUV, getWhiteUV } from './TextureAtlas';
@@ -1191,6 +1191,100 @@ export function buildChunkMesh(
             indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
             vertexCount += 4;
           }
+          continue;
+        }
+
+        // Pressure plate rendering (flat plate on ground)
+        if (isPressurePlate(block)) {
+          const plateColor = blockDef.color;
+          const isOn = blockDef.pressurePlateOn === true;
+          const plateH = isOn ? 0.03 : 0.06;
+          const whiteUV = getWhiteUV();
+          const px0 = 0.1, px1 = 0.9, pz0 = 0.1, pz1 = 0.9;
+          const plateFaces: { c: [number,number,number][]; n: [number,number,number]; b: number }[] = [
+            { c: [[px0,plateH,pz1],[px1,plateH,pz1],[px1,plateH,pz0],[px0,plateH,pz0]], n: [0,1,0], b: 1.0 },
+            { c: [[px0,0,pz0],[px1,0,pz0],[px1,0,pz1],[px0,0,pz1]], n: [0,-1,0], b: 0.7 },
+            { c: [[px1,0,pz0],[px1,plateH,pz0],[px1,plateH,pz1],[px1,0,pz1]], n: [1,0,0], b: 0.85 },
+            { c: [[px0,0,pz1],[px0,plateH,pz1],[px0,plateH,pz0],[px0,0,pz0]], n: [-1,0,0], b: 0.85 },
+            { c: [[px1,0,pz1],[px1,plateH,pz1],[px0,plateH,pz1],[px0,0,pz1]], n: [0,0,1], b: 0.9 },
+            { c: [[px0,0,pz0],[px0,plateH,pz0],[px1,plateH,pz0],[px1,0,pz0]], n: [0,0,-1], b: 0.9 },
+          ];
+          for (const f of plateFaces) {
+            for (let ci = 0; ci < 4; ci++) {
+              positions.push(x + f.c[ci][0], y + f.c[ci][1], z + f.c[ci][2]);
+              normals.push(f.n[0], f.n[1], f.n[2]);
+              const bright = isOn ? 1.2 : 1.0;
+              colors.push(plateColor.r * f.b * bright, plateColor.g * f.b * bright, plateColor.b * f.b * bright);
+              uvs.push(whiteUV.u0, whiteUV.v0);
+              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(isOn ? 2.0 : 0); glassFlags.push(0); oreColors.push(0, 0, 0);
+            }
+            indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+            vertexCount += 4;
+          }
+          continue;
+        }
+
+        // Detector rail rendering (rail with red pressure plate stripe)
+        if (isDetectorRail(block)) {
+          const isOn = blockDef.detectorRailOn === true;
+          const whiteUV = getWhiteUV();
+          const railH = 0.06;
+          const tieColor = new THREE.Color(0x8b6914);
+          const metalColor = new THREE.Color(isOn ? 0xcc4444 : 0x888888);
+          const plateStripeColor = new THREE.Color(isOn ? 0xff4444 : 0xcc3333);
+
+          // Wooden ties (like normal rail)
+          const tieW = 0.9, tieD = 0.12, tieH = 0.04;
+          const tiePositions = [0.2, 0.5, 0.8];
+          for (const tz of tiePositions) {
+            const t0x = 0.5 - tieW / 2, t1x = 0.5 + tieW / 2;
+            const t0z = tz - tieD / 2, t1z = tz + tieD / 2;
+            const tieFaces: [number,number,number][][] = [
+              [[t0x,tieH,t1z],[t1x,tieH,t1z],[t1x,tieH,t0z],[t0x,tieH,t0z]],
+            ];
+            for (const fc of tieFaces) {
+              for (let ci = 0; ci < 4; ci++) {
+                positions.push(x + fc[ci][0], y + fc[ci][1], z + fc[ci][2]);
+                normals.push(0, 1, 0);
+                colors.push(tieColor.r * 0.9, tieColor.g * 0.9, tieColor.b * 0.9);
+                uvs.push(whiteUV.u0, whiteUV.v0);
+                sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(isOn ? 2.0 : 0); glassFlags.push(0); oreColors.push(0, 0, 0);
+              }
+              indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+              vertexCount += 4;
+            }
+          }
+
+          // Two metal rails (NS direction)
+          const railW = 0.08;
+          const railOffsets = [0.2, 0.8];
+          for (const rx of railOffsets) {
+            const r0x = rx - railW / 2, r1x = rx + railW / 2;
+            const topFace: [number,number,number][] = [[r0x,railH,1],[r1x,railH,1],[r1x,railH,0],[r0x,railH,0]];
+            for (let ci = 0; ci < 4; ci++) {
+              positions.push(x + topFace[ci][0], y + topFace[ci][1], z + topFace[ci][2]);
+              normals.push(0, 1, 0);
+              colors.push(metalColor.r, metalColor.g, metalColor.b);
+              uvs.push(whiteUV.u0, whiteUV.v0);
+              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(isOn ? 2.0 : 0); glassFlags.push(0); oreColors.push(0, 0, 0);
+            }
+            indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+            vertexCount += 4;
+          }
+
+          // Center pressure plate stripe
+          const stripeW = 0.3;
+          const sx0 = 0.5 - stripeW / 2, sx1 = 0.5 + stripeW / 2;
+          const stripeFace: [number,number,number][] = [[sx0,railH+0.005,0.1],[sx1,railH+0.005,0.1],[sx1,railH+0.005,0.9],[sx0,railH+0.005,0.9]];
+          for (let ci = 0; ci < 4; ci++) {
+            positions.push(x + stripeFace[ci][0], y + stripeFace[ci][1], z + stripeFace[ci][2]);
+            normals.push(0, 1, 0);
+            colors.push(plateStripeColor.r, plateStripeColor.g, plateStripeColor.b);
+            uvs.push(whiteUV.u0, whiteUV.v0);
+            sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(isOn ? 2.0 : 0); glassFlags.push(0); oreColors.push(0, 0, 0);
+          }
+          indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+          vertexCount += 4;
           continue;
         }
 

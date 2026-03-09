@@ -2,10 +2,10 @@ import { useRef, useMemo, useCallback, useEffect, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
-import { BlockType, isFlat } from '../../core/voxel/BlockRegistry';
+import { BlockType, isFlat, isDetectorRail } from '../../core/voxel/BlockRegistry';
 import { computeRailShape } from '../../core/voxel/ChunkMesher';
 import { soundManager } from '../../systems/SoundManager';
-import { isPoweredRailActive } from '../../systems/CablePower';
+import { isPoweredRailActive, activateDetectorRail } from '../../systems/CablePower';
 
 interface Minecart {
   id: number;
@@ -452,6 +452,33 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
           cart.velocity.x = (cart.velocity.x / speed) * 0.35;
           cart.velocity.z = (cart.velocity.z / speed) * 0.35;
         }
+      }
+
+      // Detector rail: activate when minecart is on it, deactivate when it leaves
+      const detBx = Math.floor(cart.position.x);
+      const detBz = Math.floor(cart.position.z);
+      const detBy = Math.floor(cart.position.y);
+      const detBlock = getBlock(detBx, detBy, detBz);
+      const detBlockBelow = getBlock(detBx, detBy - 1, detBz);
+      if (isDetectorRail(detBlock) && detBlock === BlockType.DETECTOR_RAIL) {
+        activateDetectorRail(detBx, detBy, detBz, true);
+        // Auto-deactivate after 1.5s
+        const dx = detBx, dy = detBy, dz = detBz;
+        setTimeout(() => {
+          const s = useWorldStore.getState();
+          if (s.getBlock(dx, dy, dz) === BlockType.DETECTOR_RAIL_ON) {
+            activateDetectorRail(dx, dy, dz, false);
+          }
+        }, 1500);
+      } else if (isDetectorRail(detBlockBelow) && detBlockBelow === BlockType.DETECTOR_RAIL) {
+        activateDetectorRail(detBx, detBy - 1, detBz, true);
+        const dx = detBx, dy = detBy - 1, dz = detBz;
+        setTimeout(() => {
+          const s = useWorldStore.getState();
+          if (s.getBlock(dx, dy, dz) === BlockType.DETECTOR_RAIL_ON) {
+            activateDetectorRail(dx, dy, dz, false);
+          }
+        }, 1500);
       }
 
       // Apply slope gravity

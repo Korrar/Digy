@@ -3,14 +3,14 @@ import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
-import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, isLever, isButton, isCable, isPiston, isPistonHead } from '../../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, isLever, isButton, isCable, isPiston, isPistonHead, isPressurePlate } from '../../core/voxel/BlockRegistry';
 import { computeRailBlockType, shouldRailUpdate } from '../../core/voxel/ChunkMesher';
 import { soundManager } from '../../systems/SoundManager';
 import { spawnParticles } from './DiggingParticles';
 import { processGravity } from '../../systems/SandPhysics';
 import { checkWaterDrain } from '../../systems/WaterFlow';
 import { useDevStore } from '../../stores/devStore';
-import { propagateCablePower } from '../../systems/CablePower';
+import { propagateCablePower, activatePressurePlate } from '../../systems/CablePower';
 import { useCombatStore } from '../../stores/combatStore';
 import { useChestStore } from '../../stores/chestStore';
 
@@ -283,6 +283,14 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
           window.dispatchEvent(new CustomEvent('digy:buttonPress', {
             detail: { x: bx, y: by, z: bz }
           }));
+          return;
+        }
+
+        // Pressure plate toggle
+        if (isPressurePlate(interactCheck.blockType)) {
+          const plateDef = getBlock(interactCheck.blockType);
+          const isOn = plateDef.pressurePlateOn === true;
+          activatePressurePlate(bx, by, bz, !isOn);
           return;
         }
       }

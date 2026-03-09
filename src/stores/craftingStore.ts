@@ -83,6 +83,12 @@ const ALL_RECIPES: CraftingRecipe[] = [
   // Piston & Sticky Piston
   { id: 'piston', name: 'Piston', ingredients: [{ type: BlockType.PLANKS, count: 3 }, { type: BlockType.COBBLESTONE, count: 4 }, { type: BlockType.IRON_INGOT, count: 1 }], result: { type: BlockType.PISTON, count: 1 }, craftTime: 8, category: 'blocks' },
   { id: 'sticky_piston', name: 'Sticky Piston', ingredients: [{ type: BlockType.PISTON, count: 1 }, { type: BlockType.MOSS, count: 1 }], result: { type: BlockType.STICKY_PISTON, count: 1 }, craftTime: 5, category: 'blocks' },
+  // TNT
+  { id: 'tnt', name: 'TNT', ingredients: [{ type: BlockType.SAND, count: 4 }, { type: BlockType.COAL, count: 5 }], result: { type: BlockType.TNT, count: 1 }, craftTime: 10, category: 'blocks' },
+  // Pressure Plate
+  { id: 'pressure_plate', name: 'Pressure Plate', ingredients: [{ type: BlockType.STONE, count: 2 }], result: { type: BlockType.PRESSURE_PLATE, count: 1 }, craftTime: 3, category: 'blocks' },
+  // Detector Rail
+  { id: 'detector_rail', name: 'Detector Rail', ingredients: [{ type: BlockType.IRON_INGOT, count: 3 }, { type: BlockType.COBBLESTONE, count: 1 }], result: { type: BlockType.DETECTOR_RAIL, count: 4 }, craftTime: 8, category: 'blocks' },
 ];
 
 export const useCraftingStore = create<CraftingState>((set, get) => ({

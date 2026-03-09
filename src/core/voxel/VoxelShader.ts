@@ -205,29 +205,53 @@ void main() {
     color += sparkleColor * sparkleBrightness * vSparkle * sparkleThreshold * 0.8;
   }
 
-  // Animated water: enhanced reflections, caustics, Fresnel
+  // Animated water: mirror reflections, caustics, Fresnel
   if (vIsWater > 0.5) {
-    // Fresnel - edges more reflective
-    float fresnel = pow(1.0 - max(dot(viewDir, normal), 0.0), 3.0);
-    fresnel = mix(0.15, 0.85, fresnel);
+    // Perturbed normal for ripple distortion
+    float ripple1 = sin(vWorldPosition.x * 4.0 + uTime * 1.2) * cos(vWorldPosition.z * 3.5 + uTime * 0.9) * 0.15;
+    float ripple2 = sin(vWorldPosition.x * 6.0 - uTime * 1.8) * cos(vWorldPosition.z * 5.0 + uTime * 1.4) * 0.08;
+    vec3 perturbedNormal = normalize(normal + vec3(ripple1, 0.0, ripple2) * 0.3);
+
+    // Fresnel - edges much more reflective (mirror-like)
+    float fresnel = pow(1.0 - max(dot(viewDir, perturbedNormal), 0.0), 4.0);
+    fresnel = mix(0.25, 0.95, fresnel);
 
     // Caustic patterns on water surface
     float caustic1 = sin(vWorldPosition.x * 3.0 + uTime * 2.0) * cos(vWorldPosition.z * 3.0 + uTime * 1.5) * 0.5 + 0.5;
     float caustic2 = sin(vWorldPosition.x * 5.0 - uTime * 1.0) * cos(vWorldPosition.z * 4.0 + uTime * 2.5) * 0.5 + 0.5;
-    float caustics = caustic1 * caustic2 * 0.12 * directionalLightIntensity;
+    float caustics = caustic1 * caustic2 * 0.1 * directionalLightIntensity;
 
-    // Sky reflection approximation
-    vec3 reflectDir = reflect(-viewDir, normal);
+    // Mirror reflection: reflect the view direction against the perturbed water normal
+    vec3 reflectDir = reflect(-viewDir, perturbedNormal);
+
+    // Sky gradient in reflection direction
     float skyGradient = reflectDir.y * 0.5 + 0.5;
-    vec3 skyReflect = mix(fogColor, vec3(0.5, 0.7, 1.0), skyGradient);
+    vec3 skyColor = mix(fogColor * 0.8, vec3(0.45, 0.65, 1.0), skyGradient);
+
+    // Simulated environment reflection (pseudo-mirror of terrain)
+    // Darker below horizon, brighter above — creates illusion of reflected world
+    float horizonLine = smoothstep(-0.1, 0.3, reflectDir.y);
+    vec3 terrainReflect = mix(
+      color * 0.6,  // reflected terrain color (darkened)
+      skyColor,     // sky above
+      horizonLine
+    );
+
+    // Add rippling distortion to reflected color
+    float distortion = sin(vWorldPosition.x * 8.0 + uTime * 2.5) * sin(vWorldPosition.z * 7.0 - uTime * 1.8) * 0.04;
+    terrainReflect += vec3(distortion);
 
     // Sun specular on water (bright highlight)
-    vec3 sunReflect = reflect(-directionalLightDirection, normal);
-    float sunSpec = pow(max(dot(viewDir, sunReflect), 0.0), 256.0) * 1.5;
-    float sunGlare = pow(max(dot(viewDir, sunReflect), 0.0), 16.0) * 0.2;
+    vec3 sunReflect = reflect(-directionalLightDirection, perturbedNormal);
+    float sunSpec = pow(max(dot(viewDir, sunReflect), 0.0), 512.0) * 2.0;
+    float sunGlare = pow(max(dot(viewDir, sunReflect), 0.0), 32.0) * 0.25;
 
-    // Blend water color with sky reflection
-    color = mix(color, skyReflect, fresnel * 0.5);
+    // Deep water tint
+    vec3 waterDeep = vec3(0.05, 0.15, 0.35);
+    vec3 waterBase = mix(waterDeep, color, 0.4);
+
+    // Blend: water base + mirror reflection based on Fresnel
+    color = mix(waterBase, terrainReflect, fresnel * 0.7);
     color += vec3(caustics);
     color += directionalLightColor * (sunSpec + sunGlare) * directionalLightIntensity;
 
