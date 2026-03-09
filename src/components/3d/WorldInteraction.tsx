@@ -20,7 +20,7 @@ import { useChestStore } from '../../stores/chestStore';
 const hiddenCables = new Set<string>();
 
 interface WorldInteractionProps {
-  mode: 'mine' | 'build' | 'adventure';
+  mode: 'mine' | 'build' | 'adventure' | 'explore';
 }
 
 export function WorldInteraction({ mode }: WorldInteractionProps) {

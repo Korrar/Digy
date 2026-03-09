@@ -169,7 +169,7 @@ export function isPoweredRailActive(wx: number, wy: number, wz: number): boolean
 export function detonateTNT(store: ReturnType<typeof useWorldStore.getState>, tx: number, ty: number, tz: number) {
   // Remove the TNT block first
   store.setBlock(tx, ty, tz, BlockType.AIR);
-  soundManager.playBreakSound('stone');
+  soundManager.playBreakSound(BlockType.STONE);
 
   // Destroy blocks in sphere
   for (let dx = -TNT_RADIUS; dx <= TNT_RADIUS; dx++) {
