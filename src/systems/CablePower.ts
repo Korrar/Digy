@@ -41,7 +41,7 @@ export function propagateCablePower(leverX: number, leverY: number, leverZ: numb
       activatePiston(store, nx, ny, nz, powerOn);
     }
     if (powerOn && def.isTNT) {
-      detonateTNT(store, nx, ny, nz);
+      detonateTNT(nx, ny, nz);
     }
   }
 
@@ -90,7 +90,7 @@ export function propagateCablePower(leverX: number, leverY: number, leverZ: numb
         activatePiston(store, px, py, pz, powerOn);
       }
       if (powerOn && pDef.isTNT) {
-        detonateTNT(store, px, py, pz);
+        detonateTNT(px, py, pz);
       }
     }
   }
@@ -169,7 +169,7 @@ export function isPoweredRailActive(wx: number, wy: number, wz: number): boolean
 /**
  * Detonate TNT at position, with fuse sparks first then explosion.
  */
-export function detonateTNT(store: ReturnType<typeof useWorldStore.getState>, tx: number, ty: number, tz: number, fuseTime: number = TNT_FUSE_TIME) {
+export function detonateTNT(tx: number, ty: number, tz: number, fuseTime: number = TNT_FUSE_TIME) {
   const key = `${tx},${ty},${tz}`;
   if (fusingTNT.has(key)) return; // already fusing
   fusingTNT.add(key);
@@ -212,8 +212,7 @@ export function detonateTNT(store: ReturnType<typeof useWorldStore.getState>, tx
           if (def.hardness === Infinity) continue;
           // Chain TNT with shorter fuse
           if (def.isTNT) {
-            const chainStore = useWorldStore.getState();
-            detonateTNT(chainStore, bx, by, bz, TNT_CHAIN_FUSE_TIME);
+            detonateTNT(bx, by, bz, TNT_CHAIN_FUSE_TIME);
             continue;
           }
           s.setBlock(bx, by, bz, BlockType.AIR);
