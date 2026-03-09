@@ -118,6 +118,8 @@ function buildCategories(): ItemCategory[] {
   redstone.push(makeEntry(BlockType.PISTON, 16));
   redstone.push(makeEntry(BlockType.STICKY_PISTON, 16));
   redstone.push(makeEntry(BlockType.TNT, 16));
+  redstone.push(makeEntry(BlockType.REPEATER, 16));
+  redstone.push(makeEntry(BlockType.COMPARATOR, 16));
 
   // Tools
   tools.push(makeEntry(BlockType.WOODEN_PICKAXE, 1));

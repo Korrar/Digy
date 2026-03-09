@@ -1,8 +1,17 @@
-import { BlockType, getBlock, isSolid } from '../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid, isRepeater, isComparator, getRepeaterOn, getRepeaterOff, getComparatorOn, getComparatorOff, getDirectionOffsets } from '../core/voxel/BlockRegistry';
 import { useWorldStore } from '../stores/worldStore';
 import { soundManager } from './SoundManager';
 
 const MAX_CABLE_DISTANCE = 16;
+
+// Stores repeater delay levels: key="x,y,z", value=1-4 (ticks, each tick=100ms)
+export const repeaterDelays = new Map<string, number>();
+
+// Stores comparator modes: key="x,y,z", value='compare'|'subtract'
+export const comparatorModes = new Map<string, 'compare' | 'subtract'>();
+
+// Active repeater timeouts (for cleanup)
+const activeRepeaterTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 const TNT_RADIUS = 3;
 const TNT_FUSE_TIME = 1500; // ms - fuse duration before explosion
 const TNT_CHAIN_FUSE_TIME = 400; // ms - shorter fuse for chain reactions
@@ -79,7 +88,7 @@ export function propagateCablePower(leverX: number, leverY: number, leverZ: numb
       }
     }
 
-    // Activate/deactivate adjacent pistons and TNT
+    // Activate/deactivate adjacent pistons, TNT, repeaters, comparators
     for (const [dx, dy, dz] of dirs) {
       const px = current.x + dx;
       const py = current.y + dy;
@@ -91,6 +100,14 @@ export function propagateCablePower(leverX: number, leverY: number, leverZ: numb
       }
       if (powerOn && pDef.isTNT) {
         detonateTNT(store, px, py, pz);
+      }
+      // Repeater: only activate if cable is at the repeater's input side
+      if (pDef.isRepeater) {
+        activateRepeater(px, py, pz, current.x, current.y, current.z, powerOn);
+      }
+      // Comparator: only activate if cable is at the comparator's input side
+      if (pDef.isComparator) {
+        activateComparator(px, py, pz, current.x, current.y, current.z, powerOn);
       }
     }
   }
@@ -226,6 +243,161 @@ export function detonateTNT(store: ReturnType<typeof useWorldStore.getState>, tx
       detail: { x: tx + 0.5, y: ty + 0.5, z: tz + 0.5, radius: TNT_RADIUS }
     }));
   }, fuseTime);
+}
+
+/**
+ * Activate a repeater: signal enters from input side, exits from output side with delay.
+ * srcX/Y/Z is the position of the block providing the signal (must be at repeater's input side).
+ */
+function activateRepeater(rx: number, ry: number, rz: number, srcX: number, srcY: number, srcZ: number, powerOn: boolean) {
+  const store = useWorldStore.getState();
+  const block = store.getBlock(rx, ry, rz);
+  const def = getBlock(block);
+  if (!def.isRepeater || !def.repeaterDir) return;
+
+  const offsets = getDirectionOffsets(def.repeaterDir);
+  // Check if source is at the input side
+  const inputX = rx + offsets.input[0];
+  const inputZ = rz + offsets.input[2];
+  if (srcX !== inputX || srcZ !== inputZ || srcY !== ry) return;
+
+  const key = `${rx},${ry},${rz}`;
+  const delay = (repeaterDelays.get(key) ?? 1) * 100; // default 1 tick = 100ms
+
+  // Cancel any pending activation
+  const existing = activeRepeaterTimeouts.get(key);
+  if (existing) clearTimeout(existing);
+
+  if (powerOn) {
+    // Turn ON with delay, then propagate from output side
+    const timeout = setTimeout(() => {
+      activeRepeaterTimeouts.delete(key);
+      const s = useWorldStore.getState();
+      const current = s.getBlock(rx, ry, rz);
+      if (!isRepeater(current)) return;
+      s.setBlock(rx, ry, rz, getRepeaterOn(current));
+      // Propagate power from output side
+      const outX = rx + offsets.output[0];
+      const outZ = rz + offsets.output[2];
+      propagateFromOutput(outX, ry, outZ, true);
+    }, delay);
+    activeRepeaterTimeouts.set(key, timeout);
+  } else {
+    // Turn OFF with delay
+    const timeout = setTimeout(() => {
+      activeRepeaterTimeouts.delete(key);
+      const s = useWorldStore.getState();
+      const current = s.getBlock(rx, ry, rz);
+      if (!isRepeater(current)) return;
+      s.setBlock(rx, ry, rz, getRepeaterOff(current));
+      const outX = rx + offsets.output[0];
+      const outZ = rz + offsets.output[2];
+      propagateFromOutput(outX, ry, outZ, false);
+    }, delay);
+    activeRepeaterTimeouts.set(key, timeout);
+  }
+}
+
+/**
+ * Activate a comparator: signal enters from input (back) side.
+ * Compare mode: outputs only if no signal from sides.
+ * Subtract mode: always passes signal through.
+ */
+function activateComparator(cx: number, cy: number, cz: number, srcX: number, srcY: number, srcZ: number, powerOn: boolean) {
+  const store = useWorldStore.getState();
+  const block = store.getBlock(cx, cy, cz);
+  const def = getBlock(block);
+  if (!def.isComparator || !def.comparatorDir) return;
+
+  const offsets = getDirectionOffsets(def.comparatorDir);
+  // Check if source is at the input side
+  const inputX = cx + offsets.input[0];
+  const inputZ = cz + offsets.input[2];
+  if (srcX !== inputX || srcZ !== inputZ || srcY !== cy) return;
+
+  const key = `${cx},${cy},${cz}`;
+  const mode = comparatorModes.get(key) ?? 'compare';
+
+  let shouldOutput = false;
+  if (powerOn) {
+    if (mode === 'subtract') {
+      // Subtract mode: always pass through
+      shouldOutput = true;
+    } else {
+      // Compare mode: output only if no powered cable on either side
+      const sideABlock = store.getBlock(cx + offsets.sideA[0], cy, cz + offsets.sideA[2]);
+      const sideBBlock = store.getBlock(cx + offsets.sideB[0], cy, cz + offsets.sideB[2]);
+      const sideAPowered = sideABlock === BlockType.CABLE_POWERED;
+      const sideBPowered = sideBBlock === BlockType.CABLE_POWERED;
+      shouldOutput = !sideAPowered && !sideBPowered;
+    }
+  }
+
+  if (shouldOutput) {
+    store.setBlock(cx, cy, cz, getComparatorOn(block));
+    const outX = cx + offsets.output[0];
+    const outZ = cz + offsets.output[2];
+    propagateFromOutput(outX, cy, outZ, true);
+  } else {
+    store.setBlock(cx, cy, cz, getComparatorOff(block));
+    const outX = cx + offsets.output[0];
+    const outZ = cz + offsets.output[2];
+    propagateFromOutput(outX, cy, outZ, false);
+  }
+}
+
+/**
+ * Propagate power from a repeater/comparator output position.
+ * This starts a new BFS from the output block position.
+ */
+function propagateFromOutput(outX: number, outY: number, outZ: number, powerOn: boolean) {
+  const store = useWorldStore.getState();
+  const outBlock = store.getBlock(outX, outY, outZ);
+  const outDef = getBlock(outBlock);
+
+  // If output is a cable, start a new propagation from there
+  if (outDef.isCable) {
+    const targetType = powerOn ? BlockType.CABLE_POWERED : BlockType.CABLE;
+    if (outBlock !== targetType) {
+      store.setBlock(outX, outY, outZ, targetType);
+    }
+    // Continue BFS from this cable
+    propagateCablePower(outX, outY, outZ, powerOn);
+  }
+
+  // Direct activation of adjacent devices from output
+  if (outDef.isPiston) {
+    activatePiston(store, outX, outY, outZ, powerOn);
+  }
+  if (powerOn && outDef.isTNT) {
+    detonateTNT(store, outX, outY, outZ);
+  }
+  // Chain: output into another repeater
+  if (outDef.isRepeater) {
+    activateRepeater(outX, outY, outZ, outX - (outX > 0 ? 0 : 0), outY, outZ, powerOn);
+  }
+}
+
+/**
+ * Cycle repeater delay at position (1→2→3→4→1).
+ */
+export function cycleRepeaterDelay(rx: number, ry: number, rz: number): number {
+  const key = `${rx},${ry},${rz}`;
+  const current = repeaterDelays.get(key) ?? 1;
+  const next = current >= 4 ? 1 : current + 1;
+  repeaterDelays.set(key, next);
+  return next;
+}
+
+/**
+ * Toggle comparator mode at position (compare ↔ subtract).
+ */
+export function toggleComparatorMode(cx: number, cy: number, cz: number): 'compare' | 'subtract' {
+  const key = `${cx},${cy},${cz}`;
+  const current = comparatorModes.get(key) ?? 'compare';
+  const next = current === 'compare' ? 'subtract' : 'compare';
+  comparatorModes.set(key, next);
+  return next;
 }
 
 /**

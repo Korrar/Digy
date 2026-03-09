@@ -3,14 +3,14 @@ import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
-import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, isLever, isButton, isCable, isPiston, isPistonHead, isPressurePlate } from '../../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, isLever, isButton, isCable, isPiston, isPistonHead, isPressurePlate, isRepeater, isRepeaterItem, isComparator, isComparatorItem, getOrientedRepeater, getOrientedComparator } from '../../core/voxel/BlockRegistry';
 import { computeRailBlockType, shouldRailUpdate } from '../../core/voxel/ChunkMesher';
 import { soundManager } from '../../systems/SoundManager';
 import { spawnParticles } from './DiggingParticles';
 import { processGravity } from '../../systems/SandPhysics';
 import { checkWaterDrain } from '../../systems/WaterFlow';
 import { useDevStore } from '../../stores/devStore';
-import { propagateCablePower, activatePressurePlate } from '../../systems/CablePower';
+import { propagateCablePower, activatePressurePlate, cycleRepeaterDelay, toggleComparatorMode } from '../../systems/CablePower';
 import { useCombatStore } from '../../stores/combatStore';
 import { useChestStore } from '../../stores/chestStore';
 
@@ -293,6 +293,26 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
           activatePressurePlate(bx, by, bz, !isOn);
           return;
         }
+
+        // Repeater: cycle delay (1→2→3→4→1)
+        if (isRepeater(interactCheck.blockType)) {
+          const newDelay = cycleRepeaterDelay(bx, by, bz);
+          soundManager.playPlaceSound();
+          window.dispatchEvent(new CustomEvent('digy:repeaterDelay', {
+            detail: { x: bx, y: by, z: bz, delay: newDelay }
+          }));
+          return;
+        }
+
+        // Comparator: toggle mode (compare ↔ subtract)
+        if (isComparator(interactCheck.blockType)) {
+          const newMode = toggleComparatorMode(bx, by, bz);
+          soundManager.playPlaceSound();
+          window.dispatchEvent(new CustomEvent('digy:comparatorMode', {
+            detail: { x: bx, y: by, z: bz, mode: newMode }
+          }));
+          return;
+        }
       }
 
       // Adventure mode: only interactions, no building/placing
@@ -362,6 +382,54 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
             dir = nz > 0 ? 's' : 'n';
           }
           setBlockW(px, py, pz, getOrientedStairs(selectedBlock, dir));
+          removeBlock(selectedIdx, 1);
+          soundManager.playPlaceSound();
+        }
+        return;
+      }
+
+      // Handle repeater placement - orient based on player facing
+      if (isRepeaterItem(selectedBlock)) {
+        const hit = raycast();
+        if (!hit) return;
+        const [bx, by, bz] = hit.blockPos;
+        const px = bx + hit.normal[0];
+        const py = by + hit.normal[1];
+        const pz = bz + hit.normal[2];
+        if (!isSolid(getBlockW(px, py, pz))) {
+          const camDir = new THREE.Vector3();
+          camera.getWorldDirection(camDir);
+          let dir: 'n' | 's' | 'e' | 'w';
+          if (Math.abs(camDir.x) > Math.abs(camDir.z)) {
+            dir = camDir.x > 0 ? 'e' : 'w';
+          } else {
+            dir = camDir.z > 0 ? 's' : 'n';
+          }
+          setBlockW(px, py, pz, getOrientedRepeater(dir));
+          removeBlock(selectedIdx, 1);
+          soundManager.playPlaceSound();
+        }
+        return;
+      }
+
+      // Handle comparator placement - orient based on player facing
+      if (isComparatorItem(selectedBlock)) {
+        const hit = raycast();
+        if (!hit) return;
+        const [bx, by, bz] = hit.blockPos;
+        const px = bx + hit.normal[0];
+        const py = by + hit.normal[1];
+        const pz = bz + hit.normal[2];
+        if (!isSolid(getBlockW(px, py, pz))) {
+          const camDir = new THREE.Vector3();
+          camera.getWorldDirection(camDir);
+          let dir: 'n' | 's' | 'e' | 'w';
+          if (Math.abs(camDir.x) > Math.abs(camDir.z)) {
+            dir = camDir.x > 0 ? 'e' : 'w';
+          } else {
+            dir = camDir.z > 0 ? 's' : 'n';
+          }
+          setBlockW(px, py, pz, getOrientedComparator(dir));
           removeBlock(selectedIdx, 1);
           soundManager.playPlaceSound();
         }
