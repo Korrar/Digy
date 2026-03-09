@@ -32,7 +32,7 @@ function getTimeEmoji(timeOfDay: number): string {
 }
 
 export function HideoutScene() {
-  const [mode, setMode] = useState<'mine' | 'build' | 'explore'>('build');
+  const [mode, setMode] = useState<'mine' | 'build' | 'adventure'>('build');
   const chunks = useWorldStore((s) => s.chunks);
   const clearWorld = useWorldStore((s) => s.clearWorld);
   const toggleInventory = useInventoryStore((s) => s.toggleInventory);
@@ -51,7 +51,7 @@ export function HideoutScene() {
   }, []);
 
   const toggleMode = useCallback(() => {
-    setMode((m) => m === 'mine' ? 'build' : m === 'build' ? 'explore' : 'mine');
+    setMode((m) => m === 'mine' ? 'build' : m === 'build' ? 'adventure' : 'mine');
   }, []);
 
   useEffect(() => {
