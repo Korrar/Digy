@@ -52,6 +52,13 @@ export function propagateCablePower(leverX: number, leverY: number, leverZ: numb
     if (powerOn && def.isTNT) {
       detonateTNT(store, nx, ny, nz);
     }
+    // Direct activation of adjacent repeaters/comparators from lever/plate
+    if (def.isRepeater) {
+      activateRepeater(nx, ny, nz, leverX, leverY, leverZ, powerOn);
+    }
+    if (def.isComparator) {
+      activateComparator(nx, ny, nz, leverX, leverY, leverZ, powerOn);
+    }
   }
 
   // BFS through cables
@@ -279,7 +286,7 @@ function activateRepeater(rx: number, ry: number, rz: number, srcX: number, srcY
       // Propagate power from output side
       const outX = rx + offsets.output[0];
       const outZ = rz + offsets.output[2];
-      propagateFromOutput(outX, ry, outZ, true);
+      propagateFromOutput(rx, ry, rz, outX, ry, outZ, true);
     }, delay);
     activeRepeaterTimeouts.set(key, timeout);
   } else {
@@ -292,7 +299,7 @@ function activateRepeater(rx: number, ry: number, rz: number, srcX: number, srcY
       s.setBlock(rx, ry, rz, getRepeaterOff(current));
       const outX = rx + offsets.output[0];
       const outZ = rz + offsets.output[2];
-      propagateFromOutput(outX, ry, outZ, false);
+      propagateFromOutput(rx, ry, rz, outX, ry, outZ, false);
     }, delay);
     activeRepeaterTimeouts.set(key, timeout);
   }
@@ -337,20 +344,21 @@ function activateComparator(cx: number, cy: number, cz: number, srcX: number, sr
     store.setBlock(cx, cy, cz, getComparatorOn(block));
     const outX = cx + offsets.output[0];
     const outZ = cz + offsets.output[2];
-    propagateFromOutput(outX, cy, outZ, true);
+    propagateFromOutput(cx, cy, cz, outX, cy, outZ, true);
   } else {
     store.setBlock(cx, cy, cz, getComparatorOff(block));
     const outX = cx + offsets.output[0];
     const outZ = cz + offsets.output[2];
-    propagateFromOutput(outX, cy, outZ, false);
+    propagateFromOutput(cx, cy, cz, outX, cy, outZ, false);
   }
 }
 
 /**
  * Propagate power from a repeater/comparator output position.
- * This starts a new BFS from the output block position.
+ * srcX/srcY/srcZ is the device that is outputting (used so chained repeaters/comparators
+ * can verify the signal comes from their input side).
  */
-function propagateFromOutput(outX: number, outY: number, outZ: number, powerOn: boolean) {
+function propagateFromOutput(srcX: number, srcY: number, srcZ: number, outX: number, outY: number, outZ: number, powerOn: boolean) {
   const store = useWorldStore.getState();
   const outBlock = store.getBlock(outX, outY, outZ);
   const outDef = getBlock(outBlock);
@@ -372,9 +380,12 @@ function propagateFromOutput(outX: number, outY: number, outZ: number, powerOn: 
   if (powerOn && outDef.isTNT) {
     detonateTNT(store, outX, outY, outZ);
   }
-  // Chain: output into another repeater
+  // Chain: output into another repeater or comparator
   if (outDef.isRepeater) {
-    activateRepeater(outX, outY, outZ, outX - (outX > 0 ? 0 : 0), outY, outZ, powerOn);
+    activateRepeater(outX, outY, outZ, srcX, srcY, srcZ, powerOn);
+  }
+  if (outDef.isComparator) {
+    activateComparator(outX, outY, outZ, srcX, srcY, srcZ, powerOn);
   }
 }
 
