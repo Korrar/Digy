@@ -109,10 +109,12 @@ function buildCategories(): ItemCategory[] {
   rails.push(makeEntry(BlockType.MINECART, 1));
   rails.push(makeEntry(BlockType.WARNING_LIGHT, 1));
 
-  // Redstone / cables / levers
+  // Redstone / cables / levers / pistons
   redstone.push(makeEntry(BlockType.LEVER, 16));
   redstone.push(makeEntry(BlockType.BUTTON, 16));
   redstone.push(makeEntry(BlockType.CABLE, 64));
+  redstone.push(makeEntry(BlockType.PISTON, 16));
+  redstone.push(makeEntry(BlockType.STICKY_PISTON, 16));
 
   // Tools
   tools.push(makeEntry(BlockType.WOODEN_PICKAXE, 1));
