@@ -1,4 +1,4 @@
-import { BlockType, getBlock, isSolid, isRepeater, isComparator, getRepeaterOn, getRepeaterOff, getComparatorOn, getComparatorOff, getDirectionOffsets } from '../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid, isRepeater, getRepeaterOn, getRepeaterOff, getComparatorOn, getComparatorOff, getDirectionOffsets } from '../core/voxel/BlockRegistry';
 import { useWorldStore } from '../stores/worldStore';
 import { soundManager } from './SoundManager';
 
@@ -186,7 +186,7 @@ export function isPoweredRailActive(wx: number, wy: number, wz: number): boolean
 /**
  * Detonate TNT at position, with fuse sparks first then explosion.
  */
-export function detonateTNT(store: ReturnType<typeof useWorldStore.getState>, tx: number, ty: number, tz: number, fuseTime: number = TNT_FUSE_TIME) {
+export function detonateTNT(_store: ReturnType<typeof useWorldStore.getState>, tx: number, ty: number, tz: number, fuseTime: number = TNT_FUSE_TIME) {
   const key = `${tx},${ty},${tz}`;
   if (fusingTNT.has(key)) return; // already fusing
   fusingTNT.add(key);
