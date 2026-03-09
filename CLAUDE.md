@@ -70,3 +70,21 @@ Jeśli którekolwiek z powyższych failuje, **nie commituj** - napraw błędy na
 - Nowe typy bloków dodawane w `BlockRegistry.ts` (enum + register + helper functions)
 - Rendering niestandardowych kształtów w `ChunkMesher.ts` (przed sekcją "Normal cube rendering")
 - Specjalna logika stawiania w `WorldInteraction.tsx` (schody orientacja, drzwi 2-high)
+
+## Checklist dodawania nowego bloku/itemu
+1. **BlockRegistry.ts** - dodaj enum value, `register()` call, ewentualne flagi (`isTNT`, `isPressurePlate`, itp.), helper function (`isTNT()`)
+2. **ChunkMesher.ts** - jeśli blok ma niestandardowy kształt, dodaj rendering przed "Normal cube rendering"
+3. **DevTools.tsx** - dodaj blok do odpowiedniej kategorii (`redstone`, `rails`, `building`, `tools`)
+4. **craftingStore.ts** - dodaj recepturę craftingu
+5. **WorldInteraction.tsx** - jeśli blok wymaga specjalnej logiki interakcji (kliknięcie, stawianie)
+6. **CablePower.ts** - jeśli blok reaguje na zasilanie kablowe (TNT, pistons)
+7. **Minecarts.tsx** - jeśli blok ma interakcję z wagonkami (detector rail)
+
+## Redstone / kable / zasilanie
+- Dźwignia (lever): toggle ON/OFF, propaguje zasilanie przez kable
+- Przycisk (button): jednorazowy sygnał
+- Pressure plate: toggle ON/OFF po kliknięciu, propaguje zasilanie jak dźwignia
+- Kable: BFS propagacja zasilania (max 16 bloków), `CABLE` → `CABLE_POWERED`
+- TNT: eksploduje gdy zasilony (promień 3 bloki), łańcuchowe detonacje
+- Detector rail: aktywuje się gdy wagonik przejeżdża, wysyła sygnał na 1.5s
+- Tłoki (pistons): pchają blok nad sobą, sticky pistons ciągną przy cofaniu
