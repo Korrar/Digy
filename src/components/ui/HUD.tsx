@@ -7,7 +7,7 @@ import { ambientMusic } from '../../systems/AmbientMusic';
 import { IconPickaxe, IconHammer, IconSpeakerOn, IconSpeakerOff, IconWrench, IconBackpack, IconClose, IconSun, IconMoon, IconSunrise, IconSunset } from './Icons';
 
 interface HUDProps {
-  mode?: 'mine' | 'build' | 'adventure';
+  mode?: 'mine' | 'build' | 'adventure' | 'explore';
   onModeToggle?: () => void;
   timeIndicator?: string;
 }
