@@ -985,7 +985,7 @@ export function buildChunkMesh(
               nBlock = BlockType.AIR;
             }
             const nDef = getBlock(nBlock);
-            connected.push(nDef.isCable === true || nDef.isLever === true || nBlock === BlockType.POWERED_RAIL);
+            connected.push(nDef.isCable === true || nDef.isLever === true || nDef.isRepeater === true || nDef.isComparator === true || nBlock === BlockType.POWERED_RAIL);
           }
 
           const cy0 = 0.005, cy1 = 0.04; // very flat, sits on floor
