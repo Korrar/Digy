@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
@@ -14,10 +14,10 @@ interface AmbientParticle {
   vz: number;
   life: number;
   maxLife: number;
-  type: 'smoke' | 'lava_spark' | 'rail_spark' | 'ember';
+  type: 'smoke' | 'lava_spark' | 'rail_spark' | 'ember' | 'tnt_spark' | 'explosion' | 'explosion_smoke';
 }
 
-const MAX_AMBIENT_PARTICLES = 300;
+const MAX_AMBIENT_PARTICLES = 500;
 const EMIT_INTERVAL = 0.15; // seconds between emission checks
 
 export function AmbientParticles({ center }: { center: [number, number, number] }) {
@@ -64,6 +64,84 @@ export function AmbientParticles({ center }: { center: [number, number, number] 
     });
     return result;
   }, [chunks]);
+
+  // Listen for TNT fuse events - spawn sparks over fuse duration
+  useEffect(() => {
+    const handleFuse = (e: Event) => {
+      const { x, y, z, duration } = (e as CustomEvent).detail;
+      const intervalMs = 60;
+      const ticks = Math.floor(duration / intervalMs);
+      let tick = 0;
+      const iv = setInterval(() => {
+        if (tick >= ticks) { clearInterval(iv); return; }
+        tick++;
+        const particles = particlesRef.current;
+        // Spawn 2-3 sparks per tick
+        const count = 2 + Math.floor(Math.random() * 2);
+        for (let i = 0; i < count; i++) {
+          if (particles.length >= MAX_AMBIENT_PARTICLES) break;
+          particles.push({
+            x: x + (Math.random() - 0.5) * 0.15,
+            y: y,
+            z: z + (Math.random() - 0.5) * 0.15,
+            vx: (Math.random() - 0.5) * 1.5,
+            vy: 1.5 + Math.random() * 2.5,
+            vz: (Math.random() - 0.5) * 1.5,
+            life: 0.3 + Math.random() * 0.4,
+            maxLife: 0.7,
+            type: 'tnt_spark',
+          });
+        }
+      }, intervalMs);
+    };
+
+    const handleExplosion = (e: Event) => {
+      const { x, y, z, radius } = (e as CustomEvent).detail;
+      const particles = particlesRef.current;
+      // Burst of explosion debris particles
+      const debrisCount = 40;
+      for (let i = 0; i < debrisCount; i++) {
+        if (particles.length >= MAX_AMBIENT_PARTICLES) break;
+        const angle = Math.random() * Math.PI * 2;
+        const elevation = (Math.random() - 0.3) * Math.PI;
+        const speed = 3 + Math.random() * radius * 2;
+        particles.push({
+          x: x + (Math.random() - 0.5) * 0.5,
+          y: y + (Math.random() - 0.5) * 0.5,
+          z: z + (Math.random() - 0.5) * 0.5,
+          vx: Math.cos(angle) * Math.cos(elevation) * speed,
+          vy: Math.sin(elevation) * speed + 2,
+          vz: Math.sin(angle) * Math.cos(elevation) * speed,
+          life: 0.5 + Math.random() * 0.6,
+          maxLife: 1.1,
+          type: 'explosion',
+        });
+      }
+      // Smoke cloud particles - slower, longer-lived
+      const smokeCount = 20;
+      for (let i = 0; i < smokeCount; i++) {
+        if (particles.length >= MAX_AMBIENT_PARTICLES) break;
+        particles.push({
+          x: x + (Math.random() - 0.5) * radius,
+          y: y + (Math.random() - 0.5) * radius * 0.5,
+          z: z + (Math.random() - 0.5) * radius,
+          vx: (Math.random() - 0.5) * 2,
+          vy: 0.5 + Math.random() * 1.5,
+          vz: (Math.random() - 0.5) * 2,
+          life: 1.0 + Math.random() * 1.0,
+          maxLife: 2.0,
+          type: 'explosion_smoke',
+        });
+      }
+    };
+
+    window.addEventListener('digy:tnt-fuse', handleFuse);
+    window.addEventListener('digy:explosion', handleExplosion);
+    return () => {
+      window.removeEventListener('digy:tnt-fuse', handleFuse);
+      window.removeEventListener('digy:explosion', handleExplosion);
+    };
+  }, []);
 
   useFrame((_, rawDelta) => {
     const delta = Math.min(rawDelta, 0.1);
@@ -180,6 +258,20 @@ export function AmbientParticles({ center }: { center: [number, number, number] 
         p.vy -= 1.5 * delta; // light gravity
         p.vx += (Math.random() - 0.5) * 1.5 * delta; // erratic drift
         p.vz += (Math.random() - 0.5) * 1.5 * delta;
+      } else if (p.type === 'tnt_spark') {
+        p.vy -= 6 * delta; // medium gravity
+        p.vx += (Math.random() - 0.5) * 2 * delta;
+        p.vz += (Math.random() - 0.5) * 2 * delta;
+      } else if (p.type === 'explosion') {
+        p.vy -= 10 * delta; // heavy gravity
+        p.vx *= 0.96; // air resistance
+        p.vz *= 0.96;
+      } else if (p.type === 'explosion_smoke') {
+        p.vy *= 0.95; // decelerate
+        p.vx += (Math.random() - 0.5) * 0.5 * delta;
+        p.vz += (Math.random() - 0.5) * 0.5 * delta;
+        p.vx *= 1.0 + 0.4 * delta; // expand outward
+        p.vz *= 1.0 + 0.4 * delta;
       }
 
       p.x += p.vx * delta;
@@ -216,6 +308,28 @@ export function AmbientParticles({ center }: { center: [number, number, number] 
           colAttr.array[i * 3 + 1] = 0.4 * t;
           colAttr.array[i * 3 + 2] = 0.0;
           sizeAttr.array[i] = 0.06 * t;
+        } else if (p.type === 'tnt_spark') {
+          // Bright white-yellow sparks
+          const flash = 0.5 + Math.random() * 0.5; // flickering
+          colAttr.array[i * 3] = 1.0 * t * flash;
+          colAttr.array[i * 3 + 1] = (0.8 + Math.random() * 0.2) * t * flash;
+          colAttr.array[i * 3 + 2] = (0.2 + Math.random() * 0.3) * t * flash;
+          sizeAttr.array[i] = 0.05 * t;
+        } else if (p.type === 'explosion') {
+          // Hot debris: white -> orange -> dark red
+          const hot = t * t;
+          colAttr.array[i * 3] = (0.4 + 0.6 * hot);
+          colAttr.array[i * 3 + 1] = (0.15 + 0.55 * hot) * hot;
+          colAttr.array[i * 3 + 2] = 0.05 * hot;
+          sizeAttr.array[i] = 0.08 + 0.12 * hot;
+        } else if (p.type === 'explosion_smoke') {
+          // Dark smoke cloud
+          const alpha = Math.sin(t * Math.PI) * 0.6;
+          const gray = 0.2 + 0.15 * t;
+          colAttr.array[i * 3] = gray * alpha;
+          colAttr.array[i * 3 + 1] = gray * alpha * 0.9;
+          colAttr.array[i * 3 + 2] = gray * alpha * 0.8;
+          sizeAttr.array[i] = 0.15 + (1 - t) * 0.35; // grows as it dissipates
         } else {
           colAttr.array[i * 3] = 1.0 * t;
           colAttr.array[i * 3 + 1] = 0.8 * t;

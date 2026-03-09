@@ -291,6 +291,135 @@ export class SoundManager {
     }
   }
 
+  /**
+   * Play a crackling fuse/sizzle sound for the given duration.
+   * Returns a handle to stop early if needed.
+   */
+  playFuseSound(duration: number): void {
+    this.init();
+    const ctx = this.getCtx();
+    const now = ctx.currentTime;
+
+    // Crackling noise - high-pass filtered white noise bursts
+    const bufferSize = Math.floor(ctx.sampleRate * duration);
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    // Create crackling pattern - random amplitude bursts
+    for (let i = 0; i < bufferSize; i++) {
+      const t = i / ctx.sampleRate;
+      // Crackling: random bursts that get more intense toward the end
+      const intensity = 0.5 + 0.5 * (t / duration);
+      const crackle = Math.random() < 0.3 ? 1.0 : 0.15;
+      data[i] = (Math.random() * 2 - 1) * intensity * crackle * 0.3;
+    }
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = 3000;
+    filter.Q.value = 1;
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.linearRampToValueAtTime(0.25, now + duration * 0.8);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    source.connect(filter).connect(gain).connect(ctx.destination);
+    source.start(now);
+    source.stop(now + duration);
+
+    // Sizzle hiss undertone
+    const hissSize = Math.floor(ctx.sampleRate * duration);
+    const hissBuf = ctx.createBuffer(1, hissSize, ctx.sampleRate);
+    const hissData = hissBuf.getChannelData(0);
+    for (let i = 0; i < hissSize; i++) {
+      hissData[i] = (Math.random() * 2 - 1) * 0.15;
+    }
+    const hissSource = ctx.createBufferSource();
+    hissSource.buffer = hissBuf;
+
+    const hissFilter = ctx.createBiquadFilter();
+    hissFilter.type = 'bandpass';
+    hissFilter.frequency.value = 6000;
+    hissFilter.Q.value = 2;
+
+    const hissGain = ctx.createGain();
+    hissGain.gain.setValueAtTime(0.06, now);
+    hissGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    hissSource.connect(hissFilter).connect(hissGain).connect(ctx.destination);
+    hissSource.start(now);
+    hissSource.stop(now + duration);
+  }
+
+  /**
+   * Play a deep explosion boom sound.
+   */
+  playExplosionSound(): void {
+    this.init();
+    const ctx = this.getCtx();
+    const now = ctx.currentTime;
+
+    // Deep boom - low frequency sine sweep
+    const boom = ctx.createOscillator();
+    boom.type = 'sine';
+    boom.frequency.setValueAtTime(80, now);
+    boom.frequency.exponentialRampToValueAtTime(20, now + 0.5);
+    const boomGain = ctx.createGain();
+    boomGain.gain.setValueAtTime(0.4, now);
+    boomGain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+    boom.connect(boomGain).connect(ctx.destination);
+    boom.start(now);
+    boom.stop(now + 0.6);
+
+    // Distorted crunch - square wave
+    const crunch = ctx.createOscillator();
+    crunch.type = 'square';
+    crunch.frequency.setValueAtTime(60, now);
+    crunch.frequency.exponentialRampToValueAtTime(15, now + 0.3);
+    const crunchGain = ctx.createGain();
+    crunchGain.gain.setValueAtTime(0.2, now);
+    crunchGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    crunch.connect(crunchGain).connect(ctx.destination);
+    crunch.start(now);
+    crunch.stop(now + 0.35);
+
+    // Explosion noise burst
+    const noiseLen = 0.4;
+    const noiseBuf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * noiseLen), ctx.sampleRate);
+    const noiseData = noiseBuf.getChannelData(0);
+    for (let i = 0; i < noiseData.length; i++) {
+      noiseData[i] = (Math.random() * 2 - 1);
+    }
+    const noiseSource = ctx.createBufferSource();
+    noiseSource.buffer = noiseBuf;
+    const noiseFilter = ctx.createBiquadFilter();
+    noiseFilter.type = 'lowpass';
+    noiseFilter.frequency.setValueAtTime(2000, now);
+    noiseFilter.frequency.exponentialRampToValueAtTime(200, now + noiseLen);
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.35, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + noiseLen);
+    noiseSource.connect(noiseFilter).connect(noiseGain).connect(ctx.destination);
+    noiseSource.start(now);
+    noiseSource.stop(now + noiseLen);
+
+    // Tail rumble
+    const rumble = ctx.createOscillator();
+    rumble.type = 'sawtooth';
+    rumble.frequency.value = 30;
+    const rumbleGain = ctx.createGain();
+    rumbleGain.gain.setValueAtTime(0.08, now + 0.1);
+    rumbleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+    const rumbleFilter = ctx.createBiquadFilter();
+    rumbleFilter.type = 'lowpass';
+    rumbleFilter.frequency.value = 100;
+    rumble.connect(rumbleFilter).connect(rumbleGain).connect(ctx.destination);
+    rumble.start(now);
+    rumble.stop(now + 0.8);
+  }
+
   playPistonExtend(): void {
     this.init();
     this.tone(150, 0.1, 0.12, 'square');
