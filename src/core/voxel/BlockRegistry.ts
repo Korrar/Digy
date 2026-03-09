@@ -140,6 +140,17 @@ export enum BlockType {
   FLOWER_BLUE = 109,
   FLOWER_ORCHID = 110,
   MOSS = 111,
+
+  // TNT
+  TNT = 115,
+
+  // Pressure Plate
+  PRESSURE_PLATE = 116,
+  PRESSURE_PLATE_ON = 117,
+
+  // Detector Rail (pressure plate on rail - sends signal when minecart passes)
+  DETECTOR_RAIL = 118,
+  DETECTOR_RAIL_ON = 119,
 }
 
 export interface BlockDefinition {
@@ -211,6 +222,16 @@ export interface BlockDefinition {
   isStickyPiston?: boolean;
   /** Render as sign (thin flat panel on post) */
   isSign?: boolean;
+  /** TNT block - explodes when powered */
+  isTNT?: boolean;
+  /** Pressure plate - activates when clicked */
+  isPressurePlate?: boolean;
+  /** Pressure plate is activated */
+  pressurePlateOn?: boolean;
+  /** Detector rail - sends signal when minecart passes */
+  isDetectorRail?: boolean;
+  /** Detector rail is activated */
+  detectorRailOn?: boolean;
 }
 
 const BLOCKS: Map<BlockType, BlockDefinition> = new Map();
@@ -371,6 +392,17 @@ register({ id: BlockType.FLOWER_BLUE, name: 'Blue Flower', color: new THREE.Colo
 register({ id: BlockType.FLOWER_ORCHID, name: 'Orchid', color: new THREE.Color(0xcc44cc), topColor: new THREE.Color(0x22aa22), hardness: 0.0, transparent: true, drops: BlockType.FLOWER_ORCHID, stackSize: 64, crossedQuad: true });
 register({ id: BlockType.MOSS, name: 'Moss', color: new THREE.Color(0x4a7a3a), hardness: 0.3, transparent: false, drops: BlockType.MOSS, stackSize: 64 });
 
+// TNT
+register({ id: BlockType.TNT, name: 'TNT', color: new THREE.Color(0xcc2222), hardness: 0.0, transparent: false, drops: BlockType.TNT, stackSize: 64, isTNT: true, icon: 'circle' });
+
+// Pressure Plate
+register({ id: BlockType.PRESSURE_PLATE, name: 'Pressure Plate', color: new THREE.Color(0x808080), hardness: 0.5, transparent: true, drops: BlockType.PRESSURE_PLATE, stackSize: 64, isPressurePlate: true, icon: 'button' });
+register({ id: BlockType.PRESSURE_PLATE_ON, name: 'Pressure Plate', color: new THREE.Color(0x808080), hardness: 0.5, transparent: true, drops: BlockType.PRESSURE_PLATE, stackSize: 0, isPressurePlate: true, pressurePlateOn: true });
+
+// Detector Rail (pressure plate + rail)
+register({ id: BlockType.DETECTOR_RAIL, name: 'Detector Rail', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: true, drops: BlockType.DETECTOR_RAIL, stackSize: 64, isFlat: true, isDetectorRail: true, icon: 'rail' });
+register({ id: BlockType.DETECTOR_RAIL_ON, name: 'Detector Rail', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: true, drops: BlockType.DETECTOR_RAIL, stackSize: 0, isFlat: true, isDetectorRail: true, detectorRailOn: true });
+
 // Update ore drops to drop raw materials
 BLOCKS.get(BlockType.COAL_ORE)!.drops = BlockType.COAL;
 BLOCKS.get(BlockType.DIAMOND_ORE)!.drops = BlockType.DIAMOND;
@@ -395,7 +427,7 @@ export function isTransparent(type: BlockType): boolean {
 
 export function isSolid(type: BlockType): boolean {
   const def = getBlock(type);
-  return type !== BlockType.AIR && type !== BlockType.WATER && type !== BlockType.LAVA && !def.crossedQuad && !def.isFlat && !def.isTorch && !def.isLever && !def.isButton && !def.isCable && !def.isPistonHead && !def.isSign;
+  return type !== BlockType.AIR && type !== BlockType.WATER && type !== BlockType.LAVA && !def.crossedQuad && !def.isFlat && !def.isTorch && !def.isLever && !def.isButton && !def.isCable && !def.isPistonHead && !def.isSign && !def.isPressurePlate;
 }
 
 export function isCrossedQuad(type: BlockType): boolean {
@@ -494,6 +526,18 @@ export function isSign(type: BlockType): boolean {
 
 export function isDoorItem(type: BlockType): boolean {
   return type === BlockType.DOOR_OAK;
+}
+
+export function isTNT(type: BlockType): boolean {
+  return getBlock(type).isTNT === true;
+}
+
+export function isPressurePlate(type: BlockType): boolean {
+  return getBlock(type).isPressurePlate === true;
+}
+
+export function isDetectorRail(type: BlockType): boolean {
+  return getBlock(type).isDetectorRail === true;
 }
 
 /** Get the oriented stair block type for a stair inventory item + direction */

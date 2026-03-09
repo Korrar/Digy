@@ -1,7 +1,9 @@
 import { BlockType, getBlock, isSolid } from '../core/voxel/BlockRegistry';
 import { useWorldStore } from '../stores/worldStore';
+import { soundManager } from './SoundManager';
 
 const MAX_CABLE_DISTANCE = 16;
+const TNT_RADIUS = 3;
 
 /**
  * Propagate power from a lever through connected cables.
@@ -30,6 +32,13 @@ export function propagateCablePower(leverX: number, leverY: number, leverZ: numb
     const def = getBlock(block);
     if (def.isCable) {
       queue.push({ x: nx, y: ny, z: nz, dist: 1 });
+    }
+    // Direct activation of adjacent pistons and TNT from lever/plate
+    if (def.isPiston) {
+      activatePiston(store, nx, ny, nz, powerOn);
+    }
+    if (powerOn && def.isTNT) {
+      detonateTNT(store, nx, ny, nz);
     }
   }
 
@@ -67,7 +76,7 @@ export function propagateCablePower(leverX: number, leverY: number, leverZ: numb
       }
     }
 
-    // Activate/deactivate adjacent pistons
+    // Activate/deactivate adjacent pistons and TNT
     for (const [dx, dy, dz] of dirs) {
       const px = current.x + dx;
       const py = current.y + dy;
@@ -76,6 +85,9 @@ export function propagateCablePower(leverX: number, leverY: number, leverZ: numb
       const pDef = getBlock(pBlock);
       if (pDef.isPiston) {
         activatePiston(store, px, py, pz, powerOn);
+      }
+      if (powerOn && pDef.isTNT) {
+        detonateTNT(store, px, py, pz);
       }
     }
   }
@@ -149,4 +161,66 @@ export function isPoweredRailActive(wx: number, wy: number, wz: number): boolean
     if (block === BlockType.LEVER_ON) return true;
   }
   return false;
+}
+
+/**
+ * Detonate TNT at position, destroying blocks in a sphere.
+ */
+export function detonateTNT(store: ReturnType<typeof useWorldStore.getState>, tx: number, ty: number, tz: number) {
+  // Remove the TNT block first
+  store.setBlock(tx, ty, tz, BlockType.AIR);
+  soundManager.playBreakSound('stone');
+
+  // Destroy blocks in sphere
+  for (let dx = -TNT_RADIUS; dx <= TNT_RADIUS; dx++) {
+    for (let dy = -TNT_RADIUS; dy <= TNT_RADIUS; dy++) {
+      for (let dz = -TNT_RADIUS; dz <= TNT_RADIUS; dz++) {
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (dist > TNT_RADIUS) continue;
+        const bx = tx + dx;
+        const by = ty + dy;
+        const bz = tz + dz;
+        const block = store.getBlock(bx, by, bz);
+        if (block === BlockType.AIR) continue;
+        const def = getBlock(block);
+        // Don't destroy indestructible blocks
+        if (def.hardness === Infinity) continue;
+        // Chain TNT
+        if (def.isTNT) {
+          setTimeout(() => {
+            const s = useWorldStore.getState();
+            if (s.getBlock(bx, by, bz) === block) {
+              detonateTNT(s, bx, by, bz);
+            }
+          }, 200);
+          continue;
+        }
+        store.setBlock(bx, by, bz, BlockType.AIR);
+      }
+    }
+  }
+
+  // Spawn explosion particles
+  window.dispatchEvent(new CustomEvent('digy:explosion', {
+    detail: { x: tx + 0.5, y: ty + 0.5, z: tz + 0.5, radius: TNT_RADIUS }
+  }));
+}
+
+/**
+ * Activate a pressure plate: propagate power through adjacent cables.
+ */
+export function activatePressurePlate(px: number, py: number, pz: number, on: boolean) {
+  const store = useWorldStore.getState();
+  store.setBlock(px, py, pz, on ? BlockType.PRESSURE_PLATE_ON : BlockType.PRESSURE_PLATE);
+  soundManager.playPlaceSound();
+  propagateCablePower(px, py, pz, on);
+}
+
+/**
+ * Activate a detector rail: propagate power through adjacent cables.
+ */
+export function activateDetectorRail(dx: number, dy: number, dz: number, on: boolean) {
+  const store = useWorldStore.getState();
+  store.setBlock(dx, dy, dz, on ? BlockType.DETECTOR_RAIL_ON : BlockType.DETECTOR_RAIL);
+  propagateCablePower(dx, dy, dz, on);
 }
