@@ -131,20 +131,22 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
 
             // Piston head break: retract piston body below
             if (isPistonHead(result.blockType)) {
+              const isSticky = getBlock(result.blockType).isStickyPiston === true;
               setBlockW(bx, by, bz, BlockType.AIR);
               const belowBlock = getBlockW(bx, by - 1, bz);
               if (isPiston(belowBlock)) {
-                setBlockW(bx, by - 1, bz, BlockType.PISTON);
+                setBlockW(bx, by - 1, bz, isSticky ? BlockType.STICKY_PISTON : BlockType.PISTON);
               }
             }
             // Extended piston break: remove head above
             else if (isPiston(result.blockType) && getBlock(result.blockType).pistonExtended) {
+              const isSticky = getBlock(result.blockType).isStickyPiston === true;
               setBlockW(bx, by, bz, BlockType.AIR);
               const aboveBlock = getBlockW(bx, by + 1, bz);
               if (isPistonHead(aboveBlock)) {
                 setBlockW(bx, by + 1, bz, BlockType.AIR);
               }
-              addBlock(BlockType.PISTON, 1);
+              addBlock(isSticky ? BlockType.STICKY_PISTON : BlockType.PISTON, 1);
             }
             // Door break: remove both halves
             else if (isDoor(result.blockType)) {

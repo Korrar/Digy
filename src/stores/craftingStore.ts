@@ -80,6 +80,9 @@ const ALL_RECIPES: CraftingRecipe[] = [
   { id: 'warning_light', name: 'Warning Light', ingredients: [{ type: BlockType.GOLD_INGOT, count: 2 }, { type: BlockType.TORCH, count: 1 }], result: { type: BlockType.WARNING_LIGHT, count: 1 }, craftTime: 8, category: 'blocks' },
   // Cable
   { id: 'cable', name: 'Cable', ingredients: [{ type: BlockType.IRON_INGOT, count: 1 }, { type: BlockType.COAL, count: 1 }], result: { type: BlockType.CABLE, count: 8 }, craftTime: 5, category: 'blocks' },
+  // Piston & Sticky Piston
+  { id: 'piston', name: 'Piston', ingredients: [{ type: BlockType.PLANKS, count: 3 }, { type: BlockType.COBBLESTONE, count: 4 }, { type: BlockType.IRON_INGOT, count: 1 }], result: { type: BlockType.PISTON, count: 1 }, craftTime: 8, category: 'blocks' },
+  { id: 'sticky_piston', name: 'Sticky Piston', ingredients: [{ type: BlockType.PISTON, count: 1 }, { type: BlockType.MOSS, count: 1 }], result: { type: BlockType.STICKY_PISTON, count: 1 }, craftTime: 5, category: 'blocks' },
 ];
 
 export const useCraftingStore = create<CraftingState>((set, get) => ({

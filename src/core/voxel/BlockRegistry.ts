@@ -111,6 +111,11 @@ export enum BlockType {
   PISTON_HEAD = 89,
   PISTON_EXTENDED = 90,
 
+  // Sticky Piston
+  STICKY_PISTON = 112,
+  STICKY_PISTON_HEAD = 113,
+  STICKY_PISTON_EXTENDED = 114,
+
   // Sign
   SIGN = 91,
 
@@ -202,6 +207,8 @@ export interface BlockDefinition {
   pistonExtended?: boolean;
   /** Render as piston head (thin plate with rod) */
   isPistonHead?: boolean;
+  /** Render as sticky piston (green slime face) */
+  isStickyPiston?: boolean;
   /** Render as sign (thin flat panel on post) */
   isSign?: boolean;
 }
@@ -333,6 +340,11 @@ register({ id: BlockType.DOOR_OAK_TOP_OPEN, name: 'Oak Door', color: new THREE.C
 register({ id: BlockType.PISTON, name: 'Piston', color: new THREE.Color(0xb8945a), hardness: 1.5, transparent: true, drops: BlockType.PISTON, stackSize: 64, isPiston: true, icon: 'piston' });
 register({ id: BlockType.PISTON_HEAD, name: 'Piston Head', color: new THREE.Color(0x8b6914), hardness: 1.5, transparent: true, drops: BlockType.AIR, stackSize: 0, isPistonHead: true });
 register({ id: BlockType.PISTON_EXTENDED, name: 'Piston', color: new THREE.Color(0xb8945a), hardness: 1.5, transparent: true, drops: BlockType.PISTON, stackSize: 0, isPiston: true, pistonExtended: true });
+
+// Sticky Piston
+register({ id: BlockType.STICKY_PISTON, name: 'Sticky Piston', color: new THREE.Color(0xb8945a), hardness: 1.5, transparent: true, drops: BlockType.STICKY_PISTON, stackSize: 64, isPiston: true, isStickyPiston: true, icon: 'piston' });
+register({ id: BlockType.STICKY_PISTON_HEAD, name: 'Sticky Piston Head', color: new THREE.Color(0x5a8a2d), hardness: 1.5, transparent: true, drops: BlockType.AIR, stackSize: 0, isPistonHead: true, isStickyPiston: true });
+register({ id: BlockType.STICKY_PISTON_EXTENDED, name: 'Sticky Piston', color: new THREE.Color(0xb8945a), hardness: 1.5, transparent: true, drops: BlockType.STICKY_PISTON, stackSize: 0, isPiston: true, pistonExtended: true, isStickyPiston: true });
 
 // Sign
 register({ id: BlockType.SIGN, name: 'Sign', color: new THREE.Color(0xb8945a), hardness: 1.0, transparent: true, drops: BlockType.SIGN, stackSize: 16, isSign: true, icon: 'sign' });
@@ -470,6 +482,10 @@ export function isPiston(type: BlockType): boolean {
 
 export function isPistonHead(type: BlockType): boolean {
   return getBlock(type).isPistonHead === true;
+}
+
+export function isStickyPiston(type: BlockType): boolean {
+  return getBlock(type).isStickyPiston === true;
 }
 
 export function isSign(type: BlockType): boolean {

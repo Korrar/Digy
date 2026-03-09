@@ -91,6 +91,11 @@ function activatePiston(store: ReturnType<typeof useWorldStore.getState>, px: nu
   const def = getBlock(currentBlock);
   if (!def.isPiston) return;
 
+  const isSticky = def.isStickyPiston === true;
+  const extendedType = isSticky ? BlockType.STICKY_PISTON_EXTENDED : BlockType.PISTON_EXTENDED;
+  const headType = isSticky ? BlockType.STICKY_PISTON_HEAD : BlockType.PISTON_HEAD;
+  const retractedType = isSticky ? BlockType.STICKY_PISTON : BlockType.PISTON;
+
   if (extend && !def.pistonExtended) {
     // Extend: push block above upward if possible
     const aboveBlock = store.getBlock(px, py + 1, pz);
@@ -98,22 +103,34 @@ function activatePiston(store: ReturnType<typeof useWorldStore.getState>, px: nu
 
     if (aboveBlock === BlockType.AIR) {
       // Nothing to push, just extend
-      store.setBlock(px, py, pz, BlockType.PISTON_EXTENDED);
-      store.setBlock(px, py + 1, pz, BlockType.PISTON_HEAD);
+      store.setBlock(px, py, pz, extendedType);
+      store.setBlock(px, py + 1, pz, headType);
     } else if (above2Block === BlockType.AIR && isSolid(aboveBlock)) {
       // Push the block up
       store.setBlock(px, py + 2, pz, aboveBlock);
-      store.setBlock(px, py + 1, pz, BlockType.PISTON_HEAD);
-      store.setBlock(px, py, pz, BlockType.PISTON_EXTENDED);
+      store.setBlock(px, py + 1, pz, headType);
+      store.setBlock(px, py, pz, extendedType);
     }
     // Can't extend if blocked
   } else if (!extend && def.pistonExtended) {
     // Retract: remove piston head
     const headBlock = store.getBlock(px, py + 1, pz);
-    if (headBlock === BlockType.PISTON_HEAD) {
-      store.setBlock(px, py + 1, pz, BlockType.AIR);
+    const isHead = headBlock === BlockType.PISTON_HEAD || headBlock === BlockType.STICKY_PISTON_HEAD;
+    if (isHead) {
+      // Sticky piston: pull block above head down
+      if (isSticky) {
+        const above2 = store.getBlock(px, py + 2, pz);
+        if (isSolid(above2)) {
+          store.setBlock(px, py + 1, pz, above2);
+          store.setBlock(px, py + 2, pz, BlockType.AIR);
+        } else {
+          store.setBlock(px, py + 1, pz, BlockType.AIR);
+        }
+      } else {
+        store.setBlock(px, py + 1, pz, BlockType.AIR);
+      }
     }
-    store.setBlock(px, py, pz, BlockType.PISTON);
+    store.setBlock(px, py, pz, retractedType);
   }
 }
 
