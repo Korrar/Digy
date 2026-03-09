@@ -20,7 +20,7 @@ import { useChestStore } from '../../stores/chestStore';
 const hiddenCables = new Set<string>();
 
 interface WorldInteractionProps {
-  mode: 'mine' | 'build' | 'explore';
+  mode: 'mine' | 'build' | 'adventure';
 }
 
 export function WorldInteraction({ mode }: WorldInteractionProps) {
@@ -235,8 +235,8 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
 
   const handlePointerDown = useCallback(() => {
     isPointerDownRef.current = true;
-    if (mode === 'build') {
-      // Interactive blocks: always interact regardless of held item
+    // Interactive blocks work in both build and adventure modes
+    if (mode === 'build' || mode === 'adventure') {
       const interactCheck = raycast();
       if (interactCheck) {
         const [bx, by, bz] = interactCheck.blockPos;
@@ -286,6 +286,9 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
           return;
         }
       }
+
+      // Adventure mode: only interactions, no building/placing
+      if (mode === 'adventure') return;
 
       const selectedBlock = getSelectedBlock();
       if (!selectedBlock) return;
@@ -480,7 +483,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
       <mesh ref={highlightRef} visible={false}>
         <boxGeometry args={[1.02, 1.02, 1.02]} />
         <meshBasicMaterial
-          color={mode === 'mine' ? '#ff4444' : '#44ff88'}
+          color={mode === 'mine' ? '#ff4444' : mode === 'adventure' ? '#4488ff' : '#44ff88'}
           wireframe={false}
           transparent
           opacity={0.25}

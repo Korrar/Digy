@@ -7,7 +7,7 @@ import { ambientMusic } from '../../systems/AmbientMusic';
 import { IconPickaxe, IconHammer, IconSpeakerOn, IconSpeakerOff, IconWrench, IconBackpack, IconClose, IconSun, IconMoon, IconSunrise, IconSunset } from './Icons';
 
 interface HUDProps {
-  mode?: 'mine' | 'build' | 'explore';
+  mode?: 'mine' | 'build' | 'adventure';
   onModeToggle?: () => void;
   timeIndicator?: string;
 }
@@ -70,7 +70,7 @@ export function HUD({ mode, onModeToggle, timeIndicator }: HUDProps) {
         </div>
         <div style={{ display: 'flex', gap: 6, pointerEvents: 'auto' }}>
           {scene === 'hideout' && onModeToggle && (
-            <button onClick={onModeToggle} style={btnStyle} title={`Tryb: ${mode === 'mine' ? 'Kopanie' : mode === 'build' ? 'Budowanie' : 'Obserwacja'}`}>
+            <button onClick={onModeToggle} style={btnStyle} title={`Tryb: ${mode === 'mine' ? 'Kopanie' : mode === 'build' ? 'Budowanie' : 'Przygoda'}`}>
               {mode === 'mine' ? <IconPickaxe size={18} color="#fff" /> : mode === 'build' ? <IconHammer size={18} color="#fff" /> : <span style={{ fontSize: 16 }}>👁</span>}
             </button>
           )}
