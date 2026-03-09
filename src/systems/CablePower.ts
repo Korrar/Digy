@@ -4,6 +4,9 @@ import { soundManager } from './SoundManager';
 
 const MAX_CABLE_DISTANCE = 16;
 const TNT_RADIUS = 3;
+const TNT_FUSE_TIME = 1500; // ms - fuse duration before explosion
+const TNT_CHAIN_FUSE_TIME = 400; // ms - shorter fuse for chain reactions
+const fusingTNT = new Set<string>(); // track TNT blocks currently fusing
 
 /**
  * Propagate power from a lever through connected cables.
@@ -164,46 +167,65 @@ export function isPoweredRailActive(wx: number, wy: number, wz: number): boolean
 }
 
 /**
- * Detonate TNT at position, destroying blocks in a sphere.
+ * Detonate TNT at position, with fuse sparks first then explosion.
  */
-export function detonateTNT(store: ReturnType<typeof useWorldStore.getState>, tx: number, ty: number, tz: number) {
-  // Remove the TNT block first
-  store.setBlock(tx, ty, tz, BlockType.AIR);
-  soundManager.playBreakSound(BlockType.STONE);
+export function detonateTNT(store: ReturnType<typeof useWorldStore.getState>, tx: number, ty: number, tz: number, fuseTime: number = TNT_FUSE_TIME) {
+  const key = `${tx},${ty},${tz}`;
+  if (fusingTNT.has(key)) return; // already fusing
+  fusingTNT.add(key);
 
-  // Destroy blocks in sphere
-  for (let dx = -TNT_RADIUS; dx <= TNT_RADIUS; dx++) {
-    for (let dy = -TNT_RADIUS; dy <= TNT_RADIUS; dy++) {
-      for (let dz = -TNT_RADIUS; dz <= TNT_RADIUS; dz++) {
-        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        if (dist > TNT_RADIUS) continue;
-        const bx = tx + dx;
-        const by = ty + dy;
-        const bz = tz + dz;
-        const block = store.getBlock(bx, by, bz);
-        if (block === BlockType.AIR) continue;
-        const def = getBlock(block);
-        // Don't destroy indestructible blocks
-        if (def.hardness === Infinity) continue;
-        // Chain TNT
-        if (def.isTNT) {
-          setTimeout(() => {
-            const s = useWorldStore.getState();
-            if (s.getBlock(bx, by, bz) === block) {
-              detonateTNT(s, bx, by, bz);
-            }
-          }, 200);
-          continue;
+  // Fuse phase: sparks + sizzle sound
+  const fuseDurationSec = fuseTime / 1000;
+  soundManager.playFuseSound(fuseDurationSec);
+  window.dispatchEvent(new CustomEvent('digy:tnt-fuse', {
+    detail: { x: tx + 0.5, y: ty + 1.0, z: tz + 0.5, duration: fuseTime }
+  }));
+
+  // After fuse, explode
+  setTimeout(() => {
+    fusingTNT.delete(key);
+    const s = useWorldStore.getState();
+    // Check TNT still there (player might have broken it)
+    const currentBlock = s.getBlock(tx, ty, tz);
+    const currentDef = getBlock(currentBlock);
+    if (!currentDef.isTNT) return;
+
+    // Remove the TNT block
+    s.setBlock(tx, ty, tz, BlockType.AIR);
+
+    // Explosion sound
+    soundManager.playExplosionSound();
+
+    // Destroy blocks in sphere
+    for (let dx = -TNT_RADIUS; dx <= TNT_RADIUS; dx++) {
+      for (let dy = -TNT_RADIUS; dy <= TNT_RADIUS; dy++) {
+        for (let dz = -TNT_RADIUS; dz <= TNT_RADIUS; dz++) {
+          const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+          if (dist > TNT_RADIUS) continue;
+          const bx = tx + dx;
+          const by = ty + dy;
+          const bz = tz + dz;
+          const block = s.getBlock(bx, by, bz);
+          if (block === BlockType.AIR) continue;
+          const def = getBlock(block);
+          // Don't destroy indestructible blocks
+          if (def.hardness === Infinity) continue;
+          // Chain TNT with shorter fuse
+          if (def.isTNT) {
+            const chainStore = useWorldStore.getState();
+            detonateTNT(chainStore, bx, by, bz, TNT_CHAIN_FUSE_TIME);
+            continue;
+          }
+          s.setBlock(bx, by, bz, BlockType.AIR);
         }
-        store.setBlock(bx, by, bz, BlockType.AIR);
       }
     }
-  }
 
-  // Spawn explosion particles
-  window.dispatchEvent(new CustomEvent('digy:explosion', {
-    detail: { x: tx + 0.5, y: ty + 0.5, z: tz + 0.5, radius: TNT_RADIUS }
-  }));
+    // Spawn explosion particles
+    window.dispatchEvent(new CustomEvent('digy:explosion', {
+      detail: { x: tx + 0.5, y: ty + 0.5, z: tz + 0.5, radius: TNT_RADIUS }
+    }));
+  }, fuseTime);
 }
 
 /**
