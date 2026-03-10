@@ -47,3 +47,30 @@ export async function clearHideout(): Promise<void> {
     console.warn('Failed to clear hideout:', e);
   }
 }
+
+// AR persistence - save/load placed model positions
+export interface ARModelPosition {
+  id: string; // 'hideout' | 'biome'
+  matrixElements: number[]; // 16-element array from Matrix4
+  scale: number;
+  rotation: number;
+}
+
+export async function saveARPositions(positions: ARModelPosition[]): Promise<void> {
+  try {
+    const db = await getDB();
+    await db.put(STORE_NAME, positions, 'ar-positions');
+  } catch (e) {
+    console.warn('Failed to save AR positions:', e);
+  }
+}
+
+export async function loadARPositions(): Promise<ARModelPosition[] | null> {
+  try {
+    const db = await getDB();
+    return await db.get(STORE_NAME, 'ar-positions') ?? null;
+  } catch (e) {
+    console.warn('Failed to load AR positions:', e);
+    return null;
+  }
+}
