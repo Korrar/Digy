@@ -10,7 +10,7 @@ import { ChunkData, chunkKey } from '../core/voxel/ChunkData';
 import { buildChunkMesh } from '../core/voxel/ChunkMesher';
 import { BlockType } from '../core/voxel/BlockRegistry';
 import { loadHideout } from '../utils/storage';
-import { applyPlateTemplate, PLATE_TEMPLATES, PLATE_POSITIONS } from '../core/hideout/HideoutPlates';
+import { PLATE_POSITIONS } from '../core/hideout/HideoutPlates';
 import { useHideoutPlateStore } from '../stores/hideoutPlateStore';
 
 const xrStore = createXRStore({
@@ -93,16 +93,6 @@ function ARModel({ matrix, scale }: { matrix: THREE.Matrix4; scale: number }) {
       </group>
     </group>
   );
-}
-
-/** Rotation controls component */
-function RotationUpdater({ rotation, targetRef }: { rotation: number; targetRef: React.RefObject<THREE.Group | null> }) {
-  useFrame(() => {
-    if (targetRef.current) {
-      targetRef.current.rotation.y = rotation;
-    }
-  });
-  return null;
 }
 
 export function ARScene() {
