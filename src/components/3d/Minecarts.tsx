@@ -2,7 +2,7 @@ import { useRef, useMemo, useCallback, useEffect, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
-import { BlockType, isFlat, isDetectorRail } from '../../core/voxel/BlockRegistry';
+import { BlockType, isFlat, isDetectorRail, isRailSlope, getRailSlopeDir } from '../../core/voxel/BlockRegistry';
 import { computeRailShape } from '../../core/voxel/ChunkMesher';
 import { soundManager } from '../../systems/SoundManager';
 import { isPoweredRailActive, activateDetectorRail } from '../../systems/CablePower';
@@ -312,15 +312,29 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
   }, [getBlock]);
 
   // Get terrain height at position (rails are flat, not full blocks)
+  // For slope rails, interpolates height based on position within the block
   const getTerrainHeight = useCallback((x: number, z: number): number => {
     const bx = Math.floor(x);
     const bz = Math.floor(z);
+    const localX = x - bx;
+    const localZ = z - bz;
     for (let y = 24; y >= 0; y--) {
       const block = getBlock(bx, y, bz);
       if (block !== BlockType.AIR && block !== BlockType.WATER) {
-        // Rail blocks are flat - return rail surface height, not full block top
         if (isFlat(block)) {
-          return y + 0.14; // rail surface height
+          // Slope rail: interpolate height
+          const slopeDir = getRailSlopeDir(block);
+          if (slopeDir) {
+            let t: number;
+            switch (slopeDir) {
+              case 'n': t = 1 - localZ; break; // ascending toward -Z: low at z=1, high at z=0
+              case 's': t = localZ; break;      // ascending toward +Z: low at z=0, high at z=1
+              case 'e': t = localX; break;      // ascending toward +X: low at x=0, high at x=1
+              case 'w': t = 1 - localX; break;  // ascending toward -X: low at x=1, high at x=0
+            }
+            return y + 0.14 + t; // rail surface + interpolated slope (0 to 1 block)
+          }
+          return y + 0.14;
         }
         return y + 1;
       }
@@ -376,10 +390,10 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
         const shape = getRailShape(bx, by, bz);
         const speed = Math.sqrt(cart.velocity.x * cart.velocity.x + cart.velocity.z * cart.velocity.z);
 
-        if (shape === 'ns') {
+        if (shape === 'ns' || shape === 'slope_n' || shape === 'slope_s') {
           // Constrain to Z axis
           cart.velocity.x *= 0.8;
-        } else if (shape === 'ew') {
+        } else if (shape === 'ew' || shape === 'slope_e' || shape === 'slope_w') {
           // Constrain to X axis
           cart.velocity.z *= 0.8;
         } else {
@@ -388,7 +402,7 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
           const localZ = cart.position.z - bz;
 
           // Get curve pivot (center of curvature at block corner)
-          let pivotX: number, pivotZ: number;
+          let pivotX = 0, pivotZ = 0;
           switch (shape) {
             case 'curve_ne': pivotX = 1; pivotZ = 0; break;
             case 'curve_nw': pivotX = 0; pivotZ = 0; break;
