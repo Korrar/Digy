@@ -27,7 +27,7 @@ import { CraftingPanel } from '../components/ui/CraftingPanel';
 import { LootPopup } from '../components/ui/LootPopup';
 import { HealthBar } from '../components/ui/HealthBar';
 import { useTappablesStore } from '../stores/tappablesStore';
-import { useCombatStore } from '../stores/combatStore';
+import { useCombatStore, BIOME_DIFFICULTY } from '../stores/combatStore';
 import { useCraftingStore } from '../stores/craftingStore';
 import { ambientMusic } from '../systems/AmbientMusic';
 import { MinecartRenderer } from '../components/3d/Minecarts';
@@ -36,6 +36,8 @@ import { StarrySky } from '../components/3d/StarrySky';
 import { ModeToggle } from '../components/ui/ModeToggle';
 import { AmbientParticles } from '../components/3d/AmbientParticles';
 import { WaterPlane } from '../components/3d/WaterPlane';
+import { Minimap } from '../components/ui/Minimap';
+import { FloatingText } from '../components/ui/FloatingText';
 
 /** Water color per biome */
 const BIOME_WATER_COLOR: Record<string, string> = {
@@ -102,8 +104,13 @@ export function BiomeScene() {
 
   const clearTappables = useTappablesStore((s) => s.clearTappables);
   const resetCombat = useCombatStore((s) => s.resetCombat);
+  const setDifficulty = useCombatStore((s) => s.setDifficulty);
+  const isGameOver = useCombatStore((s) => s.isGameOver);
+  const respawn = useCombatStore((s) => s.respawn);
+  const returnToMenu = useGameStore((s) => s.returnToMenu);
 
   useEffect(() => {
+    setDifficulty(BIOME_DIFFICULTY[biomeType] ?? 1.0);
     generateWorld(biomeType, biomeSeed, 1);
     settleWorld();
     // Start ambient music for biome
@@ -238,6 +245,8 @@ export function BiomeScene() {
       <ChestPanel />
       <CraftingPanel />
       <LootPopup />
+      <Minimap center={[8, 8]} />
+      <FloatingText />
       {isTouch && (
         <MobileControls
           onDigStart={handleDigStart}
@@ -245,6 +254,36 @@ export function BiomeScene() {
           onInventoryToggle={toggleInventory}
           mode="mine"
         />
+      )}
+
+      {/* Game Over overlay */}
+      {isGameOver && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 400,
+          background: 'rgba(80,0,0,0.8)', display: 'flex',
+          flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16,
+        }}>
+          <h1 style={{ color: '#ff4444', fontSize: 36, fontWeight: 900, margin: 0, textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>
+            Game Over
+          </h1>
+          <p style={{ color: '#ffaaaa', fontSize: 14, margin: 0 }}>Zostales pokonany!</p>
+          <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+            <button onClick={respawn} style={{
+              padding: '12px 28px', border: '2px solid rgba(100,255,100,0.4)', borderRadius: 10,
+              background: 'rgba(40,120,40,0.6)', color: '#aaffaa', fontSize: 16,
+              fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+            }}>
+              Odrodzenie
+            </button>
+            <button onClick={returnToMenu} style={{
+              padding: '12px 28px', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 10,
+              background: 'rgba(255,255,255,0.1)', color: '#ccc', fontSize: 16,
+              fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+            }}>
+              Menu
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

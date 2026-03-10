@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BlockType, getBlock, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest, isTorch, isLever, isButton, isCable, isPiston, isPistonHead, isSign, isPressurePlate, isDetectorRail, isRepeater, isComparator, isRailSlope, getRailSlopeDir, getRailSlopeBlock } from './BlockRegistry';
+import { BlockType, getBlock, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest, isTorch, isLever, isButton, isCable, isPiston, isPistonHead, isSign, isPressurePlate, isDetectorRail, isRepeater, isComparator } from './BlockRegistry';
 import { ChunkData } from './ChunkData';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
 import { getAtlasUV, getWhiteUV } from './TextureAtlas';
@@ -681,7 +681,7 @@ export function buildChunkMesh(
             // curve_se: connects +Z (south) and +X (east) -> pivot at (1, 1)
             // curve_sw: connects +Z (south) and -X (west) -> pivot at (0, 1)
 
-            let pivotX: number, pivotZ: number, startAngle: number, angleSpan: number;
+            let pivotX = 0, pivotZ = 0, startAngle = 0, angleSpan = 0;
             switch (shape) {
               case 'curve_ne': pivotX = 1; pivotZ = 0; startAngle = Math.PI; angleSpan = -Math.PI / 2; break;
               case 'curve_nw': pivotX = 0; pivotZ = 0; startAngle = 0; angleSpan = Math.PI / 2; break;

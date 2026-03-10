@@ -14,6 +14,8 @@ export function InventoryPanel() {
   const isOpen = useInventoryStore((s) => s.inventoryOpen);
   const toggle = useInventoryStore((s) => s.toggleInventory);
   const moveSlot = useInventoryStore((s) => s.moveSlot);
+  const splitStack = useInventoryStore((s) => s.splitStack);
+  const sortInventory = useInventoryStore((s) => s.sortInventory);
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
 
   if (!isOpen) return null;
@@ -44,12 +46,18 @@ export function InventoryPanel() {
   const slotSize = 'clamp(34px, 9vw, 44px)';
   const blockSize = 'clamp(22px, 6vw, 28px)';
 
+  const handleRightClick = (e: React.MouseEvent, idx: number) => {
+    e.preventDefault();
+    if (slots[idx]) splitStack(idx);
+  };
+
   const renderSlot = (slot: typeof slots[0], idx: number, borderColor: string = '#444') => {
     const isSelected = selectedSlot === idx;
     return (
       <div
         key={idx}
         onClick={() => handleSlotClick(idx)}
+        onContextMenu={(e) => handleRightClick(e, idx)}
         style={{
           width: slotSize,
           height: slotSize,
@@ -145,24 +153,40 @@ export function InventoryPanel() {
           </div>
         </div>
 
-        <button
-          onClick={() => { setSelectedSlot(null); toggle(); }}
-          style={{
-            display: 'block',
-            margin: '12px auto 0',
-            padding: '8px 24px',
-            borderRadius: 8,
-            border: '1px solid #555',
-            background: 'rgba(255,255,255,0.1)',
-            color: '#aaa',
-            fontSize: 'clamp(12px, 3vw, 14px)',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-            touchAction: 'manipulation',
-          }}
-        >
-          Zamknij
-        </button>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12 }}>
+          <button
+            onClick={sortInventory}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 8,
+              border: '1px solid #555',
+              background: 'rgba(68,136,204,0.2)',
+              color: '#aaccff',
+              fontSize: 'clamp(12px, 3vw, 14px)',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              touchAction: 'manipulation',
+            }}
+          >
+            Sortuj
+          </button>
+          <button
+            onClick={() => { setSelectedSlot(null); toggle(); }}
+            style={{
+              padding: '8px 24px',
+              borderRadius: 8,
+              border: '1px solid #555',
+              background: 'rgba(255,255,255,0.1)',
+              color: '#aaa',
+              fontSize: 'clamp(12px, 3vw, 14px)',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              touchAction: 'manipulation',
+            }}
+          >
+            Zamknij
+          </button>
+        </div>
       </div>
     </div>
   );

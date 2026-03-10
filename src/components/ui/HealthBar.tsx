@@ -19,10 +19,37 @@ export function HealthBar() {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(255,0,0,0.2)',
+          background: 'radial-gradient(ellipse at center, transparent 40%, rgba(180,0,0,0.4) 100%)',
           pointerEvents: 'none',
           zIndex: 300,
-        }} />
+          animation: 'damageVignette 0.3s ease-out forwards',
+        }}>
+          <style>{`
+            @keyframes damageVignette {
+              0% { opacity: 1; }
+              100% { opacity: 0; }
+            }
+          `}</style>
+        </div>
+      )}
+
+      {/* Low HP warning vignette */}
+      {hp > 0 && hp <= maxHp * 0.3 && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'radial-gradient(ellipse at center, transparent 50%, rgba(120,0,0,0.3) 100%)',
+          pointerEvents: 'none',
+          zIndex: 299,
+          animation: 'lowHpPulse 2s ease-in-out infinite',
+        }}>
+          <style>{`
+            @keyframes lowHpPulse {
+              0%, 100% { opacity: 0.4; }
+              50% { opacity: 0.8; }
+            }
+          `}</style>
+        </div>
       )}
 
       <div style={{

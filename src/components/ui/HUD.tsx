@@ -184,9 +184,10 @@ export function HUD({ mode, onModeToggle, timeIndicator, onPlateToggle, placemen
                 ['E', 'Inwentarz'],
                 ['C', 'Crafting'],
                 ['P', 'Platformy dekoracyjne (kryjowka)'],
+                ['Q', 'Wyrzuc przedmiot'],
                 ['1-9', 'Wybor slotu hotbar'],
                 ['LPM', 'Kopanie / Atak'],
-                ['PPM', 'Stawianie bloku / Interakcja'],
+                ['PPM', 'Stawianie bloku / Dzielenie stacka'],
               ].map(([key, desc]) => (
                 <div key={key} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <span style={{

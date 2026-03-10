@@ -13,6 +13,7 @@ export function Hotbar() {
   const slots = useInventoryStore((s) => s.slots);
   const selected = useInventoryStore((s) => s.selectedHotbarIndex);
   const setSelected = useInventoryStore((s) => s.setSelectedHotbar);
+  const dropItem = useInventoryStore((s) => s.dropItem);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -20,10 +21,15 @@ export function Hotbar() {
       if (num >= 1 && num <= HOTBAR_SIZE) {
         setSelected(num - 1);
       }
+      // Q key to drop 1 item from selected hotbar slot
+      if (e.key === 'q' || e.key === 'Q') {
+        const idx = useInventoryStore.getState().selectedHotbarIndex;
+        dropItem(idx, 1);
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [setSelected]);
+  }, [setSelected, dropItem]);
 
   // Scroll wheel
   useEffect(() => {

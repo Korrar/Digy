@@ -2,7 +2,7 @@ import { useRef, useMemo, useCallback, useEffect, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
-import { BlockType, isFlat, isDetectorRail, isRailSlope, getRailSlopeDir } from '../../core/voxel/BlockRegistry';
+import { BlockType, isFlat, isDetectorRail, getRailSlopeDir } from '../../core/voxel/BlockRegistry';
 import { computeRailShape } from '../../core/voxel/ChunkMesher';
 import { soundManager } from '../../systems/SoundManager';
 import { isPoweredRailActive, activateDetectorRail } from '../../systems/CablePower';
