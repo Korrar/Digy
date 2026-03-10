@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { BiomeType } from '../core/terrain/biomes';
 
-export type GameScene = 'menu' | 'biome' | 'hideout';
+export type GameScene = 'menu' | 'biome' | 'hideout' | 'ar';
 
 interface GameState {
   scene: GameScene;
@@ -11,6 +11,7 @@ interface GameState {
   setScene: (scene: GameScene) => void;
   enterBiome: (biome: BiomeType) => void;
   enterHideout: () => void;
+  enterAR: () => void;
   returnToMenu: () => void;
 }
 
@@ -28,6 +29,8 @@ export const useGameStore = create<GameState>((set) => ({
   }),
 
   enterHideout: () => set({ scene: 'hideout' }),
+
+  enterAR: () => set({ scene: 'ar' }),
 
   returnToMenu: () => set({ scene: 'menu' }),
 }));

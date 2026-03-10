@@ -7,6 +7,7 @@ import { IconWrench } from '../components/ui/Icons';
 export function MenuScene() {
   const enterBiome = useGameStore((s) => s.enterBiome);
   const enterHideout = useGameStore((s) => s.enterHideout);
+  const enterAR = useGameStore((s) => s.enterAR);
   const toggleCrafting = useCraftingStore((s) => s.toggleCrafting);
 
   return (
@@ -100,6 +101,43 @@ export function MenuScene() {
         }}
       >
         Kryjówka
+      </button>
+
+      <button
+        onClick={enterAR}
+        style={{
+          marginTop: 10,
+          padding: 'clamp(10px, 2.5vh, 14px) clamp(24px, 8vw, 40px)',
+          border: '2px solid rgba(100,200,255,0.3)',
+          borderRadius: 12,
+          background: 'rgba(30,80,120,0.4)',
+          color: '#88ccff',
+          fontSize: 'clamp(14px, 4vw, 16px)',
+          fontWeight: 700,
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          letterSpacing: 1,
+          transition: 'all 0.2s',
+          width: '100%',
+          maxWidth: 280,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(30,80,120,0.7)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'rgba(30,80,120,0.4)';
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#88ccff" strokeWidth="2">
+          <path d="M2 12C2 6.5 6.5 2 12 2s10 4.5 10 10-4.5 10-10 10S2 17.5 2 12z" />
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+        </svg>
+        AR Podglad
       </button>
 
       <button
