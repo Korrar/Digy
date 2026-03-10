@@ -45,10 +45,13 @@ const blockSoundMap: Partial<Record<BlockType, SoundCategory>> = {
 };
 
 // Procedural sound generation using Web Audio API
+const MAX_CONCURRENT_SOUNDS = 8;
+
 export class SoundManager {
   private ctx: AudioContext | null = null;
   private initialized = false;
   private minecartNodes: { sources: OscillatorNode[]; gains: GainNode[] } | null = null;
+  private activeSounds = 0;
 
   private getCtx(): AudioContext {
     if (!this.ctx) {
@@ -58,6 +61,17 @@ export class SoundManager {
       this.ctx.resume();
     }
     return this.ctx;
+  }
+
+  /** Check if we can play another sound (pool limit) */
+  private canPlay(): boolean {
+    return this.activeSounds < MAX_CONCURRENT_SOUNDS;
+  }
+
+  /** Track a sound's lifetime */
+  private trackSound(duration: number): void {
+    this.activeSounds++;
+    setTimeout(() => { this.activeSounds = Math.max(0, this.activeSounds - 1); }, duration * 1000);
   }
 
   init() {
@@ -72,6 +86,8 @@ export class SoundManager {
   }
 
   private noise(duration: number, volume: number, filterFreq: number, filterQ: number): void {
+    if (!this.canPlay()) return;
+    this.trackSound(duration);
     const ctx = this.getCtx();
     const bufferSize = Math.floor(ctx.sampleRate * duration);
     const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
@@ -97,6 +113,8 @@ export class SoundManager {
   }
 
   private tone(freq: number, duration: number, volume: number, type: OscillatorType = 'sine'): void {
+    if (!this.canPlay()) return;
+    this.trackSound(duration);
     const ctx = this.getCtx();
     const osc = ctx.createOscillator();
     osc.type = type;

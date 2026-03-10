@@ -2,10 +2,11 @@ import { useRef, useMemo, useCallback, useEffect, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
-import { BlockType, isFlat, isDetectorRail, isRailSlope, getRailSlopeDir } from '../../core/voxel/BlockRegistry';
+import { BlockType, isFlat, isDetectorRail, getRailSlopeDir } from '../../core/voxel/BlockRegistry';
 import { computeRailShape } from '../../core/voxel/ChunkMesher';
 import { soundManager } from '../../systems/SoundManager';
 import { isPoweredRailActive, activateDetectorRail } from '../../systems/CablePower';
+import { CHUNK_HEIGHT } from '../../utils/constants';
 
 interface Minecart {
   id: number;
@@ -318,7 +319,7 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
     const bz = Math.floor(z);
     const localX = x - bx;
     const localZ = z - bz;
-    for (let y = 24; y >= 0; y--) {
+    for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
       const block = getBlock(bx, y, bz);
       if (block !== BlockType.AIR && block !== BlockType.WATER) {
         if (isFlat(block)) {
@@ -363,6 +364,8 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
 
   // Track whether any cart is moving on rails for sound
   const wasRidingRef = useRef(false);
+  // Track active detector rails to prevent re-triggering every frame
+  const activeDetectorRails = useRef(new Set<string>());
 
   // Physics update
   useFrame(() => {
@@ -468,31 +471,33 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
         }
       }
 
-      // Detector rail: activate when minecart is on it, deactivate when it leaves
+      // Detector rail: activate once when minecart enters, deactivate when it leaves
       const detBx = Math.floor(cart.position.x);
       const detBz = Math.floor(cart.position.z);
       const detBy = Math.floor(cart.position.y);
       const detBlock = getBlock(detBx, detBy, detBz);
       const detBlockBelow = getBlock(detBx, detBy - 1, detBz);
-      if (isDetectorRail(detBlock) && detBlock === BlockType.DETECTOR_RAIL) {
-        activateDetectorRail(detBx, detBy, detBz, true);
-        // Auto-deactivate after 1.5s
-        const dx = detBx, dy = detBy, dz = detBz;
-        setTimeout(() => {
-          const s = useWorldStore.getState();
-          if (s.getBlock(dx, dy, dz) === BlockType.DETECTOR_RAIL_ON) {
-            activateDetectorRail(dx, dy, dz, false);
-          }
-        }, 1500);
-      } else if (isDetectorRail(detBlockBelow) && detBlockBelow === BlockType.DETECTOR_RAIL) {
-        activateDetectorRail(detBx, detBy - 1, detBz, true);
-        const dx = detBx, dy = detBy - 1, dz = detBz;
-        setTimeout(() => {
-          const s = useWorldStore.getState();
-          if (s.getBlock(dx, dy, dz) === BlockType.DETECTOR_RAIL_ON) {
-            activateDetectorRail(dx, dy, dz, false);
-          }
-        }, 1500);
+      let detRailKey: string | null = null;
+      if (isDetectorRail(detBlock)) {
+        detRailKey = `${detBx},${detBy},${detBz}`;
+      } else if (isDetectorRail(detBlockBelow)) {
+        detRailKey = `${detBx},${detBy - 1},${detBz}`;
+      }
+      if (detRailKey && !activeDetectorRails.current.has(detRailKey)) {
+        // First frame on this detector rail - activate it
+        activeDetectorRails.current.add(detRailKey);
+        const [drx, dry, drz] = detRailKey.split(',').map(Number);
+        if (getBlock(drx, dry, drz) === BlockType.DETECTOR_RAIL) {
+          activateDetectorRail(drx, dry, drz, true);
+          const capturedKey = detRailKey;
+          setTimeout(() => {
+            activeDetectorRails.current.delete(capturedKey);
+            const s = useWorldStore.getState();
+            if (s.getBlock(drx, dry, drz) === BlockType.DETECTOR_RAIL_ON) {
+              activateDetectorRail(drx, dry, drz, false);
+            }
+          }, 1500);
+        }
       }
 
       // Apply slope gravity
@@ -533,10 +538,18 @@ export function MinecartRenderer({ center: _center }: { center: [number, number,
         cart.velocity.set(0, 0, 0);
       }
 
-      // Keep in reasonable bounds (multi-chunk world)
-      cart.position.x = Math.max(-64, Math.min(128, cart.position.x));
-      cart.position.z = Math.max(-64, Math.min(128, cart.position.z));
+      // Remove carts that fall or go too far out of bounds
+      if (cart.position.y < -10 || cart.position.x < -128 || cart.position.x > 256 || cart.position.z < -128 || cart.position.z > 256) {
+        cart.velocity.set(0, 0, 0);
+        // Mark for removal
+        (cart as any)._remove = true;
+      }
     }
+
+    // Remove out-of-bounds carts
+    const beforeCount = cartsRef.current.length;
+    cartsRef.current = cartsRef.current.filter((c) => !(c as any)._remove);
+    if (cartsRef.current.length !== beforeCount) setCartVersion((v) => v + 1);
 
     // Cart-to-cart collisions: elastic bounce
     const carts = cartsRef.current;

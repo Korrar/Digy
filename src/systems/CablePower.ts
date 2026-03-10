@@ -61,7 +61,18 @@ export function propagateCablePower(leverX: number, leverY: number, leverZ: numb
     }
   }
 
-  // BFS through cables
+  // BFS through cables - cache neighbor lookups to avoid redundant getBlock calls
+  const blockCache = new Map<string, BlockType>();
+  const getCachedBlock = (x: number, y: number, z: number): BlockType => {
+    const k = `${x},${y},${z}`;
+    let b = blockCache.get(k);
+    if (b === undefined) {
+      b = store.getBlock(x, y, z);
+      blockCache.set(k, b);
+    }
+    return b;
+  };
+
   while (queue.length > 0) {
     const current = queue.shift()!;
     const key = `${current.x},${current.y},${current.z}`;
@@ -70,7 +81,7 @@ export function propagateCablePower(leverX: number, leverY: number, leverZ: numb
 
     if (current.dist > MAX_CABLE_DISTANCE) continue;
 
-    const block = store.getBlock(current.x, current.y, current.z);
+    const block = getCachedBlock(current.x, current.y, current.z);
     const def = getBlock(block);
     if (!def.isCable) continue;
 
@@ -78,43 +89,36 @@ export function propagateCablePower(leverX: number, leverY: number, leverZ: numb
     const targetType = powerOn ? BlockType.CABLE_POWERED : BlockType.CABLE;
     if (block !== targetType) {
       store.setBlock(current.x, current.y, current.z, targetType);
+      blockCache.set(key, targetType);
     }
 
-    // Continue BFS to neighbors
+    // Continue BFS to neighbors + activate adjacent devices in single pass
     for (const [dx, dy, dz] of dirs) {
       const nx = current.x + dx;
       const ny = current.y + dy;
       const nz = current.z + dz;
       const nKey = `${nx},${ny},${nz}`;
-      if (visited.has(nKey)) continue;
+      if (visited.has(nKey)) {
+        continue;
+      }
 
-      const nBlock = store.getBlock(nx, ny, nz);
+      const nBlock = getCachedBlock(nx, ny, nz);
       const nDef = getBlock(nBlock);
+
       if (nDef.isCable) {
         queue.push({ x: nx, y: ny, z: nz, dist: current.dist + 1 });
       }
-    }
-
-    // Activate/deactivate adjacent pistons, TNT, repeaters, comparators
-    for (const [dx, dy, dz] of dirs) {
-      const px = current.x + dx;
-      const py = current.y + dy;
-      const pz = current.z + dz;
-      const pBlock = store.getBlock(px, py, pz);
-      const pDef = getBlock(pBlock);
-      if (pDef.isPiston) {
-        activatePiston(store, px, py, pz, powerOn);
+      if (nDef.isPiston) {
+        activatePiston(store, nx, ny, nz, powerOn);
       }
-      if (powerOn && pDef.isTNT) {
-        detonateTNT(store, px, py, pz);
+      if (powerOn && nDef.isTNT) {
+        detonateTNT(store, nx, ny, nz);
       }
-      // Repeater: only activate if cable is at the repeater's input side
-      if (pDef.isRepeater) {
-        activateRepeater(px, py, pz, current.x, current.y, current.z, powerOn);
+      if (nDef.isRepeater) {
+        activateRepeater(nx, ny, nz, current.x, current.y, current.z, powerOn);
       }
-      // Comparator: only activate if cable is at the comparator's input side
-      if (pDef.isComparator) {
-        activateComparator(px, py, pz, current.x, current.y, current.z, powerOn);
+      if (nDef.isComparator) {
+        activateComparator(nx, ny, nz, current.x, current.y, current.z, powerOn);
       }
     }
   }
@@ -139,18 +143,19 @@ function activatePiston(store: ReturnType<typeof useWorldStore.getState>, px: nu
     // Extend: push block above upward if possible
     const aboveBlock = store.getBlock(px, py + 1, pz);
     const above2Block = store.getBlock(px, py + 2, pz);
+    const aboveDef = getBlock(aboveBlock);
 
     if (aboveBlock === BlockType.AIR) {
       // Nothing to push, just extend
       store.setBlock(px, py, pz, extendedType);
       store.setBlock(px, py + 1, pz, headType);
-    } else if (above2Block === BlockType.AIR && isSolid(aboveBlock)) {
-      // Push the block up
+    } else if (above2Block === BlockType.AIR && isSolid(aboveBlock) && aboveDef.hardness !== Infinity && !aboveDef.isPiston && !aboveDef.isPistonHead) {
+      // Push the block up (only if pushable: not bedrock, not another piston)
       store.setBlock(px, py + 2, pz, aboveBlock);
       store.setBlock(px, py + 1, pz, headType);
       store.setBlock(px, py, pz, extendedType);
     }
-    // Can't extend if blocked
+    // Can't extend if blocked or block is unpushable
   } else if (!extend && def.pistonExtended) {
     // Retract: remove piston head
     const headBlock = store.getBlock(px, py + 1, pz);

@@ -169,6 +169,21 @@ function EnemyMesh({ enemy }: { enemy: Enemy }) {
     damageEnemy(enemy.id, dmg);
     soundManager.playDigSound(BlockType.STONE);
 
+    // Knockback: push enemy away from click point
+    const point = e.point as THREE.Vector3 | undefined;
+    if (point) {
+      const ex = enemy.position[0];
+      const ez = enemy.position[2];
+      const dx = ex - point.x;
+      const dz = ez - point.z;
+      const dist = Math.sqrt(dx * dx + dz * dz) || 0.1;
+      const knockStr = 1.5;
+      const updateEnemy = useCombatStore.getState().updateEnemy;
+      updateEnemy(enemy.id, {
+        position: [ex + (dx / dist) * knockStr, enemy.position[1], ez + (dz / dist) * knockStr],
+      });
+    }
+
     // Check if enemy died
     if (enemy.hp - dmg <= 0) {
       addXp(enemy.type === 'creeper' ? 15 : 10);

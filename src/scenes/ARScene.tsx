@@ -46,7 +46,7 @@ function HitTestReticle({ onHitUpdate }: { onHitUpdate: (matrix: THREE.Matrix4 |
 }
 
 /** Renders the placed hideout model in AR at the given transform */
-function ARModel({ matrix, scale }: { matrix: THREE.Matrix4; scale: number }) {
+function ARModel({ matrix, scale, rotation }: { matrix: THREE.Matrix4; scale: number; rotation: number }) {
   const chunks = useWorldStore((s) => s.chunks);
   const groupRef = useRef<THREE.Group>(null);
 
@@ -59,12 +59,15 @@ function ARModel({ matrix, scale }: { matrix: THREE.Matrix4; scale: number }) {
     return result;
   }, [chunks]);
 
-  // Extract position and quaternion from matrix (only recomputed when matrix changes)
+  // Extract position and quaternion from matrix, add user rotation around Y
   const { position, quaternion } = useMemo(() => {
     const pos = new THREE.Vector3().setFromMatrixPosition(matrix);
     const quat = new THREE.Quaternion().setFromRotationMatrix(matrix);
+    // Apply user rotation around Y axis
+    const userRot = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotation);
+    quat.multiply(userRot);
     return { position: pos.toArray() as [number, number, number], quaternion: [quat.x, quat.y, quat.z, quat.w] as [number, number, number, number] };
-  }, [matrix]);
+  }, [matrix, rotation]);
 
   // Apply scale via ref to avoid re-render cascades
   useEffect(() => {
@@ -163,7 +166,7 @@ export function ARScene() {
           <IfInSessionMode allow="immersive-ar">
             {!placed && <HitTestReticle onHitUpdate={handleHitUpdate} />}
             {placed && placedMatrix && (
-              <ARModel matrix={placedMatrix} scale={arScale} />
+              <ARModel matrix={placedMatrix} scale={arScale} rotation={rotation} />
             )}
           </IfInSessionMode>
 

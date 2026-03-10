@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useGameStore } from '../../stores/gameStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { useCraftingStore } from '../../stores/craftingStore';
@@ -12,6 +12,7 @@ interface HUDProps {
   timeIndicator?: string;
   onPlateToggle?: () => void;
   placementMode?: boolean;
+  showSaveIndicator?: boolean;
 }
 
 function TimeIcon({ indicator }: { indicator: string }) {
@@ -24,7 +25,7 @@ function TimeIcon({ indicator }: { indicator: string }) {
   }
 }
 
-export function HUD({ mode, onModeToggle, timeIndicator, onPlateToggle, placementMode }: HUDProps) {
+export function HUD({ mode, onModeToggle, timeIndicator, onPlateToggle, placementMode, showSaveIndicator }: HUDProps) {
   const scene = useGameStore((s) => s.scene);
   const returnToMenu = useGameStore((s) => s.returnToMenu);
   const enterAR = useGameStore((s) => s.enterAR);
@@ -32,6 +33,25 @@ export function HUD({ mode, onModeToggle, timeIndicator, onPlateToggle, placemen
   const toggleInventory = useInventoryStore((s) => s.toggleInventory);
   const toggleCrafting = useCraftingStore((s) => s.toggleCrafting);
   const [musicOn, setMusicOn] = useState(ambientMusic.isEnabled());
+  const [showPause, setShowPause] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+
+  const handleEscape = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setShowHelp(false);
+      setShowPause((p) => !p);
+    }
+    if (e.key === 'F1') {
+      e.preventDefault();
+      setShowPause(false);
+      setShowHelp((h) => !h);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [handleEscape]);
 
   const biomeNames: Record<string, string> = {
     forest: 'Las',
@@ -77,7 +97,7 @@ export function HUD({ mode, onModeToggle, timeIndicator, onPlateToggle, placemen
               {mode === 'mine' ? <IconPickaxe size={18} color="#fff" /> : mode === 'build' ? <IconHammer size={18} color="#fff" /> : <span style={{ fontSize: 16 }}>👁</span>}
             </button>
           )}
-          <button onClick={() => setMusicOn(ambientMusic.toggle())} style={btnStyle}>
+          <button onClick={() => setMusicOn(ambientMusic.toggle())} style={btnStyle} title={musicOn ? 'Wycisz muzyke' : 'Wlacz muzyke'}>
             {musicOn ? <IconSpeakerOn size={18} color="#fff" /> : <IconSpeakerOff size={18} color="#fff" />}
           </button>
           {scene === 'hideout' && onPlateToggle && (
@@ -99,22 +119,98 @@ export function HUD({ mode, onModeToggle, timeIndicator, onPlateToggle, placemen
               </svg>
             </button>
           )}
-          <button onClick={toggleCrafting} style={btnStyle}>
+          <button onClick={toggleCrafting} style={btnStyle} title="Crafting (C)">
             <IconWrench size={18} color="#fff" />
           </button>
           <DevToolsToggle />
-          <button onClick={toggleInventory} style={btnStyle}>
+          <button onClick={toggleInventory} style={btnStyle} title="Inwentarz (E)">
             <IconBackpack size={18} color="#fff" />
           </button>
-          <button onClick={returnToMenu} style={{ ...btnStyle, background: 'rgba(180,40,40,0.7)' }}>
+          <button onClick={returnToMenu} style={{ ...btnStyle, background: 'rgba(180,40,40,0.7)' }} title="Menu glowne">
             <IconClose size={18} color="#fff" />
           </button>
         </div>
       </div>
       <DevTools />
+
+      {/* Save indicator */}
+      {showSaveIndicator && (
+        <div style={{
+          position: 'fixed', bottom: 60, right: 12, zIndex: 150,
+          padding: '4px 10px', borderRadius: 4,
+          background: 'rgba(40,120,40,0.8)', color: '#aaffaa',
+          fontSize: 11, fontWeight: 600, pointerEvents: 'none',
+          animation: 'fadeIn 0.2s ease',
+        }}>
+          Zapisano
+        </div>
+      )}
+
+      {/* Pause menu */}
+      {showPause && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 300,
+          background: 'rgba(0,0,0,0.7)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12,
+        }} onClick={(e) => { if (e.target === e.currentTarget) setShowPause(false); }}>
+          <h2 style={{ color: '#fff', fontSize: 22, fontWeight: 700, margin: 0 }}>Pauza</h2>
+          <button onClick={() => setShowPause(false)} style={pauseBtnStyle}>Kontynuuj</button>
+          <button onClick={() => { setShowPause(false); setShowHelp(true); }} style={pauseBtnStyle}>Pomoc (F1)</button>
+          <button onClick={returnToMenu} style={{ ...pauseBtnStyle, background: 'rgba(180,40,40,0.7)' }}>Menu glowne</button>
+        </div>
+      )}
+
+      {/* Help screen */}
+      {showHelp && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 300,
+          background: 'rgba(0,0,0,0.85)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center',
+        }} onClick={(e) => { if (e.target === e.currentTarget) setShowHelp(false); }}>
+          <div style={{
+            background: 'rgba(30,30,40,0.95)', borderRadius: 12,
+            border: '1px solid rgba(255,255,255,0.15)',
+            padding: '16px 24px', maxWidth: 420, width: '90vw', maxHeight: '80vh', overflowY: 'auto',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ color: '#fff', margin: 0, fontSize: 18 }}>Skroty klawiszowe</h3>
+              <button onClick={() => setShowHelp(false)} style={{ background: 'none', border: 'none', color: '#888', fontSize: 20, cursor: 'pointer' }}>×</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {[
+                ['Esc', 'Pauza'],
+                ['F1', 'Pomoc'],
+                ['Tab', 'Przelacz tryb (kopanie/budowanie/przygoda)'],
+                ['E', 'Inwentarz'],
+                ['C', 'Crafting'],
+                ['P', 'Platformy dekoracyjne (kryjowka)'],
+                ['Q', 'Wyrzuc przedmiot'],
+                ['1-9', 'Wybor slotu hotbar'],
+                ['LPM', 'Kopanie / Atak'],
+                ['PPM', 'Stawianie bloku / Dzielenie stacka'],
+              ].map(([key, desc]) => (
+                <div key={key} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span style={{
+                    background: 'rgba(255,255,255,0.1)', borderRadius: 4,
+                    padding: '2px 8px', color: '#aaa', fontSize: 12, fontWeight: 700,
+                    minWidth: 40, textAlign: 'center',
+                  }}>{key}</span>
+                  <span style={{ color: '#ccc', fontSize: 13 }}>{desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
+
+const pauseBtnStyle: React.CSSProperties = {
+  padding: '10px 32px', border: '1px solid rgba(255,255,255,0.2)',
+  borderRadius: 8, background: 'rgba(255,255,255,0.1)', color: '#fff',
+  fontSize: 15, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, minWidth: 180,
+};
 
 const btnStyle: React.CSSProperties = {
   padding: 'clamp(4px, 1.2vw, 6px) clamp(8px, 2.5vw, 14px)',
