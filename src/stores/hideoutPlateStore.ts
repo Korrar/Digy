@@ -61,5 +61,29 @@ export const useHideoutPlateStore = create<HideoutPlateState>((set, get) => ({
   },
 }));
 
+/**
+ * Check if a world-coordinate block position falls inside a decorative plate.
+ * Returns true if the block should be protected from editing.
+ */
+export function isOnDecorativePlate(wx: number, _wy: number, wz: number): boolean {
+  const cx = Math.floor(wx / 16);
+  const cz = Math.floor(wz / 16);
+  // Main platform is chunks 0,0 to 1,1 - always editable
+  if (cx >= 0 && cx <= 1 && cz >= 0 && cz <= 1) return false;
+
+  const { occupiedPositions } = useHideoutPlateStore.getState();
+  // Check if this chunk belongs to any occupied plate position
+  for (const pos of PLATE_POSITIONS) {
+    const key = `${pos.originCx},${pos.originCz}`;
+    if (!occupiedPositions.has(key)) continue;
+    // Each plate covers 2x2 chunks from origin
+    if (cx >= pos.originCx && cx <= pos.originCx + 1 &&
+        cz >= pos.originCz && cz <= pos.originCz + 1) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export { PLATE_TEMPLATES, PLATE_POSITIONS };
 export type { PlateTemplate, PlatePosition };
