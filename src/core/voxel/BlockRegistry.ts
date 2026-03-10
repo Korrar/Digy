@@ -746,3 +746,14 @@ export function getOrientedStairs(item: BlockType, dir: 'n' | 's' | 'e' | 'w'): 
   }
   return item;
 }
+
+/** Returns true if this block type needs a solid block below it to stay in place */
+export function needsSupportFromBelow(type: BlockType): boolean {
+  if (type === BlockType.AIR || type === BlockType.WATER || type === BlockType.LAVA) return false;
+  const def = getBlock(type);
+  return !!(
+    def.crossedQuad || def.isFlat || def.isTorch || def.isLever || def.isButton ||
+    def.isCable || def.isSign || def.isPressurePlate || def.isRepeater || def.isComparator ||
+    def.isDetectorRail || (def.isDoor && !def.doorUpper)
+  );
+}
