@@ -13,6 +13,7 @@ import { useDevStore } from '../../stores/devStore';
 import { propagateCablePower, activatePressurePlate, cycleRepeaterDelay, toggleComparatorMode } from '../../systems/CablePower';
 import { useCombatStore } from '../../stores/combatStore';
 import { useChestStore } from '../../stores/chestStore';
+import { isOnDecorativePlate } from '../../stores/hideoutPlateStore';
 
 // Tracks cable positions hidden under solid blocks
 // Key format: "x,y,z" — when a block is placed on a cable, the cable is hidden;
@@ -100,6 +101,12 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
 
         // Mining with hold
         if (isPointerDownRef.current && mode === 'mine' && result) {
+          // Block mining on decorative plates
+          if (isOnDecorativePlate(result.blockPos[0], result.blockPos[1], result.blockPos[2])) {
+            miningTimeRef.current = 0;
+            setMiningProgress(0);
+            return;
+          }
           const blockKey = result.blockPos.join(',');
           if (miningBlockRef.current !== blockKey) {
             miningBlockRef.current = blockKey;
@@ -241,6 +248,9 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
       if (interactCheck) {
         const [bx, by, bz] = interactCheck.blockPos;
 
+        // Block all interactions on decorative plates
+        if (isOnDecorativePlate(bx, by, bz)) return;
+
         // Chest open
         if (isChest(interactCheck.blockType)) {
           useChestStore.getState().openChest(bx, by, bz);
@@ -372,7 +382,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
         const px = bx + hit.normal[0];
         const py = by + hit.normal[1];
         const pz = bz + hit.normal[2];
-        if (!isSolid(getBlockW(px, py, pz))) {
+        if (!isSolid(getBlockW(px, py, pz)) && !isOnDecorativePlate(px, py, pz)) {
           // Determine stair direction from face normal (step rises away from clicked face)
           let dir: 'n' | 's' | 'e' | 'w' = 'n';
           const [nx, , nz] = hit.normal;
@@ -396,7 +406,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
         const px = bx + hit.normal[0];
         const py = by + hit.normal[1];
         const pz = bz + hit.normal[2];
-        if (!isSolid(getBlockW(px, py, pz))) {
+        if (!isSolid(getBlockW(px, py, pz)) && !isOnDecorativePlate(px, py, pz)) {
           const camDir = new THREE.Vector3();
           camera.getWorldDirection(camDir);
           let dir: 'n' | 's' | 'e' | 'w';
@@ -420,7 +430,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
         const px = bx + hit.normal[0];
         const py = by + hit.normal[1];
         const pz = bz + hit.normal[2];
-        if (!isSolid(getBlockW(px, py, pz))) {
+        if (!isSolid(getBlockW(px, py, pz)) && !isOnDecorativePlate(px, py, pz)) {
           const camDir = new THREE.Vector3();
           camera.getWorldDirection(camDir);
           let dir: 'n' | 's' | 'e' | 'w';
@@ -445,7 +455,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
         const py = by + hit.normal[1];
         const pz = bz + hit.normal[2];
         // Need 2 empty blocks (bottom and top)
-        if (!isSolid(getBlockW(px, py, pz)) && !isSolid(getBlockW(px, py + 1, pz))) {
+        if (!isSolid(getBlockW(px, py, pz)) && !isSolid(getBlockW(px, py + 1, pz)) && !isOnDecorativePlate(px, py, pz)) {
           setBlockW(px, py, pz, BlockType.DOOR_OAK_BOTTOM);
           setBlockW(px, py + 1, pz, BlockType.DOOR_OAK_TOP);
           removeBlock(selectedIdx, 1);
@@ -464,6 +474,9 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
       const px = bx + hit.normal[0];
       const py = by + hit.normal[1];
       const pz = bz + hit.normal[2];
+
+      // Block placing on decorative plates
+      if (isOnDecorativePlate(px, py, pz)) return;
 
       const targetBlock = getBlockW(px, py, pz);
       // Prevent placing rails on existing rails (would cause floating rail glitch)
