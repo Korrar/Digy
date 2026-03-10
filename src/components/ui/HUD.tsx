@@ -27,6 +27,7 @@ function TimeIcon({ indicator }: { indicator: string }) {
 export function HUD({ mode, onModeToggle, timeIndicator, onPlateToggle, placementMode }: HUDProps) {
   const scene = useGameStore((s) => s.scene);
   const returnToMenu = useGameStore((s) => s.returnToMenu);
+  const enterAR = useGameStore((s) => s.enterAR);
   const biome = useGameStore((s) => s.currentBiome);
   const toggleInventory = useInventoryStore((s) => s.toggleInventory);
   const toggleCrafting = useCraftingStore((s) => s.toggleCrafting);
@@ -86,6 +87,15 @@ export function HUD({ mode, onModeToggle, timeIndicator, onPlateToggle, placemen
                 <rect x="14" y="3" width="7" height="7" />
                 <rect x="3" y="14" width="7" height="7" />
                 <rect x="14" y="14" width="7" height="7" />
+              </svg>
+            </button>
+          )}
+          {(scene === 'biome' || scene === 'hideout') && (
+            <button onClick={enterAR} style={btnStyle} title="AR Podglad">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+                <path d="M2 12C2 6.5 6.5 2 12 2s10 4.5 10 10-4.5 10-10 10S2 17.5 2 12z" />
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
               </svg>
             </button>
           )}

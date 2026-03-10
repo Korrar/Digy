@@ -173,6 +173,12 @@ export enum BlockType {
   COMPARATOR_S_ON = 135,
   COMPARATOR_E_ON = 136,
   COMPARATOR_W_ON = 137,
+
+  // Slope rails (ascending toward named direction)
+  RAIL_SLOPE_N = 138,
+  RAIL_SLOPE_S = 139,
+  RAIL_SLOPE_E = 140,
+  RAIL_SLOPE_W = 141,
 }
 
 export interface BlockDefinition {
@@ -266,6 +272,8 @@ export interface BlockDefinition {
   comparatorDir?: 'n' | 's' | 'e' | 'w';
   /** Comparator is outputting power */
   comparatorOn?: boolean;
+  /** Rail slope direction (ascending toward named direction) */
+  railSlope?: 'n' | 's' | 'e' | 'w';
 }
 
 const BLOCKS: Map<BlockType, BlockDefinition> = new Map();
@@ -341,6 +349,12 @@ register({ id: BlockType.RAIL_CURVE_NW, name: 'Rail', color: new THREE.Color(0x8
 register({ id: BlockType.RAIL_CURVE_SE, name: 'Rail', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: true, drops: BlockType.RAIL, stackSize: 64, icon: 'rail', isFlat: true });
 register({ id: BlockType.RAIL_CURVE_SW, name: 'Rail', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: true, drops: BlockType.RAIL, stackSize: 64, icon: 'rail', isFlat: true });
 register({ id: BlockType.LAMP, name: 'Lamp', color: new THREE.Color(0xffdd88), hardness: 0.5, transparent: false, drops: BlockType.LAMP, stackSize: 64, emitsLight: true, icon: 'lamp' });
+
+// Slope rails (ascending toward named direction)
+register({ id: BlockType.RAIL_SLOPE_N, name: 'Rail', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: true, drops: BlockType.RAIL, stackSize: 0, icon: 'rail', isFlat: true, railSlope: 'n' });
+register({ id: BlockType.RAIL_SLOPE_S, name: 'Rail', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: true, drops: BlockType.RAIL, stackSize: 0, icon: 'rail', isFlat: true, railSlope: 's' });
+register({ id: BlockType.RAIL_SLOPE_E, name: 'Rail', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: true, drops: BlockType.RAIL, stackSize: 0, icon: 'rail', isFlat: true, railSlope: 'e' });
+register({ id: BlockType.RAIL_SLOPE_W, name: 'Rail', color: new THREE.Color(0x8b6914), hardness: 0.5, transparent: true, drops: BlockType.RAIL, stackSize: 0, icon: 'rail', isFlat: true, railSlope: 'w' });
 
 // Slabs (half-height blocks)
 register({ id: BlockType.PLANKS_SLAB, name: 'Oak Slab', color: new THREE.Color(0xb8945a), hardness: 1.0, transparent: true, drops: BlockType.PLANKS_SLAB, stackSize: 64, isSlab: true });
@@ -612,6 +626,23 @@ export function isComparator(type: BlockType): boolean {
 
 export function isComparatorItem(type: BlockType): boolean {
   return type === BlockType.COMPARATOR;
+}
+
+export function isRailSlope(type: BlockType): boolean {
+  return getBlock(type).railSlope !== undefined;
+}
+
+export function getRailSlopeDir(type: BlockType): 'n' | 's' | 'e' | 'w' | null {
+  return getBlock(type).railSlope ?? null;
+}
+
+export function getRailSlopeBlock(dir: 'n' | 's' | 'e' | 'w'): BlockType {
+  switch (dir) {
+    case 'n': return BlockType.RAIL_SLOPE_N;
+    case 's': return BlockType.RAIL_SLOPE_S;
+    case 'e': return BlockType.RAIL_SLOPE_E;
+    case 'w': return BlockType.RAIL_SLOPE_W;
+  }
 }
 
 /** Get the oriented repeater block type for a direction */

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
 import * as THREE from 'three';
 import { createXRStore, XR, XRDomOverlay, useXRHitTest, IfInSessionMode } from '@react-three/xr';
 import { useWorldStore } from '../stores/worldStore';
@@ -59,15 +59,19 @@ function ARModel({ matrix, scale }: { matrix: THREE.Matrix4; scale: number }) {
     return result;
   }, [chunks]);
 
-  // Center the model around its origin and apply world matrix
-  useFrame(() => {
-    if (!groupRef.current) return;
+  // Extract position and quaternion from matrix (only recomputed when matrix changes)
+  const { position, quaternion } = useMemo(() => {
     const pos = new THREE.Vector3().setFromMatrixPosition(matrix);
-    groupRef.current.position.copy(pos);
     const quat = new THREE.Quaternion().setFromRotationMatrix(matrix);
-    groupRef.current.quaternion.copy(quat);
-    groupRef.current.scale.setScalar(scale);
-  });
+    return { position: pos.toArray() as [number, number, number], quaternion: [quat.x, quat.y, quat.z, quat.w] as [number, number, number, number] };
+  }, [matrix]);
+
+  // Apply scale via ref to avoid re-render cascades
+  useEffect(() => {
+    if (groupRef.current) {
+      groupRef.current.scale.setScalar(scale);
+    }
+  }, [scale]);
 
   // Calculate center offset to place model centered on the hit point
   const centerOffset = useMemo(() => {
@@ -79,13 +83,13 @@ function ARModel({ matrix, scale }: { matrix: THREE.Matrix4; scale: number }) {
       minZ = Math.min(minZ, cz * 16);
       maxZ = Math.max(maxZ, (cz + 1) * 16);
     });
-    if (!isFinite(minX)) return [0, 0, 0];
-    return [-(minX + maxX) / 2, 0, -(minZ + maxZ) / 2];
+    if (!isFinite(minX)) return [0, 0, 0] as [number, number, number];
+    return [-(minX + maxX) / 2, 0, -(minZ + maxZ) / 2] as [number, number, number];
   }, [chunks]);
 
   return (
-    <group ref={groupRef}>
-      <group position={centerOffset as [number, number, number]}>
+    <group ref={groupRef} position={position} quaternion={quaternion} scale={scale}>
+      <group position={centerOffset}>
         {chunkEntries.map((c) => (
           <ChunkMesh key={c.key} cx={c.cx} cz={c.cz} geometry={c.geometry} />
         ))}

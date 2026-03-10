@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BlockType, getBlock, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest, isTorch, isLever, isButton, isCable, isPiston, isPistonHead, isSign, isPressurePlate, isDetectorRail, isRepeater, isComparator } from './BlockRegistry';
+import { BlockType, getBlock, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest, isTorch, isLever, isButton, isCable, isPiston, isPistonHead, isSign, isPressurePlate, isDetectorRail, isRepeater, isComparator, isRailSlope, getRailSlopeDir, getRailSlopeBlock } from './BlockRegistry';
 import { ChunkData } from './ChunkData';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
 import { getAtlasUV, getWhiteUV } from './TextureAtlas';
@@ -79,7 +79,7 @@ function computeAO(
   return 1.0 - occluders * 0.12;
 }
 
-export type RailShape = 'ns' | 'ew' | 'curve_ne' | 'curve_nw' | 'curve_se' | 'curve_sw';
+export type RailShape = 'ns' | 'ew' | 'curve_ne' | 'curve_nw' | 'curve_se' | 'curve_sw' | 'slope_n' | 'slope_s' | 'slope_e' | 'slope_w';
 
 /** Map from curve block type to RailShape */
 const CURVE_BLOCK_TO_SHAPE: Partial<Record<BlockType, RailShape>> = {
@@ -87,6 +87,10 @@ const CURVE_BLOCK_TO_SHAPE: Partial<Record<BlockType, RailShape>> = {
   [BlockType.RAIL_CURVE_NW]: 'curve_nw',
   [BlockType.RAIL_CURVE_SE]: 'curve_se',
   [BlockType.RAIL_CURVE_SW]: 'curve_sw',
+  [BlockType.RAIL_SLOPE_N]: 'slope_n',
+  [BlockType.RAIL_SLOPE_S]: 'slope_s',
+  [BlockType.RAIL_SLOPE_E]: 'slope_e',
+  [BlockType.RAIL_SLOPE_W]: 'slope_w',
 };
 
 /** Map from RailShape to curve block type */
@@ -109,7 +113,7 @@ export function computeRailShape(
   const block = getBlockAt(x, y, z);
   if (!isFlat(block)) return null;
 
-  // Curve block types: return stored shape directly (like Minecraft)
+  // Curve/slope block types: return stored shape directly (like Minecraft)
   const storedCurve = CURVE_BLOCK_TO_SHAPE[block];
   if (storedCurve) return storedCurve;
 
@@ -166,6 +170,10 @@ export function getRailConnections(blockType: BlockType): [number, number][] {
     case BlockType.RAIL_CURVE_NW:  return [[0, -1], [-1, 0]]; // N, W
     case BlockType.RAIL_CURVE_SE:  return [[0, 1], [1, 0]];   // S, E
     case BlockType.RAIL_CURVE_SW:  return [[0, 1], [-1, 0]];  // S, W
+    case BlockType.RAIL_SLOPE_N:   return [[0, -1], [0, 1]];  // N, S (ascending north)
+    case BlockType.RAIL_SLOPE_S:   return [[0, -1], [0, 1]];  // N, S (ascending south)
+    case BlockType.RAIL_SLOPE_E:   return [[1, 0], [-1, 0]];  // E, W (ascending east)
+    case BlockType.RAIL_SLOPE_W:   return [[1, 0], [-1, 0]];  // E, W (ascending west)
     case BlockType.POWERED_RAIL:   return [[0, -1], [0, 1]];  // N, S (default)
     default:                       return [[0, -1], [0, 1]];  // N, S
   }
@@ -202,6 +210,34 @@ export function shouldRailUpdate(
  * Used at placement time and for neighbor updates.
  * Follows Minecraft's south-east rule: curve priority is SE > SW > NE > NW.
  */
+/**
+ * Check if there's a rail one level up in a given direction (for slope detection).
+ * A slope is valid when: neighbor at same level is solid AND neighbor at Y+1 has a rail.
+ */
+function hasRailAbove(
+  getBlockAt: (x: number, y: number, z: number) => BlockType,
+  x: number, y: number, z: number,
+  dx: number, dz: number
+): boolean {
+  const neighborSame = getBlockAt(x + dx, y, z + dz);
+  const neighborAbove = getBlockAt(x + dx, y + 1, z + dz);
+  // The neighboring block at same level must be solid (the "wall" the rail climbs)
+  // and there must be a rail on top of it
+  return !isFlat(neighborSame) && neighborSame !== BlockType.AIR && isFlat(neighborAbove);
+}
+
+/**
+ * Check if there's a rail one level down in a given direction (for slope detection from top).
+ */
+function hasRailBelow(
+  getBlockAt: (x: number, y: number, z: number) => BlockType,
+  x: number, y: number, z: number,
+  dx: number, dz: number
+): boolean {
+  const neighborBelow = getBlockAt(x + dx, y - 1, z + dz);
+  return isFlat(neighborBelow);
+}
+
 export function computeRailBlockType(
   getBlockAt: (x: number, y: number, z: number) => BlockType,
   x: number, y: number, z: number
@@ -216,11 +252,34 @@ export function computeRailBlockType(
 
   if (isPowered) return BlockType.POWERED_RAIL;
 
+  // Slope detection: check for rails one level up/down in each direction
+  // A rail slopes UP toward a direction if there's a rail above in that direction
+  const slopeUpN = hasRailAbove(getBlockAt, x, y, z, 0, -1);
+  const slopeUpS = hasRailAbove(getBlockAt, x, y, z, 0, 1);
+  const slopeUpE = hasRailAbove(getBlockAt, x, y, z, 1, 0);
+  const slopeUpW = hasRailAbove(getBlockAt, x, y, z, -1, 0);
+
+  // Also check for rails one level down (connecting from top of a slope)
+  const slopeDownN = !hasNorth && hasRailBelow(getBlockAt, x, y, z, 0, -1);
+  const slopeDownS = !hasSouth && hasRailBelow(getBlockAt, x, y, z, 0, 1);
+  const slopeDownE = !hasEast && hasRailBelow(getBlockAt, x, y, z, 1, 0);
+  const slopeDownW = !hasWest && hasRailBelow(getBlockAt, x, y, z, -1, 0);
+
+  // If there's a rail above in one direction and a flat/below rail in the opposite, make a slope
+  if (slopeUpN && (hasSouth || slopeDownS)) return BlockType.RAIL_SLOPE_N;
+  if (slopeUpS && (hasNorth || slopeDownN)) return BlockType.RAIL_SLOPE_S;
+  if (slopeUpE && (hasWest || slopeDownW)) return BlockType.RAIL_SLOPE_E;
+  if (slopeUpW && (hasEast || slopeDownE)) return BlockType.RAIL_SLOPE_W;
+
+  // Single-direction slope (no opposite rail, but rail above exists)
+  if (slopeUpN) return BlockType.RAIL_SLOPE_N;
+  if (slopeUpS) return BlockType.RAIL_SLOPE_S;
+  if (slopeUpE) return BlockType.RAIL_SLOPE_E;
+  if (slopeUpW) return BlockType.RAIL_SLOPE_W;
+
   const count = (hasNorth ? 1 : 0) + (hasSouth ? 1 : 0) + (hasEast ? 1 : 0) + (hasWest ? 1 : 0);
 
   // 3 or 4 neighbors (T-junction or 4-way): Minecraft south-east rule
-  // Try curves in priority order: SE > SW > NE > NW
-  // Pick the first curve where both directions have rail neighbors
   if (count >= 3) {
     if (hasSouth && hasEast) return BlockType.RAIL_CURVE_SE;
     if (hasSouth && hasWest) return BlockType.RAIL_CURVE_SW;
@@ -446,6 +505,105 @@ export function buildChunkMesh(
             return BlockType.AIR;
           };
           const shape = computeRailShape(getBlockForRail, x, y, z) ?? 'ns';
+
+          // Slope rail rendering - tilted track ascending in one direction
+          if (shape.startsWith('slope_')) {
+            const slopeDir = shape.slice(6) as 'n' | 's' | 'e' | 'w';
+            // Rail goes from low end (y=tieHeight) to high end (y=1+tieHeight)
+            // "slope_n" means ascending toward north (-Z), so z=0 is high, z=1 is low
+            // "slope_s" means ascending toward south (+Z), so z=1 is high, z=0 is low
+            // "slope_e" means ascending toward east (+X), so x=1 is high, x=0 is low
+            // "slope_w" means ascending toward west (-X), so x=0 is high, x=1 is low
+
+            const isNS = slopeDir === 'n' || slopeDir === 's';
+
+            // Height function: returns the Y offset at a position along the slope
+            const getH = (t: number): number => {
+              // t goes 0..1 along the track axis
+              // For 'n' or 'w': t=0 is far end (high), t=1 is near end (low) → ascending = high at 0
+              // For 's' or 'e': t=0 is far end (low), t=1 is near end (high) → ascending = high at 1
+              if (slopeDir === 'n' || slopeDir === 'w') return (1 - t);
+              return t;
+            };
+
+            // Cross ties
+            const tiePositions = [0.1, 0.3, 0.5, 0.7, 0.9];
+            for (const t of tiePositions) {
+              const h = getH(t) + tieHeight;
+              if (isNS) {
+                // Ties run along X, rail goes along Z
+                addQuad(
+                  [[0.05, h - 0.03, t - 0.06], [0.95, h - 0.03, t - 0.06],
+                   [0.95, h + 0.03, t + 0.06], [0.05, h + 0.03, t + 0.06]],
+                  [0, 1, 0], tieColor
+                );
+              } else {
+                // Ties run along Z, rail goes along X
+                addQuad(
+                  [[t - 0.06, h - 0.03, 0.05], [t + 0.06, h + 0.03, 0.05],
+                   [t + 0.06, h + 0.03, 0.95], [t - 0.06, h - 0.03, 0.95]],
+                  [0, 1, 0], tieColor
+                );
+              }
+            }
+
+            // Two raised metal rails along the slope
+            if (isNS) {
+              // Rails along Z axis, ascending
+              const railXRanges = [
+                { x1: 0.18, x2: 0.30 },
+                { x1: 0.70, x2: 0.82 },
+              ];
+              for (const rp of railXRanges) {
+                const h0 = getH(0.02) + railHeight;
+                const h1 = getH(0.98) + railHeight;
+                // Top face of sloped rail
+                addQuad(
+                  [[rp.x1, h0, 0.02], [rp.x2, h0, 0.02],
+                   [rp.x2, h1, 0.98], [rp.x1, h1, 0.98]],
+                  [0, 1, 0], metalColor
+                );
+                // Inner side face
+                const innerX = rp.x1 < 0.5 ? rp.x2 : rp.x1;
+                const sideNx = rp.x1 < 0.5 ? 1 : -1;
+                const th0 = getH(0.02) + tieHeight;
+                const th1 = getH(0.98) + tieHeight;
+                addQuad(
+                  [[innerX, th0, 0.02], [innerX, h0, 0.02],
+                   [innerX, h1, 0.98], [innerX, th1, 0.98]],
+                  [sideNx, 0, 0],
+                  new THREE.Color(metalColor.r * 0.8, metalColor.g * 0.8, metalColor.b * 0.8)
+                );
+              }
+            } else {
+              // Rails along X axis, ascending
+              const railZRanges = [
+                { z1: 0.18, z2: 0.30 },
+                { z1: 0.70, z2: 0.82 },
+              ];
+              for (const rp of railZRanges) {
+                const h0 = getH(0.02) + railHeight;
+                const h1 = getH(0.98) + railHeight;
+                addQuad(
+                  [[0.02, h0, rp.z1], [0.02, h0, rp.z2],
+                   [0.98, h1, rp.z2], [0.98, h1, rp.z1]],
+                  [0, 1, 0], metalColor
+                );
+                const innerZ = rp.z1 < 0.5 ? rp.z2 : rp.z1;
+                const sideNz = rp.z1 < 0.5 ? 1 : -1;
+                const th0 = getH(0.02) + tieHeight;
+                const th1 = getH(0.98) + tieHeight;
+                addQuad(
+                  [[0.02, th0, innerZ], [0.02, h0, innerZ],
+                   [0.98, h1, innerZ], [0.98, th1, innerZ]],
+                  [0, 0, sideNz],
+                  new THREE.Color(metalColor.r * 0.8, metalColor.g * 0.8, metalColor.b * 0.8)
+                );
+              }
+            }
+
+            continue;
+          }
 
           if (shape === 'ns' || shape === 'ew') {
             // Straight rail - either NS (along Z) or EW (along X)
