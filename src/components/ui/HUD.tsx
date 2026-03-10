@@ -4,11 +4,9 @@ import { useInventoryStore } from '../../stores/inventoryStore';
 import { useCraftingStore } from '../../stores/craftingStore';
 import { DevTools, DevToolsToggle } from './DevTools';
 import { ambientMusic } from '../../systems/AmbientMusic';
-import { IconPickaxe, IconHammer, IconSpeakerOn, IconSpeakerOff, IconWrench, IconBackpack, IconClose, IconSun, IconMoon, IconSunrise, IconSunset } from './Icons';
+import { IconSpeakerOn, IconSpeakerOff, IconWrench, IconBackpack, IconClose, IconSun, IconMoon, IconSunrise, IconSunset } from './Icons';
 
 interface HUDProps {
-  mode?: 'mine' | 'build' | 'adventure' | 'explore';
-  onModeToggle?: () => void;
   timeIndicator?: string;
   onPlateToggle?: () => void;
   placementMode?: boolean;
@@ -25,7 +23,7 @@ function TimeIcon({ indicator }: { indicator: string }) {
   }
 }
 
-export function HUD({ mode, onModeToggle, timeIndicator, onPlateToggle, placementMode, showSaveIndicator }: HUDProps) {
+export function HUD({ timeIndicator, onPlateToggle, placementMode, showSaveIndicator }: HUDProps) {
   const scene = useGameStore((s) => s.scene);
   const returnToMenu = useGameStore((s) => s.returnToMenu);
   const enterAR = useGameStore((s) => s.enterAR);
@@ -92,11 +90,6 @@ export function HUD({ mode, onModeToggle, timeIndicator, onPlateToggle, placemen
           {timeIndicator && <TimeIcon indicator={timeIndicator} />}
         </div>
         <div style={{ display: 'flex', gap: 6, pointerEvents: 'auto' }}>
-          {scene === 'hideout' && onModeToggle && (
-            <button onClick={onModeToggle} style={btnStyle} title={`Tryb: ${mode === 'mine' ? 'Kopanie' : mode === 'build' ? 'Budowanie' : 'Przygoda'}`}>
-              {mode === 'mine' ? <IconPickaxe size={18} color="#fff" /> : mode === 'build' ? <IconHammer size={18} color="#fff" /> : <span style={{ fontSize: 16 }}>👁</span>}
-            </button>
-          )}
           <button onClick={() => setMusicOn(ambientMusic.toggle())} style={btnStyle} title={musicOn ? 'Wycisz muzyke' : 'Wlacz muzyke'}>
             {musicOn ? <IconSpeakerOn size={18} color="#fff" /> : <IconSpeakerOff size={18} color="#fff" />}
           </button>

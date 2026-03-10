@@ -1,21 +1,26 @@
-import { IconPickaxe } from './Icons';
+import { IconPickaxe, IconHammer, IconHand } from './Icons';
+
+export type GameMode = 'build' | 'mine' | 'adventure';
 
 interface ModeToggleProps {
-  mode: 'mine' | 'explore';
+  mode: GameMode;
   onToggle: () => void;
 }
 
-// Eye icon for explore mode
-function IconEye({ size = 16, color = 'currentColor' }: { size?: number | string; color?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M1 8C1 8 4 3 8 3C12 3 15 8 15 8C15 8 12 13 8 13C4 13 1 8 1 8Z" stroke={color} strokeWidth="1.5" />
-      <circle cx="8" cy="8" r="2.5" fill={color} />
-    </svg>
-  );
+const MODE_CONFIG: Record<GameMode, { border: string; bg: string; label: string; Icon: typeof IconPickaxe }> = {
+  build: { border: '#44cc66', bg: 'rgba(40,140,60,0.7)', label: 'Budowanie', Icon: IconHammer },
+  mine: { border: '#ff6644', bg: 'rgba(180,60,30,0.7)', label: 'Niszczenie', Icon: IconPickaxe },
+  adventure: { border: '#44aaff', bg: 'rgba(40,120,200,0.7)', label: 'Klikanie', Icon: IconHand },
+};
+
+export function cycleMode(current: GameMode): GameMode {
+  if (current === 'build') return 'mine';
+  if (current === 'mine') return 'adventure';
+  return 'build';
 }
 
 export function ModeToggle({ mode, onToggle }: ModeToggleProps) {
+  const config = MODE_CONFIG[mode];
   return (
     <button
       onClick={onToggle}
@@ -27,8 +32,8 @@ export function ModeToggle({ mode, onToggle }: ModeToggleProps) {
         width: 44,
         height: 44,
         borderRadius: 22,
-        border: `2px solid ${mode === 'mine' ? '#ff6644' : '#44aaff'}`,
-        background: mode === 'mine' ? 'rgba(180,60,30,0.7)' : 'rgba(40,120,200,0.7)',
+        border: `2px solid ${config.border}`,
+        background: config.bg,
         color: '#fff',
         cursor: 'pointer',
         display: 'flex',
@@ -37,13 +42,9 @@ export function ModeToggle({ mode, onToggle }: ModeToggleProps) {
         touchAction: 'manipulation',
         boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
       }}
-      title={`Mode: ${mode} (Tab to switch)`}
+      title={`Tryb: ${config.label} (Tab)`}
     >
-      {mode === 'mine' ? (
-        <IconPickaxe size={20} color="#fff" />
-      ) : (
-        <IconEye size={20} color="#fff" />
-      )}
+      <config.Icon size={20} color="#fff" />
     </button>
   );
 }

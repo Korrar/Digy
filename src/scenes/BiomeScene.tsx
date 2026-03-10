@@ -33,7 +33,8 @@ import { ambientMusic } from '../systems/AmbientMusic';
 import { MinecartRenderer } from '../components/3d/Minecarts';
 import { BlockLights } from '../components/3d/BlockLights';
 import { StarrySky } from '../components/3d/StarrySky';
-import { ModeToggle } from '../components/ui/ModeToggle';
+import { ModeToggle, cycleMode } from '../components/ui/ModeToggle';
+import type { GameMode } from '../components/ui/ModeToggle';
 import { AmbientParticles } from '../components/3d/AmbientParticles';
 import { WaterPlane } from '../components/3d/WaterPlane';
 import { Minimap } from '../components/ui/Minimap';
@@ -90,7 +91,7 @@ export function BiomeScene() {
 
   const biome = useMemo(() => createBiome(biomeType, biomeSeed), [biomeType, biomeSeed]);
   const [timeIndicator, setTimeIndicator] = useState('day');
-  const [gameMode, setGameMode] = useState<'mine' | 'explore'>('mine');
+  const [gameMode, setGameMode] = useState<GameMode>('mine');
   const [skyColor, setSkyColor] = useState(biome.config.skyColor);
   const [sunIntensity, setSunIntensity] = useState(1.0);
 
@@ -142,7 +143,7 @@ export function BiomeScene() {
       if (e.key === 'c' || e.key === 'C') toggleCrafting();
       if (e.key === 'Tab') {
         e.preventDefault();
-        setGameMode((m) => m === 'mine' ? 'explore' : 'mine');
+        setGameMode((m) => cycleMode(m));
       }
     };
     window.addEventListener('keydown', handler);
@@ -237,9 +238,9 @@ export function BiomeScene() {
         <fog attach="fog" args={[skyColor, 30, 80]} />
       </Canvas>
 
-      <HUD mode={gameMode} timeIndicator={biomeType !== 'cave' ? timeIndicator : undefined} />
+      <HUD timeIndicator={biomeType !== 'cave' ? timeIndicator : undefined} />
       <HealthBar />
-      <ModeToggle mode={gameMode} onToggle={() => setGameMode((m) => m === 'mine' ? 'explore' : 'mine')} />
+      <ModeToggle mode={gameMode} onToggle={() => setGameMode((m) => cycleMode(m))} />
       <Hotbar />
       <InventoryPanel />
       <ChestPanel />
@@ -252,7 +253,7 @@ export function BiomeScene() {
           onDigStart={handleDigStart}
           onDigEnd={handleDigEnd}
           onInventoryToggle={toggleInventory}
-          mode="mine"
+          mode={gameMode}
         />
       )}
 

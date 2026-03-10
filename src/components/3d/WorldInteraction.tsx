@@ -21,7 +21,7 @@ import { isOnDecorativePlate } from '../../stores/hideoutPlateStore';
 const hiddenCables = new Set<string>();
 
 interface WorldInteractionProps {
-  mode: 'mine' | 'build' | 'adventure' | 'explore';
+  mode: 'mine' | 'build' | 'adventure';
 }
 
 export function WorldInteraction({ mode }: WorldInteractionProps) {
@@ -84,14 +84,11 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
 
     if (highlightRef.current) {
       if (result) {
-        highlightRef.current.visible = true;
         if (mode === 'build') {
-          highlightRef.current.position.set(
-            result.blockPos[0] + result.normal[0] + 0.5,
-            result.blockPos[1] + result.normal[1] + 0.5,
-            result.blockPos[2] + result.normal[2] + 0.5
-          );
+          // No ghost block in build mode
+          highlightRef.current.visible = false;
         } else {
+          highlightRef.current.visible = true;
           highlightRef.current.position.set(
             result.blockPos[0] + 0.5,
             result.blockPos[1] + 0.5,

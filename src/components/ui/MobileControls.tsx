@@ -7,7 +7,7 @@ interface MobileControlsProps {
   onDigEnd: () => void;
   onInventoryToggle: () => void;
   onModeToggle?: () => void;
-  mode?: 'mine' | 'build' | 'adventure';
+  mode?: 'build' | 'mine' | 'adventure';
 }
 
 export function useTouchDetect(): boolean {
@@ -55,8 +55,8 @@ export function MobileControls({ onDigStart, onDigEnd, onInventoryToggle, onMode
           width: 72,
           height: 72,
           borderRadius: '50%',
-          border: `3px solid ${mode === 'build' ? 'rgba(100,255,150,0.6)' : 'rgba(255,100,100,0.6)'}`,
-          background: mode === 'build' ? 'rgba(40,100,60,0.6)' : 'rgba(100,30,30,0.6)',
+          border: `3px solid ${mode === 'build' ? 'rgba(100,255,150,0.6)' : mode === 'adventure' ? 'rgba(100,150,255,0.6)' : 'rgba(255,100,100,0.6)'}`,
+          background: mode === 'build' ? 'rgba(40,100,60,0.6)' : mode === 'adventure' ? 'rgba(30,60,100,0.6)' : 'rgba(100,30,30,0.6)',
           color: '#fff',
           fontSize: 28,
           display: 'flex',
@@ -69,7 +69,7 @@ export function MobileControls({ onDigStart, onDigEnd, onInventoryToggle, onMode
           backdropFilter: 'blur(4px)',
         }}
       >
-        {mode === 'build' ? '🔨' : '⛏'}
+        {mode === 'build' ? '🔨' : mode === 'adventure' ? '👆' : '⛏'}
       </button>
 
       {/* Inventory button - bottom left */}
@@ -124,7 +124,7 @@ export function MobileControls({ onDigStart, onDigEnd, onInventoryToggle, onMode
             backdropFilter: 'blur(4px)',
           }}
         >
-          {mode === 'mine' ? '🔨' : '⛏'}
+          {mode === 'build' ? '🔨' : mode === 'adventure' ? '👆' : '⛏'}
         </button>
       )}
 

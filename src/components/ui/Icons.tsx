@@ -289,6 +289,13 @@ export const IconCable = ({ size = 16, color = '#4488ff', style }: IconProps) =>
   </svg>
 );
 
+// Hand/cursor icon for click mode
+export const IconHand = ({ size = 16, color = 'currentColor', style }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" style={style} xmlns="http://www.w3.org/2000/svg">
+    <path d="M8 2V9M8 2C8 1 9.5 1 9.5 2V7M8 2C8 1 6.5 1 6.5 2V7M9.5 6C9.5 5 11 5 11 6V8M6.5 6C6.5 5 5 5 5 6V8M5 8C4 10 4 11 5 13H11C12 11 12 10 11 8" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 // Map of icon IDs to components for BlockRegistry
 const ICON_MAP: Record<string, React.FC<IconProps>> = {
   pickaxe: IconPickaxe,

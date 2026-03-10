@@ -27,6 +27,8 @@ import { applyPlateTemplate } from '../core/hideout/HideoutPlates';
 import { HIDEOUT_SIZE, CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE, CAMERA_MIN_POLAR, CAMERA_MAX_POLAR } from '../utils/constants';
 import { saveHideout, loadHideout } from '../utils/storage';
 import { updateVoxelShaderUniforms } from '../core/voxel/VoxelShader';
+import { ModeToggle, cycleMode } from '../components/ui/ModeToggle';
+import type { GameMode } from '../components/ui/ModeToggle';
 import type { PlateTemplate, PlatePosition } from '../stores/hideoutPlateStore';
 
 function getTimeEmoji(timeOfDay: number): string {
@@ -37,7 +39,7 @@ function getTimeEmoji(timeOfDay: number): string {
 }
 
 export function HideoutScene() {
-  const [mode, setMode] = useState<'mine' | 'build' | 'adventure'>('build');
+  const [mode, setMode] = useState<GameMode>('build');
   const chunks = useWorldStore((s) => s.chunks);
   const clearWorld = useWorldStore((s) => s.clearWorld);
   const toggleInventory = useInventoryStore((s) => s.toggleInventory);
@@ -59,7 +61,7 @@ export function HideoutScene() {
   }, []);
 
   const toggleMode = useCallback(() => {
-    setMode((m) => m === 'mine' ? 'build' : m === 'build' ? 'adventure' : 'mine');
+    setMode((m) => cycleMode(m));
   }, []);
 
   useEffect(() => {
@@ -209,7 +211,8 @@ export function HideoutScene() {
         <fog attach="fog" args={[skyColor, 60, 140]} />
       </Canvas>
 
-      <HUD mode={mode} onModeToggle={toggleMode} timeIndicator={timeIndicator} onPlateToggle={togglePlacementMode} placementMode={placementMode} showSaveIndicator={showSaved} />
+      <HUD timeIndicator={timeIndicator} onPlateToggle={togglePlacementMode} placementMode={placementMode} showSaveIndicator={showSaved} />
+      <ModeToggle mode={mode} onToggle={toggleMode} />
       <Hotbar />
       <InventoryPanel />
       <ChestPanel />
