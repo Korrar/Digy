@@ -94,17 +94,38 @@ export function Hotbar() {
                 }}>
                   <ItemIcon iconId={getBlock(slot.blockType).icon} size="60%" color="#fff" />
                 </div>
-                <span style={{
-                  position: 'absolute',
-                  bottom: 1,
-                  right: 2,
-                  fontSize: 'clamp(8px, 2.2vw, 11px)',
-                  color: '#fff',
-                  fontWeight: 'bold',
-                  textShadow: '1px 1px 2px black',
-                }}>
-                  {slot.count}
-                </span>
+                {slot.durability !== undefined && slot.maxDurability !== undefined && (
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 2,
+                    left: 3,
+                    right: 3,
+                    height: 3,
+                    background: 'rgba(0,0,0,0.5)',
+                    borderRadius: 1,
+                  }}>
+                    <div style={{
+                      width: `${(slot.durability / slot.maxDurability) * 100}%`,
+                      height: '100%',
+                      borderRadius: 1,
+                      background: slot.durability / slot.maxDurability > 0.5 ? '#44cc44'
+                        : slot.durability / slot.maxDurability > 0.25 ? '#cccc44' : '#cc4444',
+                    }} />
+                  </div>
+                )}
+                {!slot.durability && (
+                  <span style={{
+                    position: 'absolute',
+                    bottom: 1,
+                    right: 2,
+                    fontSize: 'clamp(8px, 2.2vw, 11px)',
+                    color: '#fff',
+                    fontWeight: 'bold',
+                    textShadow: '1px 1px 2px black',
+                  }}>
+                    {slot.count}
+                  </span>
+                )}
               </>
             )}
             <span style={{

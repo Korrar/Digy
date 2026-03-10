@@ -20,6 +20,8 @@ import { ChestPanel } from '../components/ui/ChestPanel';
 import { CraftingPanel } from '../components/ui/CraftingPanel';
 import { PlateSelector } from '../components/ui/PlateSelector';
 import { MobileControls, useTouchDetect } from '../components/ui/MobileControls';
+import { FurnacePanel } from '../components/ui/FurnacePanel';
+import { EnchantmentPanel } from '../components/ui/EnchantmentPanel';
 import { ChunkData, chunkKey } from '../core/voxel/ChunkData';
 import { buildChunkMesh } from '../core/voxel/ChunkMesher';
 import { BlockType } from '../core/voxel/BlockRegistry';
@@ -214,6 +216,8 @@ export function HideoutScene() {
       <InventoryPanel />
       <ChestPanel />
       <CraftingPanel />
+      <FurnacePanel />
+      <EnchantmentPanel />
       <PlateSelector onPlacePlate={handlePlacePlate} onRemovePlate={handleRemovePlate} />
       {isTouch && (
         <MobileControls

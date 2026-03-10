@@ -38,6 +38,10 @@ import { AmbientParticles } from '../components/3d/AmbientParticles';
 import { WaterPlane } from '../components/3d/WaterPlane';
 import { Minimap } from '../components/ui/Minimap';
 import { FloatingText } from '../components/ui/FloatingText';
+import { FurnacePanel } from '../components/ui/FurnacePanel';
+import { AchievementsPanel } from '../components/ui/AchievementsPanel';
+import { EnchantmentPanel } from '../components/ui/EnchantmentPanel';
+import { useAchievementStore } from '../stores/achievementStore';
 
 /** Water color per biome */
 const BIOME_WATER_COLOR: Record<string, string> = {
@@ -135,11 +139,19 @@ export function BiomeScene() {
   }, [biomeType, biomeSeed, generateWorld, clearWorld, biome, clearTappables, resetCombat]);
 
   const toggleCrafting = useCraftingStore((s) => s.toggleCrafting);
+  const toggleAchievements = useAchievementStore((s) => s.togglePanel);
+  const visitBiome = useAchievementStore((s) => s.visitBiome);
+
+  // Track biome visit for achievements
+  useEffect(() => {
+    visitBiome(biomeType);
+  }, [biomeType, visitBiome]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'e' || e.key === 'E') toggleInventory();
       if (e.key === 'c' || e.key === 'C') toggleCrafting();
+      if (e.key === 'j' || e.key === 'J') toggleAchievements();
       if (e.key === 'Tab') {
         e.preventDefault();
         setGameMode((m) => m === 'mine' ? 'explore' : 'mine');
@@ -147,7 +159,7 @@ export function BiomeScene() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [toggleInventory, toggleCrafting]);
+  }, [toggleInventory, toggleCrafting, toggleAchievements]);
 
   const chunkEntries = useMemo(() => {
     const result: { key: string; cx: number; cz: number; geometry: THREE.BufferGeometry }[] = [];
@@ -245,6 +257,9 @@ export function BiomeScene() {
       <ChestPanel />
       <CraftingPanel />
       <LootPopup />
+      <FurnacePanel />
+      <AchievementsPanel />
+      <EnchantmentPanel />
       <Minimap center={[8, 8]} />
       <FloatingText />
       {isTouch && (

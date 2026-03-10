@@ -438,6 +438,43 @@ export class SoundManager {
     rumble.stop(now + 0.8);
   }
 
+  playEatSound(): void {
+    this.init();
+    const pitchVar = 0.9 + Math.random() * 0.2;
+    this.noise(0.08, 0.12, 800 * pitchVar, 1.5);
+    this.tone(200 * pitchVar, 0.06, 0.06, 'sine');
+    this.noise(0.06, 0.08, 1200 * pitchVar, 2);
+  }
+
+  playToolBreakSound(): void {
+    this.init();
+    this.tone(400, 0.08, 0.15, 'square');
+    this.noise(0.12, 0.2, 2000, 1.5);
+    this.tone(150, 0.1, 0.08, 'sine');
+  }
+
+  playAchievementSound(): void {
+    this.init();
+    this.tone(800, 0.15, 0.12, 'sine');
+    this.tone(1200, 0.2, 0.1, 'sine');
+    this.tone(1600, 0.25, 0.08, 'sine');
+  }
+
+  playEnchantSound(): void {
+    this.init();
+    this.tone(600, 0.2, 0.08, 'sine');
+    this.tone(900, 0.3, 0.06, 'sine');
+    this.tone(1200, 0.4, 0.05, 'sine');
+    this.noise(0.3, 0.04, 4000, 0.5);
+  }
+
+  playBossRoarSound(): void {
+    this.init();
+    this.tone(60, 0.4, 0.25, 'sawtooth');
+    this.tone(40, 0.5, 0.2, 'square');
+    this.noise(0.3, 0.15, 300, 1);
+  }
+
   playPistonExtend(): void {
     this.init();
     this.tone(150, 0.1, 0.12, 'square');

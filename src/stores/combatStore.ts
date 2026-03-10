@@ -3,7 +3,7 @@ import { showFloatingText } from '../components/ui/FloatingText';
 
 export interface Enemy {
   id: string;
-  type: 'zombie' | 'skeleton' | 'spider' | 'creeper';
+  type: 'zombie' | 'skeleton' | 'spider' | 'creeper' | 'cave_guardian';
   position: [number, number, number];
   hp: number;
   maxHp: number;
@@ -47,6 +47,7 @@ const ENEMY_STATS: Record<Enemy['type'], { hp: number; damage: number; speed: nu
   skeleton: { hp: 8, damage: 2, speed: 0.25 },
   spider: { hp: 8, damage: 1, speed: 0.5 },
   creeper: { hp: 10, damage: 4, speed: 0.35 },
+  cave_guardian: { hp: 80, damage: 6, speed: 0.2 },
 };
 
 /** Difficulty multipliers per biome */

@@ -5,16 +5,79 @@ import { useCombatStore, type Enemy } from '../../stores/combatStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { BlockType, getBlock, isSword } from '../../core/voxel/BlockRegistry';
 import { soundManager } from '../../systems/SoundManager';
+import { showFloatingText } from '../ui/FloatingText';
 
 const ENEMY_COLORS: Record<string, { body: number; head: number; limb: number }> = {
   zombie: { body: 0x4a7a3a, head: 0x5a8a4a, limb: 0x3a6a2a },
   skeleton: { body: 0xe8e0d0, head: 0xf0e8d8, limb: 0xd0c8b8 },
   spider: { body: 0x3a3a3a, head: 0x2a2a2a, limb: 0x1a1a1a },
   creeper: { body: 0x4aaa4a, head: 0x3a8a3a, limb: 0x2a7a2a },
+  cave_guardian: { body: 0x2a1a3a, head: 0x4a2a5a, limb: 0x1a0a2a },
 };
 
 function buildEnemyGeometry(type: Enemy['type']): THREE.BufferGeometry {
   const colors = ENEMY_COLORS[type];
+
+  // Cave Guardian boss - large golem-like creature
+  if (type === 'cave_guardian') {
+    const colors = ENEMY_COLORS[type];
+    const merged = new THREE.BufferGeometry();
+    const allPos: number[] = [];
+    const allNorm: number[] = [];
+    const allCol: number[] = [];
+    const allIdx: number[] = [];
+    let vOff = 0;
+
+    // Large body
+    const body = new THREE.BoxGeometry(1.2, 1.6, 0.8);
+    body.translate(0, 1.4, 0);
+    // Big head
+    const head = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+    head.translate(0, 2.6, 0);
+    // Arms (thick)
+    const armL = new THREE.BoxGeometry(0.35, 1.2, 0.35);
+    armL.translate(-0.9, 1.2, 0);
+    const armR = new THREE.BoxGeometry(0.35, 1.2, 0.35);
+    armR.translate(0.9, 1.2, 0);
+    // Legs (thick)
+    const legL = new THREE.BoxGeometry(0.4, 0.6, 0.4);
+    legL.translate(-0.3, 0.3, 0);
+    const legR = new THREE.BoxGeometry(0.4, 0.6, 0.4);
+    legR.translate(0.3, 0.3, 0);
+
+    const parts: [THREE.BufferGeometry, number][] = [
+      [body, colors.body], [head, colors.head],
+      [armL, colors.limb], [armR, colors.limb],
+      [legL, colors.limb], [legR, colors.limb],
+    ];
+
+    for (const [geo, col] of parts) {
+      const pos = geo.attributes.position;
+      const norm = geo.attributes.normal;
+      const idx = geo.index!;
+      const c = new THREE.Color(col);
+      for (let i = 0; i < pos.count; i++) {
+        allPos.push(pos.getX(i), pos.getY(i), pos.getZ(i));
+        allNorm.push(norm.getX(i), norm.getY(i), norm.getZ(i));
+        const v = (Math.random() - 0.5) * 0.08;
+        allCol.push(
+          Math.max(0, Math.min(1, c.r + v)),
+          Math.max(0, Math.min(1, c.g + v)),
+          Math.max(0, Math.min(1, c.b + v))
+        );
+      }
+      for (let i = 0; i < idx.count; i++) allIdx.push(idx.getX(i) + vOff);
+      vOff += pos.count;
+      geo.dispose();
+    }
+
+    merged.setAttribute('position', new THREE.Float32BufferAttribute(allPos, 3));
+    merged.setAttribute('normal', new THREE.Float32BufferAttribute(allNorm, 3));
+    merged.setAttribute('color', new THREE.Float32BufferAttribute(allCol, 3));
+    merged.setIndex(allIdx);
+    merged.computeBoundingSphere();
+    return merged;
+  }
 
   if (type === 'spider') {
     // Flat body + small head + 8 legs
@@ -169,6 +232,16 @@ function EnemyMesh({ enemy }: { enemy: Enemy }) {
     damageEnemy(enemy.id, dmg);
     soundManager.playDigSound(BlockType.STONE);
 
+    // Consume sword durability
+    if (selected && isSword(selected)) {
+      const idx = useInventoryStore.getState().selectedHotbarIndex;
+      const broke = useInventoryStore.getState().consumeDurability(idx);
+      if (broke) {
+        soundManager.playToolBreakSound();
+        showFloatingText('Sword broke!', '#ff4444');
+      }
+    }
+
     // Knockback: push enemy away from click point
     const point = e.point as THREE.Vector3 | undefined;
     if (point) {
@@ -186,13 +259,20 @@ function EnemyMesh({ enemy }: { enemy: Enemy }) {
 
     // Check if enemy died
     if (enemy.hp - dmg <= 0) {
-      addXp(enemy.type === 'creeper' ? 15 : 10);
+      const xpReward = enemy.type === 'cave_guardian' ? 100 : enemy.type === 'creeper' ? 15 : 10;
+      addXp(xpReward);
       // Drop loot
       if (enemy.type === 'zombie') addBlock(BlockType.RAW_MEAT, 1);
       if (enemy.type === 'skeleton') addBlock(BlockType.STICK, Math.ceil(Math.random() * 2));
       if (enemy.type === 'spider') addBlock(BlockType.COBBLESTONE, 1);
+      if (enemy.type === 'cave_guardian') {
+        addBlock(BlockType.DIAMOND, 3);
+        addBlock(BlockType.IRON_INGOT, 5);
+        addBlock(BlockType.GOLD_INGOT, 3);
+        soundManager.playExplosionSound();
+      }
       // Remove after death animation
-      setTimeout(() => removeEnemy(enemy.id), 800);
+      setTimeout(() => removeEnemy(enemy.id), enemy.type === 'cave_guardian' ? 2000 : 800);
     }
   }, [enemy, damageEnemy, addXp, removeEnemy, addBlock, getSelectedBlock]);
 
@@ -221,8 +301,8 @@ function EnemyMesh({ enemy }: { enemy: Enemy }) {
       meshRef.current.rotation.y = Math.atan2(dx, dz);
     }
 
-    // HP bar
-    meshRef.current.scale.setScalar(0.8);
+    // Scale: boss is bigger
+    meshRef.current.scale.setScalar(enemy.type === 'cave_guardian' ? 1.5 : 0.8);
   });
 
   return (
@@ -288,6 +368,11 @@ export function EnemiesRenderer({ biomeType, center }: { biomeType: string; cent
       mountains: 2,
       swamp: 3,
       tundra: 2,
+      jungle: 3,
+      volcanic: 3,
+      mushroom: 1,
+      savanna: 2,
+      cherry: 1,
     };
     const types: Record<string, Enemy['type'][]> = {
       forest: ['zombie', 'spider'],
@@ -296,6 +381,11 @@ export function EnemiesRenderer({ biomeType, center }: { biomeType: string; cent
       mountains: ['skeleton', 'zombie'],
       swamp: ['zombie', 'spider', 'creeper'],
       tundra: ['skeleton', 'zombie'],
+      jungle: ['spider', 'creeper', 'zombie'],
+      volcanic: ['zombie', 'skeleton', 'creeper'],
+      mushroom: ['spider'],
+      savanna: ['zombie', 'skeleton'],
+      cherry: ['zombie'],
     };
 
     const enemyCount = counts[biomeType] || 2;
@@ -309,6 +399,15 @@ export function EnemiesRenderer({ biomeType, center }: { biomeType: string; cent
         center[0] + Math.cos(angle) * radius,
         center[1] + 0.5,
         center[2] + Math.sin(angle) * radius,
+      ]);
+    }
+
+    // Spawn cave guardian boss in cave biome
+    if (biomeType === 'cave') {
+      spawnEnemy('cave_guardian', [
+        center[0] + 8,
+        center[1] + 0.5,
+        center[2] + 8,
       ]);
     }
   }, [biomeType, center, spawnEnemy]);

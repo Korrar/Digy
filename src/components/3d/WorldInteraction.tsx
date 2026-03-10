@@ -14,6 +14,8 @@ import { propagateCablePower, activatePressurePlate, cycleRepeaterDelay, toggleC
 import { useCombatStore } from '../../stores/combatStore';
 import { useChestStore } from '../../stores/chestStore';
 import { isOnDecorativePlate } from '../../stores/hideoutPlateStore';
+import { useFurnaceStore } from '../../stores/furnaceStore';
+import { showFloatingText } from '../ui/FloatingText';
 
 // Tracks cable positions hidden under solid blocks
 // Key format: "x,y,z" — when a block is placed on a cable, the cable is hidden;
@@ -30,6 +32,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
   const miningBlockRef = useRef<string | null>(null);
   const isPointerDownRef = useRef(false);
   const lastSoundTimeRef = useRef(0);
+  const lastEatTimeRef = useRef(0);
   const [miningProgress, setMiningProgress] = useState(0);
 
   const { raycaster, pointer, camera, scene } = useThree();
@@ -196,6 +199,15 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
             }
             // XP for mining
             useCombatStore.getState().addXp(1);
+            // Consume tool durability
+            const equippedTool = getSelectedBlock();
+            if (equippedTool && isToolPickaxe(equippedTool)) {
+              const broke = useInventoryStore.getState().consumeDurability(selectedIdx);
+              if (broke) {
+                soundManager.playToolBreakSound();
+                showFloatingText('Tool broke!', '#ff4444');
+              }
+            }
             // Play break sound and emit burst particles
             soundManager.playBreakSound(result.blockType);
             spawnParticles(result.blockPos, result.blockType, true);
@@ -344,13 +356,26 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
       const selectedBlock = getSelectedBlock();
       if (!selectedBlock) return;
 
-      // If it's food, eat it instead of placing
+      // If it's food, eat it instead of placing (with 1s cooldown)
       if (isFood(selectedBlock)) {
+        const now = Date.now();
+        if (now - lastEatTimeRef.current < 1000) return; // 1s cooldown
+        lastEatTimeRef.current = now;
         const foodDef = getBlock(selectedBlock);
         useCombatStore.getState().heal(foodDef.healAmount ?? 0);
         removeBlock(selectedIdx, 1);
-        soundManager.playPlaceSound();
+        soundManager.playEatSound();
         return;
+      }
+
+      // Furnace interaction - open furnace UI
+      if (selectedBlock === null || !isItemType(selectedBlock)) {
+        const furnaceCheck = raycast();
+        if (furnaceCheck && furnaceCheck.blockType === BlockType.FURNACE) {
+          const [fx, fy, fz] = furnaceCheck.blockPos;
+          useFurnaceStore.getState().openFurnace(fx, fy, fz);
+          return;
+        }
       }
 
       // Handle minecart placement - place on top of the targeted block
