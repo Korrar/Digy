@@ -3,7 +3,7 @@ import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
-import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, isLever, isButton, isCable, isPiston, isPistonHead, isPressurePlate, isRepeater, isRepeaterItem, isComparator, isComparatorItem, getOrientedRepeater, getOrientedComparator } from '../../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, isLever, isButton, isCable, isPiston, isPistonHead, isPressurePlate, isRepeater, isRepeaterItem, isComparator, isComparatorItem, getOrientedRepeater, getOrientedComparator, isEnchantingTable } from '../../core/voxel/BlockRegistry';
 import { computeRailBlockType, shouldRailUpdate } from '../../core/voxel/ChunkMesher';
 import { soundManager } from '../../systems/SoundManager';
 import { spawnParticles } from './DiggingParticles';
@@ -15,6 +15,7 @@ import { useCombatStore } from '../../stores/combatStore';
 import { useChestStore } from '../../stores/chestStore';
 import { isOnDecorativePlate } from '../../stores/hideoutPlateStore';
 import { useFurnaceStore } from '../../stores/furnaceStore';
+import { useEnchantmentStore } from '../../stores/enchantmentStore';
 import { showFloatingText } from '../ui/FloatingText';
 
 // Tracks cable positions hidden under solid blocks
@@ -374,6 +375,15 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
         if (furnaceCheck && furnaceCheck.blockType === BlockType.FURNACE) {
           const [fx, fy, fz] = furnaceCheck.blockPos;
           useFurnaceStore.getState().openFurnace(fx, fy, fz);
+          return;
+        }
+      }
+
+      // Enchanting table interaction - open enchanting UI
+      if (selectedBlock === null || !isItemType(selectedBlock)) {
+        const enchantCheck = raycast();
+        if (enchantCheck && isEnchantingTable(enchantCheck.blockType)) {
+          useEnchantmentStore.getState().openEnchanting();
           return;
         }
       }

@@ -179,6 +179,9 @@ export enum BlockType {
   RAIL_SLOPE_S = 139,
   RAIL_SLOPE_E = 140,
   RAIL_SLOPE_W = 141,
+
+  // Enchanting Table
+  ENCHANTING_TABLE = 142,
 }
 
 export interface BlockDefinition {
@@ -274,6 +277,8 @@ export interface BlockDefinition {
   comparatorOn?: boolean;
   /** Rail slope direction (ascending toward named direction) */
   railSlope?: 'n' | 's' | 'e' | 'w';
+  /** Enchanting table block */
+  isEnchantingTable?: boolean;
 }
 
 const BLOCKS: Map<BlockType, BlockDefinition> = new Map();
@@ -475,6 +480,9 @@ register({ id: BlockType.COMPARATOR_S_ON, name: 'Comparator', color: new THREE.C
 register({ id: BlockType.COMPARATOR_E_ON, name: 'Comparator', color: new THREE.Color(0x909090), hardness: 0.5, transparent: true, drops: BlockType.COMPARATOR, stackSize: 0, isComparator: true, comparatorDir: 'e', comparatorOn: true, emitsLight: true });
 register({ id: BlockType.COMPARATOR_W_ON, name: 'Comparator', color: new THREE.Color(0x909090), hardness: 0.5, transparent: true, drops: BlockType.COMPARATOR, stackSize: 0, isComparator: true, comparatorDir: 'w', comparatorOn: true, emitsLight: true });
 
+// Enchanting Table
+register({ id: BlockType.ENCHANTING_TABLE, name: 'Enchanting Table', color: new THREE.Color(0x2a1a3a), hardness: 3.0, transparent: true, drops: BlockType.ENCHANTING_TABLE, stackSize: 64, isEnchantingTable: true, icon: 'chest' });
+
 // Update ore drops to drop raw materials
 BLOCKS.get(BlockType.COAL_ORE)!.drops = BlockType.COAL;
 BLOCKS.get(BlockType.DIAMOND_ORE)!.drops = BlockType.DIAMOND;
@@ -626,6 +634,10 @@ export function isComparator(type: BlockType): boolean {
 
 export function isComparatorItem(type: BlockType): boolean {
   return type === BlockType.COMPARATOR;
+}
+
+export function isEnchantingTable(type: BlockType): boolean {
+  return getBlock(type).isEnchantingTable === true;
 }
 
 export function isRailSlope(type: BlockType): boolean {

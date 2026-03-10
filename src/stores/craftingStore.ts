@@ -91,6 +91,8 @@ const ALL_RECIPES: CraftingRecipe[] = [
   { id: 'repeater', name: 'Repeater', ingredients: [{ type: BlockType.STONE, count: 3 }, { type: BlockType.CABLE, count: 2 }, { type: BlockType.TORCH, count: 1 }], result: { type: BlockType.REPEATER, count: 1 }, craftTime: 5, category: 'blocks' },
   // Comparator
   { id: 'comparator', name: 'Comparator', ingredients: [{ type: BlockType.STONE, count: 3 }, { type: BlockType.CABLE, count: 2 }, { type: BlockType.TORCH, count: 2 }], result: { type: BlockType.COMPARATOR, count: 1 }, craftTime: 5, category: 'blocks' },
+  // Enchanting Table
+  { id: 'enchanting_table', name: 'Enchanting Table', ingredients: [{ type: BlockType.DIAMOND, count: 2 }, { type: BlockType.OBSIDIAN, count: 4 }, { type: BlockType.BOOKSHELF, count: 1 }], result: { type: BlockType.ENCHANTING_TABLE, count: 1 }, craftTime: 15, category: 'blocks' },
   // Detector Rail
   { id: 'detector_rail', name: 'Detector Rail', ingredients: [{ type: BlockType.IRON_INGOT, count: 3 }, { type: BlockType.COBBLESTONE, count: 1 }], result: { type: BlockType.DETECTOR_RAIL, count: 4 }, craftTime: 8, category: 'blocks' },
 ];

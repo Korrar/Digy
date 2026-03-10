@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BlockType, getBlock, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest, isTorch, isLever, isButton, isCable, isPiston, isPistonHead, isSign, isPressurePlate, isDetectorRail, isRepeater, isComparator } from './BlockRegistry';
+import { BlockType, getBlock, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest, isEnchantingTable, isTorch, isLever, isButton, isCable, isPiston, isPistonHead, isSign, isPressurePlate, isDetectorRail, isRepeater, isComparator } from './BlockRegistry';
 import { ChunkData } from './ChunkData';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
 import { getAtlasUV, getWhiteUV } from './TextureAtlas';
@@ -793,6 +793,55 @@ export function buildChunkMesh(
               const lu = ci % 2 === 0 ? 0 : 1;
               const lv = ci < 2 ? 0 : 1;
               uvs.push(chestAtlas.u0 + lu * (chestAtlas.u1 - chestAtlas.u0), chestAtlas.v0 + lv * (chestAtlas.v1 - chestAtlas.v0));
+              sparkles.push(0);
+              waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); glassFlags.push(0);
+              oreColors.push(0, 0, 0);
+            }
+            indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+            vertexCount += 4;
+          }
+          continue;
+        }
+
+        // Enchanting table rendering (3/4-height table with dark base and glowing top)
+        if (isEnchantingTable(block)) {
+          const obsidianColor = new THREE.Color(0x1a0a2a);
+          const topColor = new THREE.Color(0x6622aa);
+          const gemColor = new THREE.Color(0x44ddff);
+          const yTop = 0.75;
+          // Base (obsidian-dark sides + bottom)
+          const baseFaces: { corners: [number,number,number][]; normal: [number,number,number]; color: THREE.Color }[] = [
+            { corners: [[0,0,1],[1,0,1],[1,0,0],[0,0,0]], normal: [0,-1,0], color: obsidianColor },
+            { corners: [[1,0,0],[1,yTop,0],[1,yTop,1],[1,0,1]], normal: [1,0,0], color: obsidianColor },
+            { corners: [[0,0,1],[0,yTop,1],[0,yTop,0],[0,0,0]], normal: [-1,0,0], color: obsidianColor },
+            { corners: [[1,0,1],[1,yTop,1],[0,yTop,1],[0,0,1]], normal: [0,0,1], color: obsidianColor },
+            { corners: [[0,0,0],[0,yTop,0],[1,yTop,0],[1,0,0]], normal: [0,0,-1], color: obsidianColor },
+          ];
+          // Top surface (purple/magical)
+          const topFaces: { corners: [number,number,number][]; normal: [number,number,number]; color: THREE.Color }[] = [
+            { corners: [[0,yTop,1],[1,yTop,1],[1,yTop,0],[0,yTop,0]], normal: [0,1,0], color: topColor },
+          ];
+          // Diamond gem on top (small raised element)
+          const gx0 = 0.3, gx1 = 0.7, gz0 = 0.3, gz1 = 0.7, gy0 = yTop, gy1 = yTop + 0.05;
+          const gemFaces: { corners: [number,number,number][]; normal: [number,number,number]; color: THREE.Color }[] = [
+            { corners: [[gx0,gy1,gz1],[gx1,gy1,gz1],[gx1,gy1,gz0],[gx0,gy1,gz0]], normal: [0,1,0], color: gemColor },
+            { corners: [[gx1,gy0,gz0],[gx1,gy1,gz0],[gx1,gy1,gz1],[gx1,gy0,gz1]], normal: [1,0,0], color: gemColor },
+            { corners: [[gx0,gy0,gz1],[gx0,gy1,gz1],[gx0,gy1,gz0],[gx0,gy0,gz0]], normal: [-1,0,0], color: gemColor },
+            { corners: [[gx1,gy0,gz1],[gx1,gy1,gz1],[gx0,gy1,gz1],[gx0,gy0,gz1]], normal: [0,0,1], color: gemColor },
+            { corners: [[gx0,gy0,gz0],[gx0,gy1,gz0],[gx1,gy1,gz0],[gx1,gy0,gz0]], normal: [0,0,-1], color: gemColor },
+          ];
+          for (const face of [...baseFaces, ...topFaces, ...gemFaces]) {
+            const brightness = face.normal[1] > 0 ? 1.0 : face.normal[1] < 0 ? 0.7 : 0.85;
+            const etFaceName: 'top' | 'side' | 'bottom' = face.normal[1] > 0 ? 'top' : face.normal[1] < 0 ? 'bottom' : 'side';
+            const etAtlas = getAtlasUV(block, etFaceName);
+            for (let ci = 0; ci < 4; ci++) {
+              const [cx, cy, cz] = face.corners[ci];
+              positions.push(ox + x + cx, y + cy, oz + z + cz);
+              normals.push(...face.normal);
+              colors.push(brightness, brightness, brightness);
+              const lu = ci % 2 === 0 ? 0 : 1;
+              const lv = ci < 2 ? 0 : 1;
+              uvs.push(etAtlas.u0 + lu * (etAtlas.u1 - etAtlas.u0), etAtlas.v0 + lv * (etAtlas.v1 - etAtlas.v0));
               sparkles.push(0);
               waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); glassFlags.push(0);
               oreColors.push(0, 0, 0);

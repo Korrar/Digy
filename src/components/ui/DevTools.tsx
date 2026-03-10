@@ -91,6 +91,7 @@ function buildCategories(): ItemCategory[] {
   building.push(makeEntry(BlockType.FURNACE, 4));
   building.push(makeEntry(BlockType.CRAFTING_TABLE, 4));
   building.push(makeEntry(BlockType.CHEST, 4));
+  building.push(makeEntry(BlockType.ENCHANTING_TABLE, 4));
 
   // Slabs, fences, stairs
   slabsFencesStairs.push(makeEntry(BlockType.PLANKS_SLAB, 32));
