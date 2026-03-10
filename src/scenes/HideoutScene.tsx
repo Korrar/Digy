@@ -46,6 +46,7 @@ export function HideoutScene() {
   const isTouch = useTouchDetect();
   const [timeIndicator, setTimeIndicator] = useState('☀️');
   const [skyColor, setSkyColor] = useState('#2a3a4a');
+  const [showSaved, setShowSaved] = useState(false);
 
   const handleTimeChange = useCallback((timeOfDay: number, sunIntensity: number) => {
     setTimeIndicator(getTimeEmoji(timeOfDay));
@@ -100,6 +101,8 @@ export function HideoutScene() {
         });
       });
       saveHideout(chunkDataArray);
+      setShowSaved(true);
+      setTimeout(() => setShowSaved(false), 1500);
     }, 10000);
     return () => clearInterval(interval);
   }, []);
@@ -206,7 +209,7 @@ export function HideoutScene() {
         <fog attach="fog" args={[skyColor, 60, 140]} />
       </Canvas>
 
-      <HUD mode={mode} onModeToggle={toggleMode} timeIndicator={timeIndicator} onPlateToggle={togglePlacementMode} placementMode={placementMode} />
+      <HUD mode={mode} onModeToggle={toggleMode} timeIndicator={timeIndicator} onPlateToggle={togglePlacementMode} placementMode={placementMode} showSaveIndicator={showSaved} />
       <Hotbar />
       <InventoryPanel />
       <ChestPanel />

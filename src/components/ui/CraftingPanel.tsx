@@ -166,30 +166,49 @@ export function CraftingPanel() {
   const slots = useInventoryStore((s) => s.slots);
   const addBlock = useInventoryStore((s) => s.addBlock);
   const [category, setCategory] = useState<Category>('all');
+  const [search, setSearch] = useState('');
+  const [craftError, setCraftError] = useState<string | null>(null);
 
   if (!craftingOpen) return null;
 
-  const filtered = category === 'all' ? recipes : recipes.filter((r) => r.category === category);
+  const byCategory = category === 'all' ? recipes : recipes.filter((r) => r.category === category);
+  const filtered = search.trim()
+    ? byCategory.filter((r) => r.name.toLowerCase().includes(search.trim().toLowerCase()))
+    : byCategory;
 
-  const handleCraft = (recipe: CraftingRecipe) => {
-    if (!canCraft(recipe, slots)) return;
-    if (activeJobs.length >= maxSlots) return;
-
-    // Remove ingredients
-    for (const ing of recipe.ingredients) {
-      let remaining = ing.count;
-      for (let i = 0; i < slots.length && remaining > 0; i++) {
-        const slot = slots[i];
-        if (slot && slot.blockType === ing.type) {
-          const remove = Math.min(remaining, slot.count);
-          useInventoryStore.getState().removeBlock(i, remove);
-          remaining -= remove;
-        }
-      }
+  const handleCraft = (recipe: CraftingRecipe, times = 1) => {
+    if (activeJobs.length >= maxSlots) {
+      setCraftError('Brak wolnych slotow!');
+      setTimeout(() => setCraftError(null), 2000);
+      return;
+    }
+    if (!canCraft(recipe, slots)) {
+      setCraftError('Brak materialow!');
+      setTimeout(() => setCraftError(null), 2000);
+      return;
     }
 
-    startCraft(recipe.id);
-    soundManager.playPlaceSound();
+    const craftCount = Math.min(times, maxSlots - activeJobs.length);
+    let crafted = 0;
+    for (let c = 0; c < craftCount; c++) {
+      const currentSlots = useInventoryStore.getState().slots;
+      if (!canCraft(recipe, currentSlots)) break;
+      // Remove ingredients
+      for (const ing of recipe.ingredients) {
+        let remaining = ing.count;
+        for (let i = 0; i < currentSlots.length && remaining > 0; i++) {
+          const slot = currentSlots[i];
+          if (slot && slot.blockType === ing.type) {
+            const remove = Math.min(remaining, slot.count);
+            useInventoryStore.getState().removeBlock(i, remove);
+            remaining -= remove;
+          }
+        }
+      }
+      startCraft(recipe.id);
+      crafted++;
+    }
+    if (crafted > 0) soundManager.playPlaceSound();
   };
 
   const handleCollect = (index: number) => {
@@ -270,33 +289,45 @@ export function CraftingPanel() {
           </div>
         )}
 
-        {/* Category tabs */}
-        <div style={{
-          display: 'flex',
-          gap: 2,
-          padding: '6px 14px',
-          borderBottom: '1px solid rgba(255,255,255,0.1)',
-          overflowX: 'auto',
-        }}>
-          {categories.map((cat) => (
-            <button
-              key={cat.key}
-              onClick={() => setCategory(cat.key)}
-              style={{
-                padding: '3px 8px',
-                border: 'none',
-                borderRadius: 4,
-                background: category === cat.key ? 'rgba(68,136,204,0.5)' : 'rgba(255,255,255,0.08)',
-                color: '#fff',
-                fontSize: 11,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {cat.label}
-            </button>
-          ))}
+        {/* Search + Category tabs */}
+        <div style={{ padding: '6px 14px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <input
+            type="text"
+            placeholder="Szukaj receptury..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              width: '100%', padding: '4px 8px', border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: 4, background: 'rgba(0,0,0,0.3)', color: '#fff', fontSize: 12,
+              fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
+            }}
+          />
+          <div style={{ display: 'flex', gap: 2, overflowX: 'auto' }}>
+            {categories.map((cat) => (
+              <button
+                key={cat.key}
+                onClick={() => setCategory(cat.key)}
+                style={{
+                  padding: '3px 8px', border: 'none', borderRadius: 4,
+                  background: category === cat.key ? 'rgba(68,136,204,0.5)' : 'rgba(255,255,255,0.08)',
+                  color: '#fff', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap',
+                }}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {/* Error toast */}
+        {craftError && (
+          <div style={{
+            padding: '4px 14px', background: 'rgba(180,40,40,0.3)',
+            color: '#ffaaaa', fontSize: 11, textAlign: 'center',
+          }}>
+            {craftError}
+          </div>
+        )}
 
         {/* Recipe list */}
         <div style={{
@@ -307,14 +338,34 @@ export function CraftingPanel() {
           flexDirection: 'column',
           gap: 4,
         }}>
-          {filtered.map((recipe) => (
-            <RecipeRow
-              key={recipe.id}
-              recipe={recipe}
-              craftable={canCraft(recipe, slots) && activeJobs.length < maxSlots}
-              onCraft={() => handleCraft(recipe)}
-            />
-          ))}
+          {filtered.map((recipe) => {
+            const craftable = canCraft(recipe, slots) && activeJobs.length < maxSlots;
+            return (
+              <div key={recipe.id} style={{ display: 'flex', gap: 4, alignItems: 'stretch' }}>
+                <div style={{ flex: 1 }}>
+                  <RecipeRow
+                    recipe={recipe}
+                    craftable={craftable}
+                    onCraft={() => handleCraft(recipe)}
+                  />
+                </div>
+                {craftable && maxSlots - activeJobs.length > 1 && (
+                  <button
+                    onClick={() => handleCraft(recipe, maxSlots - activeJobs.length)}
+                    style={{
+                      padding: '4px 6px', border: 'none', borderRadius: 4,
+                      background: 'rgba(68,136,204,0.4)', color: '#aaccff',
+                      fontSize: 10, cursor: 'pointer', fontWeight: 'bold',
+                      display: 'flex', alignItems: 'center',
+                    }}
+                    title={`Craft x${maxSlots - activeJobs.length}`}
+                  >
+                    x{maxSlots - activeJobs.length}
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

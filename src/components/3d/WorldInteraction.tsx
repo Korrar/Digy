@@ -155,19 +155,17 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
               }
               addBlock(isSticky ? BlockType.STICKY_PISTON : BlockType.PISTON, 1);
             }
-            // Door break: remove both halves
+            // Door break: remove both halves, always drop door item
             else if (isDoor(result.blockType)) {
               const doorDef = getBlock(result.blockType);
               const isUpper = doorDef.doorUpper === true;
               setBlockW(bx, by, bz, BlockType.AIR);
               if (isUpper) {
-                setBlockW(bx, by - 1, bz, BlockType.AIR); // remove bottom too
+                setBlockW(bx, by - 1, bz, BlockType.AIR);
               } else {
-                setBlockW(bx, by + 1, bz, BlockType.AIR); // remove top too
+                setBlockW(bx, by + 1, bz, BlockType.AIR);
               }
-              if (def.drops !== BlockType.AIR) {
-                addBlock(def.drops, 1);
-              }
+              addBlock(BlockType.DOOR_OAK, 1); // Always drop the door item
             } else {
               // Restore hidden cable when block above it is broken
               const cableKey = `${bx},${by},${bz}`;
