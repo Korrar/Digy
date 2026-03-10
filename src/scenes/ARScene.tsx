@@ -166,13 +166,10 @@ function PreviewModel({ chunks }: { chunks: Map<string, { data: ChunkData; geome
       minZ = Math.min(minZ, cz * 16);
       maxZ = Math.max(maxZ, (cz + 1) * 16);
       // Estimate max height from geometry bounding box
-      if (entry.geometry.boundingBox) {
-        maxY = Math.max(maxY, entry.geometry.boundingBox.max.y);
-      } else {
-        entry.geometry.computeBoundingBox();
-        if (entry.geometry.boundingBox) {
-          maxY = Math.max(maxY, entry.geometry.boundingBox.max.y);
-        }
+      entry.geometry.computeBoundingBox();
+      const bb = entry.geometry.boundingBox;
+      if (bb) {
+        maxY = Math.max(maxY, bb.max.y);
       }
     });
     if (!isFinite(minX)) return [0, 0, 0] as [number, number, number];
@@ -476,7 +473,6 @@ export function ARScene() {
     returnToMenu();
   }, [returnToMenu]);
 
-  const selectedModel = placedModels.find(m => m.id === selectedModelId);
   const hasHideout = hideoutChunksRef.current.size > 0;
   const hasBiome = biomeChunksRef.current.size > 0;
 
