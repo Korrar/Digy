@@ -10,6 +10,8 @@ interface HUDProps {
   mode?: 'mine' | 'build' | 'adventure' | 'explore';
   onModeToggle?: () => void;
   timeIndicator?: string;
+  onPlateToggle?: () => void;
+  placementMode?: boolean;
 }
 
 function TimeIcon({ indicator }: { indicator: string }) {
@@ -22,7 +24,7 @@ function TimeIcon({ indicator }: { indicator: string }) {
   }
 }
 
-export function HUD({ mode, onModeToggle, timeIndicator }: HUDProps) {
+export function HUD({ mode, onModeToggle, timeIndicator, onPlateToggle, placementMode }: HUDProps) {
   const scene = useGameStore((s) => s.scene);
   const returnToMenu = useGameStore((s) => s.returnToMenu);
   const biome = useGameStore((s) => s.currentBiome);
@@ -77,6 +79,16 @@ export function HUD({ mode, onModeToggle, timeIndicator }: HUDProps) {
           <button onClick={() => setMusicOn(ambientMusic.toggle())} style={btnStyle}>
             {musicOn ? <IconSpeakerOn size={18} color="#fff" /> : <IconSpeakerOff size={18} color="#fff" />}
           </button>
+          {scene === 'hideout' && onPlateToggle && (
+            <button onClick={onPlateToggle} style={{ ...btnStyle, background: placementMode ? 'rgba(68,170,255,0.5)' : 'rgba(0,0,0,0.5)' }} title="Platformy dekoracyjne (P)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+                <rect x="3" y="3" width="7" height="7" />
+                <rect x="14" y="3" width="7" height="7" />
+                <rect x="3" y="14" width="7" height="7" />
+                <rect x="14" y="14" width="7" height="7" />
+              </svg>
+            </button>
+          )}
           <button onClick={toggleCrafting} style={btnStyle}>
             <IconWrench size={18} color="#fff" />
           </button>
