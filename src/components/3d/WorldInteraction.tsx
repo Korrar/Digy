@@ -3,7 +3,7 @@ import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
-import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, isLever, isButton, isCable, isPiston, isPistonHead, isPressurePlate, isRepeater, isRepeaterItem, isComparator, isComparatorItem, getOrientedRepeater, getOrientedComparator } from '../../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, isLever, isButton, isCable, isPiston, isPistonHead, isPressurePlate, isRepeater, isRepeaterItem, isComparator, isComparatorItem, getOrientedRepeater, getOrientedComparator, needsSupportFromBelow } from '../../core/voxel/BlockRegistry';
 import { computeRailBlockType, shouldRailUpdate } from '../../core/voxel/ChunkMesher';
 import { soundManager } from '../../systems/SoundManager';
 import { spawnParticles } from './DiggingParticles';
@@ -203,6 +203,27 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
             // Trigger sand/gravel physics and water flow
             processGravity(bx, by, bz);
             checkWaterDrain(bx, by, bz);
+
+            // Destroy blocks above that need support (rails, cables, torches, etc.)
+            {
+              let cy = by + 1;
+              while (true) {
+                const aboveBlock = getBlockW(bx, cy, bz);
+                if (!needsSupportFromBelow(aboveBlock)) break;
+                const aboveDef = getBlock(aboveBlock);
+                // Door: destroying lower half also removes upper half
+                if (aboveDef.isDoor && !aboveDef.doorUpper) {
+                  setBlockW(bx, cy, bz, BlockType.AIR);
+                  setBlockW(bx, cy + 1, bz, BlockType.AIR);
+                  if (aboveDef.drops !== BlockType.AIR) addBlock(aboveDef.drops, 1);
+                  cy += 2;
+                } else {
+                  setBlockW(bx, cy, bz, BlockType.AIR);
+                  if (aboveDef.drops !== BlockType.AIR) addBlock(aboveDef.drops, 1);
+                  cy++;
+                }
+              }
+            }
 
             // If a rail was broken, update neighboring rails (including vertical for slopes)
             if (isFlat(result.blockType)) {

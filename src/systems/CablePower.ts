@@ -1,4 +1,4 @@
-import { BlockType, getBlock, isSolid, isRepeater, getRepeaterOn, getRepeaterOff, getComparatorOn, getComparatorOff, getDirectionOffsets } from '../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid, isRepeater, getRepeaterOn, getRepeaterOff, getComparatorOn, getComparatorOff, getDirectionOffsets, needsSupportFromBelow } from '../core/voxel/BlockRegistry';
 import { useWorldStore } from '../stores/worldStore';
 import { soundManager } from './SoundManager';
 
@@ -246,6 +246,33 @@ export function detonateTNT(_store: ReturnType<typeof useWorldStore.getState>, t
             continue;
           }
           s.setBlock(bx, by, bz, BlockType.AIR);
+        }
+      }
+    }
+
+    // Destroy unsupported blocks above the explosion area
+    for (let dx = -TNT_RADIUS; dx <= TNT_RADIUS; dx++) {
+      for (let dz = -TNT_RADIUS; dz <= TNT_RADIUS; dz++) {
+        // Check column above each destroyed position
+        for (let dy = -TNT_RADIUS; dy <= TNT_RADIUS; dy++) {
+          const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+          if (dist > TNT_RADIUS) continue;
+          const checkX = tx + dx;
+          const checkZ = tz + dz;
+          let cy = ty + dy + 1;
+          while (true) {
+            const above = s.getBlock(checkX, cy, checkZ);
+            if (!needsSupportFromBelow(above)) break;
+            s.setBlock(checkX, cy, checkZ, BlockType.AIR);
+            // Door upper half cleanup
+            const aboveDef = getBlock(above);
+            if (aboveDef.isDoor && !aboveDef.doorUpper) {
+              s.setBlock(checkX, cy + 1, checkZ, BlockType.AIR);
+              cy += 2;
+            } else {
+              cy++;
+            }
+          }
         }
       }
     }
