@@ -33,11 +33,6 @@ function createRng(seed: number): () => number {
   };
 }
 
-const DUNGEON_WALL_BLOCKS = [
-  BlockType.STONE_BRICKS,
-  BlockType.MOSSY_STONE_BRICKS,
-  BlockType.CRACKED_STONE_BRICKS,
-];
 
 /**
  * Generate a dungeon layout inside a stone-filled chunk.
@@ -285,7 +280,6 @@ function placeCorridorTraps(chunk: ChunkData, corridor: DungeonCorridor, rng: ()
   const fromCx = Math.floor(from.x + from.width / 2);
   const fromCz = Math.floor(from.z + from.depth / 2);
   const toCx = Math.floor(to.x + to.width / 2);
-  const toCz = Math.floor(to.z + to.depth / 2);
 
   // Place arrow trap in wall along corridor (30% chance per corridor)
   if (rng() < 0.3) {

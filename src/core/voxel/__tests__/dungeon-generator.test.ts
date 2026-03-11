@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ChunkData } from '../ChunkData';
 import { BlockType, getBlock } from '../BlockRegistry';
-import { generateDungeon, type DungeonRoom, type DungeonLayout } from '../../terrain/DungeonGenerator';
+import { generateDungeon } from '../../terrain/DungeonGenerator';
 
 describe('DungeonGenerator', () => {
   let chunk: ChunkData;
@@ -152,7 +152,7 @@ describe('DungeonGenerator', () => {
             }
           }
         }
-        const layout = generateDungeon(testChunk, seed);
+        generateDungeon(testChunk, seed);
         for (let x = 0; x < 16; x++) {
           for (let z = 0; z < 16; z++) {
             for (let y = 0; y < 20; y++) {
