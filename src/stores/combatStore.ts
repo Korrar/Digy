@@ -3,7 +3,7 @@ import { showFloatingText } from '../components/ui/FloatingText';
 
 export interface Enemy {
   id: string;
-  type: 'zombie' | 'skeleton' | 'spider' | 'creeper';
+  type: 'zombie' | 'skeleton' | 'spider' | 'creeper' | 'golem' | 'dragon';
   position: [number, number, number];
   hp: number;
   maxHp: number;
@@ -14,6 +14,7 @@ export interface Enemy {
   target: [number, number, number];
   isDead: boolean;
   deathTime: number;
+  isBoss: boolean;
 }
 
 interface CombatState {
@@ -42,11 +43,13 @@ interface CombatState {
 
 let enemyIdCounter = 0;
 
-const ENEMY_STATS: Record<Enemy['type'], { hp: number; damage: number; speed: number }> = {
+const ENEMY_STATS: Record<Enemy['type'], { hp: number; damage: number; speed: number; isBoss?: boolean }> = {
   zombie: { hp: 10, damage: 1.5, speed: 0.3 },
   skeleton: { hp: 8, damage: 2, speed: 0.25 },
   spider: { hp: 8, damage: 1, speed: 0.5 },
   creeper: { hp: 10, damage: 4, speed: 0.35 },
+  golem: { hp: 50, damage: 5, speed: 0.15, isBoss: true },
+  dragon: { hp: 80, damage: 8, speed: 0.4, isBoss: true },
 };
 
 /** Difficulty multipliers per biome */
@@ -126,6 +129,7 @@ export const useCombatStore = create<CombatState>((set, get) => ({
     const scaledHp = Math.round(stats.hp * diff);
     const scaledDmg = stats.damage * diff;
     const scaledSpeed = stats.speed * (0.8 + diff * 0.2);
+    const isBoss = stats.isBoss === true;
     const enemy: Enemy = {
       id: `enemy_${enemyIdCounter++}`,
       type,
@@ -134,11 +138,12 @@ export const useCombatStore = create<CombatState>((set, get) => ({
       maxHp: scaledHp,
       damage: scaledDmg,
       speed: scaledSpeed,
-      attackCooldown: type === 'creeper' ? 3 : 1.5,
+      attackCooldown: isBoss ? 2.5 : type === 'creeper' ? 3 : 1.5,
       lastAttackTime: 0,
       target: [position[0] + (Math.random() - 0.5) * 6, position[1], position[2] + (Math.random() - 0.5) * 6],
       isDead: false,
       deathTime: 0,
+      isBoss,
     };
     set((s) => ({ enemies: [...s.enemies, enemy] }));
   },

@@ -179,6 +179,13 @@ export enum BlockType {
   RAIL_SLOPE_S = 139,
   RAIL_SLOPE_E = 140,
   RAIL_SLOPE_W = 141,
+
+  // Dungeon blocks
+  MOSSY_STONE_BRICKS = 142,
+  CRACKED_STONE_BRICKS = 143,
+  SPAWNER = 144,
+  SPIKE_TRAP = 145,
+  ARROW_TRAP = 146,
 }
 
 export interface BlockDefinition {
@@ -274,6 +281,12 @@ export interface BlockDefinition {
   comparatorOn?: boolean;
   /** Rail slope direction (ascending toward named direction) */
   railSlope?: 'n' | 's' | 'e' | 'w';
+  /** Render as monster spawner (cage block) */
+  isSpawner?: boolean;
+  /** Render as spike trap (low spikes on floor) */
+  isSpikeTrap?: boolean;
+  /** Render as arrow trap (dispenser-like wall block) */
+  isArrowTrap?: boolean;
 }
 
 const BLOCKS: Map<BlockType, BlockDefinition> = new Map();
@@ -474,6 +487,13 @@ register({ id: BlockType.COMPARATOR_N_ON, name: 'Comparator', color: new THREE.C
 register({ id: BlockType.COMPARATOR_S_ON, name: 'Comparator', color: new THREE.Color(0x909090), hardness: 0.5, transparent: true, drops: BlockType.COMPARATOR, stackSize: 0, isComparator: true, comparatorDir: 's', comparatorOn: true, emitsLight: true });
 register({ id: BlockType.COMPARATOR_E_ON, name: 'Comparator', color: new THREE.Color(0x909090), hardness: 0.5, transparent: true, drops: BlockType.COMPARATOR, stackSize: 0, isComparator: true, comparatorDir: 'e', comparatorOn: true, emitsLight: true });
 register({ id: BlockType.COMPARATOR_W_ON, name: 'Comparator', color: new THREE.Color(0x909090), hardness: 0.5, transparent: true, drops: BlockType.COMPARATOR, stackSize: 0, isComparator: true, comparatorDir: 'w', comparatorOn: true, emitsLight: true });
+
+// Dungeon blocks
+register({ id: BlockType.MOSSY_STONE_BRICKS, name: 'Mossy Stone Bricks', color: new THREE.Color(0x5a7a5a), hardness: 1.5, transparent: false, drops: BlockType.MOSSY_STONE_BRICKS, stackSize: 64 });
+register({ id: BlockType.CRACKED_STONE_BRICKS, name: 'Cracked Stone Bricks', color: new THREE.Color(0x6a6a6a), hardness: 1.5, transparent: false, drops: BlockType.CRACKED_STONE_BRICKS, stackSize: 64 });
+register({ id: BlockType.SPAWNER, name: 'Spawner', color: new THREE.Color(0x1a3a1a), hardness: 5.0, transparent: true, drops: BlockType.AIR, stackSize: 0, emitsLight: true, isSpawner: true });
+register({ id: BlockType.SPIKE_TRAP, name: 'Spike Trap', color: new THREE.Color(0x555555), hardness: 2.0, transparent: true, drops: BlockType.IRON_INGOT, stackSize: 64, isSpikeTrap: true });
+register({ id: BlockType.ARROW_TRAP, name: 'Arrow Trap', color: new THREE.Color(0x606060), hardness: 3.0, transparent: false, drops: BlockType.COBBLESTONE, stackSize: 64, isArrowTrap: true });
 
 // Update ore drops to drop raw materials
 BLOCKS.get(BlockType.COAL_ORE)!.drops = BlockType.COAL;
@@ -745,6 +765,18 @@ export function getOrientedStairs(item: BlockType, dir: 'n' | 's' | 'e' | 'w'): 
     }
   }
   return item;
+}
+
+export function isSpawner(type: BlockType): boolean {
+  return getBlock(type).isSpawner === true;
+}
+
+export function isSpikeTrap(type: BlockType): boolean {
+  return getBlock(type).isSpikeTrap === true;
+}
+
+export function isArrowTrap(type: BlockType): boolean {
+  return getBlock(type).isArrowTrap === true;
 }
 
 /** Returns true if this block type needs a solid block below it to stay in place */

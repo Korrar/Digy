@@ -5,12 +5,15 @@ import { useCombatStore, type Enemy } from '../../stores/combatStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { BlockType, getBlock, isSword } from '../../core/voxel/BlockRegistry';
 import { soundManager } from '../../systems/SoundManager';
+import { getLastDungeonLayout } from '../../core/terrain/StructureGenerator';
 
 const ENEMY_COLORS: Record<string, { body: number; head: number; limb: number }> = {
   zombie: { body: 0x4a7a3a, head: 0x5a8a4a, limb: 0x3a6a2a },
   skeleton: { body: 0xe8e0d0, head: 0xf0e8d8, limb: 0xd0c8b8 },
   spider: { body: 0x3a3a3a, head: 0x2a2a2a, limb: 0x1a1a1a },
   creeper: { body: 0x4aaa4a, head: 0x3a8a3a, limb: 0x2a7a2a },
+  golem: { body: 0x7a7a7a, head: 0x8a8a8a, limb: 0x5a5a5a },
+  dragon: { body: 0x2a1a3a, head: 0x4a2a5a, limb: 0x3a1a4a },
 };
 
 function buildEnemyGeometry(type: Enemy['type']): THREE.BufferGeometry {
@@ -72,6 +75,147 @@ function buildEnemyGeometry(type: Enemy['type']): THREE.BufferGeometry {
     merged.computeBoundingSphere();
     body.dispose();
     head.dispose();
+    return merged;
+  }
+
+  if (type === 'golem') {
+    // Large bulky golem: big body, small head, thick arms
+    const body = new THREE.BoxGeometry(0.9, 1.0, 0.6);
+    body.translate(0, 0.8, 0);
+    const head = new THREE.BoxGeometry(0.5, 0.45, 0.45);
+    head.translate(0, 1.55, 0);
+
+    const merged = new THREE.BufferGeometry();
+    const allPos: number[] = [];
+    const allNorm: number[] = [];
+    const allCol: number[] = [];
+    const allIdx: number[] = [];
+    let vOff = 0;
+
+    for (const [geo, col] of [[body, colors.body], [head, colors.head]] as [THREE.BufferGeometry, number][]) {
+      const pos = geo.attributes.position;
+      const norm = geo.attributes.normal;
+      const idx = geo.index!;
+      const c = new THREE.Color(col);
+      for (let i = 0; i < pos.count; i++) {
+        allPos.push(pos.getX(i), pos.getY(i), pos.getZ(i));
+        allNorm.push(norm.getX(i), norm.getY(i), norm.getZ(i));
+        allCol.push(c.r + (Math.random() - 0.5) * 0.04, c.g + (Math.random() - 0.5) * 0.04, c.b + (Math.random() - 0.5) * 0.04);
+      }
+      for (let i = 0; i < idx.count; i++) allIdx.push(idx.getX(i) + vOff);
+      vOff += pos.count;
+    }
+
+    // Thick arms and legs
+    const limbCol = new THREE.Color(colors.limb);
+    const limbs = [
+      { w: 0.2, h: 0.7, d: 0.2, x: -0.55, y: 0.65, z: 0 }, // left arm
+      { w: 0.2, h: 0.7, d: 0.2, x: 0.55, y: 0.65, z: 0 },  // right arm
+      { w: 0.22, h: 0.5, d: 0.22, x: -0.2, y: 0.15, z: 0 }, // left leg
+      { w: 0.22, h: 0.5, d: 0.22, x: 0.2, y: 0.15, z: 0 },  // right leg
+    ];
+    for (const l of limbs) {
+      const geo = new THREE.BoxGeometry(l.w, l.h, l.d);
+      geo.translate(l.x, l.y, l.z);
+      const pos = geo.attributes.position;
+      const norm = geo.attributes.normal;
+      const idx = geo.index!;
+      for (let i = 0; i < pos.count; i++) {
+        allPos.push(pos.getX(i), pos.getY(i), pos.getZ(i));
+        allNorm.push(norm.getX(i), norm.getY(i), norm.getZ(i));
+        allCol.push(limbCol.r, limbCol.g, limbCol.b);
+      }
+      for (let i = 0; i < idx.count; i++) allIdx.push(idx.getX(i) + vOff);
+      vOff += pos.count;
+      geo.dispose();
+    }
+
+    merged.setAttribute('position', new THREE.Float32BufferAttribute(allPos, 3));
+    merged.setAttribute('normal', new THREE.Float32BufferAttribute(allNorm, 3));
+    merged.setAttribute('color', new THREE.Float32BufferAttribute(allCol, 3));
+    merged.setIndex(allIdx);
+    merged.computeBoundingSphere();
+    body.dispose();
+    head.dispose();
+    return merged;
+  }
+
+  if (type === 'dragon') {
+    // Dragon: long body, wings, horned head
+    const body = new THREE.BoxGeometry(0.5, 0.4, 1.2);
+    body.translate(0, 0.6, 0);
+    const head = new THREE.BoxGeometry(0.35, 0.3, 0.4);
+    head.translate(0, 0.8, 0.75);
+    const tail = new THREE.BoxGeometry(0.15, 0.12, 0.6);
+    tail.translate(0, 0.55, -0.7);
+
+    const merged = new THREE.BufferGeometry();
+    const allPos: number[] = [];
+    const allNorm: number[] = [];
+    const allCol: number[] = [];
+    const allIdx: number[] = [];
+    let vOff = 0;
+
+    for (const [geo, col] of [[body, colors.body], [head, colors.head], [tail, colors.limb]] as [THREE.BufferGeometry, number][]) {
+      const pos = geo.attributes.position;
+      const norm = geo.attributes.normal;
+      const idx = geo.index!;
+      const c = new THREE.Color(col);
+      for (let i = 0; i < pos.count; i++) {
+        allPos.push(pos.getX(i), pos.getY(i), pos.getZ(i));
+        allNorm.push(norm.getX(i), norm.getY(i), norm.getZ(i));
+        allCol.push(c.r + (Math.random() - 0.5) * 0.05, c.g + (Math.random() - 0.5) * 0.05, c.b + (Math.random() - 0.5) * 0.05);
+      }
+      for (let i = 0; i < idx.count; i++) allIdx.push(idx.getX(i) + vOff);
+      vOff += pos.count;
+    }
+
+    // Wings
+    const wingCol = new THREE.Color(colors.limb);
+    for (const side of [-1, 1]) {
+      const wing = new THREE.BoxGeometry(0.6, 0.05, 0.4);
+      wing.translate(side * 0.5, 0.8, 0);
+      const pos = wing.attributes.position;
+      const norm = wing.attributes.normal;
+      const idx = wing.index!;
+      for (let i = 0; i < pos.count; i++) {
+        allPos.push(pos.getX(i), pos.getY(i), pos.getZ(i));
+        allNorm.push(norm.getX(i), norm.getY(i), norm.getZ(i));
+        allCol.push(wingCol.r, wingCol.g, wingCol.b);
+      }
+      for (let i = 0; i < idx.count; i++) allIdx.push(idx.getX(i) + vOff);
+      vOff += pos.count;
+      wing.dispose();
+    }
+
+    // Legs
+    const legCol = new THREE.Color(colors.limb);
+    for (const xOff of [-0.15, 0.15]) {
+      for (const zOff of [-0.3, 0.3]) {
+        const leg = new THREE.BoxGeometry(0.08, 0.3, 0.08);
+        leg.translate(xOff, 0.2, zOff);
+        const pos = leg.attributes.position;
+        const norm = leg.attributes.normal;
+        const idx = leg.index!;
+        for (let i = 0; i < pos.count; i++) {
+          allPos.push(pos.getX(i), pos.getY(i), pos.getZ(i));
+          allNorm.push(norm.getX(i), norm.getY(i), norm.getZ(i));
+          allCol.push(legCol.r, legCol.g, legCol.b);
+        }
+        for (let i = 0; i < idx.count; i++) allIdx.push(idx.getX(i) + vOff);
+        vOff += pos.count;
+        leg.dispose();
+      }
+    }
+
+    merged.setAttribute('position', new THREE.Float32BufferAttribute(allPos, 3));
+    merged.setAttribute('normal', new THREE.Float32BufferAttribute(allNorm, 3));
+    merged.setAttribute('color', new THREE.Float32BufferAttribute(allCol, 3));
+    merged.setIndex(allIdx);
+    merged.computeBoundingSphere();
+    body.dispose();
+    head.dispose();
+    tail.dispose();
     return merged;
   }
 
@@ -186,11 +330,20 @@ function EnemyMesh({ enemy }: { enemy: Enemy }) {
 
     // Check if enemy died
     if (enemy.hp - dmg <= 0) {
-      addXp(enemy.type === 'creeper' ? 15 : 10);
+      const xpReward = enemy.isBoss ? (enemy.type === 'dragon' ? 100 : 50) : enemy.type === 'creeper' ? 15 : 10;
+      addXp(xpReward);
       // Drop loot
       if (enemy.type === 'zombie') addBlock(BlockType.RAW_MEAT, 1);
       if (enemy.type === 'skeleton') addBlock(BlockType.STICK, Math.ceil(Math.random() * 2));
       if (enemy.type === 'spider') addBlock(BlockType.COBBLESTONE, 1);
+      if (enemy.type === 'golem') {
+        addBlock(BlockType.IRON_INGOT, 2 + Math.floor(Math.random() * 3));
+        addBlock(BlockType.DIAMOND, 1);
+      }
+      if (enemy.type === 'dragon') {
+        addBlock(BlockType.DIAMOND, 2 + Math.floor(Math.random() * 3));
+        addBlock(BlockType.GOLD_INGOT, 3 + Math.floor(Math.random() * 4));
+      }
       // Remove after death animation
       setTimeout(() => removeEnemy(enemy.id), 800);
     }
@@ -221,8 +374,8 @@ function EnemyMesh({ enemy }: { enemy: Enemy }) {
       meshRef.current.rotation.y = Math.atan2(dx, dz);
     }
 
-    // HP bar
-    meshRef.current.scale.setScalar(0.8);
+    // Scale: bosses are larger
+    meshRef.current.scale.setScalar(enemy.isBoss ? 1.4 : 0.8);
   });
 
   return (
@@ -244,7 +397,8 @@ function EnemyHpBar({ enemy }: { enemy: Enemy }) {
 
   useFrame(() => {
     if (!groupRef.current) return;
-    groupRef.current.position.set(enemy.position[0], enemy.position[1] + 1.5, enemy.position[2]);
+    const hpBarHeight = enemy.isBoss ? 2.5 : 1.5;
+    groupRef.current.position.set(enemy.position[0], enemy.position[1] + hpBarHeight, enemy.position[2]);
     // Billboard - face camera
     groupRef.current.quaternion.copy(groupRef.current.parent!.parent!.quaternion || new THREE.Quaternion());
   });
@@ -310,6 +464,20 @@ export function EnemiesRenderer({ biomeType, center }: { biomeType: string; cent
         center[1] + 0.5,
         center[2] + Math.sin(angle) * radius,
       ]);
+    }
+
+    // Spawn boss in cave dungeon boss room
+    if (biomeType === 'cave') {
+      const layout = getLastDungeonLayout();
+      if (layout) {
+        const bossRoom = layout.rooms.find(r => r.isBossRoom);
+        if (bossRoom) {
+          const bossType: Enemy['type'] = Math.random() > 0.5 ? 'dragon' : 'golem';
+          const bx = bossRoom.x + Math.floor(bossRoom.width / 2);
+          const bz = bossRoom.z + Math.floor(bossRoom.depth / 2);
+          spawnEnemy(bossType, [bx, bossRoom.y + 1.5, bz]);
+        }
+      }
     }
   }, [biomeType, center, spawnEnemy]);
 

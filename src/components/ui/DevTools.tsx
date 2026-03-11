@@ -149,6 +149,15 @@ function buildCategories(): ItemCategory[] {
   // Special (non-obtainable normally)
   special.push(makeEntry(BlockType.WATER, 1));
   special.push(makeEntry(BlockType.LAVA, 1));
+  special.push(makeEntry(BlockType.SPAWNER, 1));
+
+  // Dungeon blocks
+  building.push(makeEntry(BlockType.MOSSY_STONE_BRICKS, 64));
+  building.push(makeEntry(BlockType.CRACKED_STONE_BRICKS, 64));
+
+  // Dungeon traps (in redstone category)
+  redstone.push(makeEntry(BlockType.SPIKE_TRAP, 16));
+  redstone.push(makeEntry(BlockType.ARROW_TRAP, 16));
 
   return [
     { label: 'Teren', items: terrain },
