@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BlockType, getBlock, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest, isTorch, isLever, isButton, isCable, isPiston, isPistonHead, isSign, isPressurePlate, isDetectorRail, isRepeater, isComparator } from './BlockRegistry';
+import { BlockType, getBlock, isTransparent, isCrossedQuad, isFlat, isSlab, isFence, isStairs, isDoor, isChest, isTorch, isLever, isButton, isCable, isPiston, isPistonHead, isSign, isPressurePlate, isDetectorRail, isRepeater, isComparator, isSpawner, isSpikeTrap } from './BlockRegistry';
 import { ChunkData } from './ChunkData';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
 import { getAtlasUV, getWhiteUV } from './TextureAtlas';
@@ -787,7 +787,7 @@ export function buildChunkMesh(
             const chestAtlas = getAtlasUV(block, chestFaceName);
             for (let ci = 0; ci < 4; ci++) {
               const [cx, cy, cz] = face.corners[ci];
-              positions.push(ox + x + cx, y + cy, oz + z + cz);
+              positions.push(x + cx, y + cy, z + cz);
               normals.push(...face.normal);
               colors.push(brightness, brightness, brightness);
               const lu = ci % 2 === 0 ? 0 : 1;
@@ -1252,7 +1252,7 @@ export function buildChunkMesh(
           for (const face of bodyFaces) {
             for (let ci = 0; ci < 4; ci++) {
               const [cx, cy, cz] = face.corners[ci];
-              positions.push(ox + x + cx, y + cy, oz + z + cz);
+              positions.push(x + cx, y + cy, z + cz);
               normals.push(...face.normal);
               colors.push(face.col.r * face.brightness, face.col.g * face.brightness, face.col.b * face.brightness);
               uvs.push(pistonAtlas.u0, pistonAtlas.v0);
@@ -1291,7 +1291,7 @@ export function buildChunkMesh(
           for (const face of headFaces) {
             for (let ci = 0; ci < 4; ci++) {
               const [cx, cy, cz] = face.corners[ci];
-              positions.push(ox + x + cx, y + cy, oz + z + cz);
+              positions.push(x + cx, y + cy, z + cz);
               normals.push(...face.normal);
               colors.push(face.col.r * face.brightness, face.col.g * face.brightness, face.col.b * face.brightness);
               uvs.push(phAtlas.u0, phAtlas.v0);
@@ -1338,7 +1338,7 @@ export function buildChunkMesh(
           for (const face of signFaces) {
             for (let ci = 0; ci < 4; ci++) {
               const [cx, cy, cz] = face.corners[ci];
-              positions.push(ox + x + cx, y + cy, oz + z + cz);
+              positions.push(x + cx, y + cy, z + cz);
               normals.push(...face.normal);
               colors.push(face.col.r * face.brightness, face.col.g * face.brightness, face.col.b * face.brightness);
               uvs.push(signAtlas.u0, signAtlas.v0);
@@ -1619,6 +1619,55 @@ export function buildChunkMesh(
           }
           continue;
         }
+
+        // Spike trap rendering (low iron spikes on pressure plate)
+        if (isSpikeTrap(block)) {
+          const spikeColor = blockDef.color;
+          const whiteUV = getWhiteUV();
+          // Base plate
+          const plateFaces: { c: [number,number,number][]; n: [number,number,number]; b: number }[] = [
+            { c: [[0.1,0.04,0.9],[0.9,0.04,0.9],[0.9,0.04,0.1],[0.1,0.04,0.1]], n: [0,1,0], b: 0.9 },
+            { c: [[0.1,0,0.1],[0.9,0,0.1],[0.9,0,0.9],[0.1,0,0.9]], n: [0,-1,0], b: 0.7 },
+          ];
+          for (const f of plateFaces) {
+            for (let ci = 0; ci < 4; ci++) {
+              positions.push(x + f.c[ci][0], y + f.c[ci][1], z + f.c[ci][2]);
+              normals.push(f.n[0], f.n[1], f.n[2]);
+              colors.push(spikeColor.r * f.b, spikeColor.g * f.b, spikeColor.b * f.b);
+              uvs.push(whiteUV.u0, whiteUV.v0);
+              sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); glassFlags.push(0); oreColors.push(0, 0, 0);
+            }
+            indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+            vertexCount += 4;
+          }
+          // Spike points (thin triangular shapes using quads)
+          const spikes = [[0.3, 0.3], [0.5, 0.5], [0.7, 0.3], [0.3, 0.7], [0.7, 0.7]];
+          const ironColor = new THREE.Color(0x888888);
+          for (const [spx, spz] of spikes) {
+            const sw = 0.04;
+            // Two crossing thin quads per spike
+            for (const [nx, nz] of [[1, 0], [0, 1]] as [number, number][]) {
+              const p0x = spx - sw * nz, p0z = spz - sw * nx;
+              const p1x = spx + sw * nz, p1z = spz + sw * nx;
+              positions.push(x + p0x, y + 0.04, z + p0z);
+              positions.push(x + p1x, y + 0.04, z + p1z);
+              positions.push(x + spx, y + 0.35, z + spz);
+              positions.push(x + spx, y + 0.35, z + spz);
+              for (let i = 0; i < 4; i++) {
+                normals.push(nx, 0, nz);
+                colors.push(ironColor.r, ironColor.g, ironColor.b);
+                uvs.push(whiteUV.u0, whiteUV.v0);
+                sparkles.push(0); waterFlags.push(0); lavaFlags.push(0); cableFlags.push(0); glassFlags.push(0); oreColors.push(0, 0, 0);
+              }
+              indices.push(vertexCount, vertexCount+1, vertexCount+2, vertexCount, vertexCount+2, vertexCount+3);
+              vertexCount += 4;
+            }
+          }
+          continue;
+        }
+
+        // Spawner rendering (dark cage block with glow) - uses normal cube rendering
+        // Arrow trap rendering - uses normal cube rendering
 
         // Normal cube rendering
 

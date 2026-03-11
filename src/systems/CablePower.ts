@@ -1,6 +1,7 @@
-import { BlockType, getBlock, isSolid, isRepeater, getRepeaterOn, getRepeaterOff, getComparatorOn, getComparatorOff, getDirectionOffsets, needsSupportFromBelow } from '../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid, isRepeater, getRepeaterOn, getRepeaterOff, getComparatorOn, getComparatorOff, getDirectionOffsets, needsSupportFromBelow, isArrowTrap } from '../core/voxel/BlockRegistry';
 import { useWorldStore } from '../stores/worldStore';
 import { soundManager } from './SoundManager';
+import { CHUNK_HEIGHT } from '../utils/constants';
 
 const MAX_CABLE_DISTANCE = 16;
 
@@ -16,6 +17,20 @@ const TNT_RADIUS = 3;
 const TNT_FUSE_TIME = 1500; // ms - fuse duration before explosion
 const TNT_CHAIN_FUSE_TIME = 400; // ms - shorter fuse for chain reactions
 const fusingTNT = new Set<string>(); // track TNT blocks currently fusing
+
+/**
+ * Fire an arrow trap: deals damage and spawns visual effect.
+ */
+export function fireArrowTrap(ax: number, ay: number, az: number) {
+  soundManager.playBreakSound(BlockType.STONE);
+  // Dispatch event for visual arrow particles
+  window.dispatchEvent(new CustomEvent('digy:arrow-trap', {
+    detail: { x: ax + 0.5, y: ay + 0.5, z: az + 0.5 }
+  }));
+  // Deal damage to player (imported lazily to avoid circular dep)
+  const { useCombatStore } = require('../stores/combatStore');
+  useCombatStore.getState().takeDamage(4);
+}
 
 /**
  * Propagate power from a lever through connected cables.
@@ -45,12 +60,15 @@ export function propagateCablePower(leverX: number, leverY: number, leverZ: numb
     if (def.isCable) {
       queue.push({ x: nx, y: ny, z: nz, dist: 1 });
     }
-    // Direct activation of adjacent pistons and TNT from lever/plate
+    // Direct activation of adjacent pistons, TNT, and arrow traps from lever/plate
     if (def.isPiston) {
       activatePiston(store, nx, ny, nz, powerOn);
     }
     if (powerOn && def.isTNT) {
       detonateTNT(store, nx, ny, nz);
+    }
+    if (powerOn && def.isArrowTrap) {
+      fireArrowTrap(nx, ny, nz);
     }
     // Direct activation of adjacent repeaters/comparators from lever/plate
     if (def.isRepeater) {
@@ -113,6 +131,9 @@ export function propagateCablePower(leverX: number, leverY: number, leverZ: numb
       }
       if (powerOn && nDef.isTNT) {
         detonateTNT(store, nx, ny, nz);
+      }
+      if (powerOn && nDef.isArrowTrap) {
+        fireArrowTrap(nx, ny, nz);
       }
       if (nDef.isRepeater) {
         activateRepeater(nx, ny, nz, current.x, current.y, current.z, powerOn);
@@ -260,7 +281,7 @@ export function detonateTNT(_store: ReturnType<typeof useWorldStore.getState>, t
           const checkX = tx + dx;
           const checkZ = tz + dz;
           let cy = ty + dy + 1;
-          while (true) {
+          while (cy < CHUNK_HEIGHT) {
             const above = s.getBlock(checkX, cy, checkZ);
             if (!needsSupportFromBelow(above)) break;
             s.setBlock(checkX, cy, checkZ, BlockType.AIR);

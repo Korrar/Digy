@@ -66,11 +66,11 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     const slot = newSlots[slotIndex];
     if (!slot) return;
 
-    slot.count -= count;
-    if (slot.count <= 0) {
+    const newCount = slot.count - count;
+    if (newCount <= 0) {
       newSlots[slotIndex] = null;
     } else {
-      newSlots[slotIndex] = { ...slot };
+      newSlots[slotIndex] = { blockType: slot.blockType, count: newCount };
     }
     set({ slots: newSlots });
   },
@@ -137,7 +137,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     const newSlots = [...state.slots];
     // Merge stacks first
     for (let i = 0; i < newSlots.length; i++) {
-      const a = newSlots[i];
+      let a = newSlots[i];
       if (!a) continue;
       const def = getBlock(a.blockType);
       for (let j = i + 1; j < newSlots.length; j++) {
@@ -145,10 +145,12 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
         if (!b || b.blockType !== a.blockType) continue;
         const canAdd = Math.min(b.count, def.stackSize - a.count);
         if (canAdd > 0) {
-          a.count += canAdd;
-          b.count -= canAdd;
-          if (b.count <= 0) newSlots[j] = null;
-          newSlots[i] = { ...a };
+          const newACount = a.count + canAdd;
+          const newBCount = b.count - canAdd;
+          newSlots[i] = { blockType: a.blockType, count: newACount };
+          newSlots[j] = newBCount <= 0 ? null : { blockType: b.blockType, count: newBCount };
+          // Update local reference for further merging iterations
+          a = newSlots[i]!;
         }
       }
     }

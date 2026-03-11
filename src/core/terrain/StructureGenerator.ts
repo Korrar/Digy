@@ -1,7 +1,8 @@
 import { ChunkData } from '../voxel/ChunkData';
 import { BlockType } from '../voxel/BlockRegistry';
 import { NoiseGenerator } from './NoiseGenerator';
-import { CHUNK_SIZE } from '../../utils/constants';
+import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
+import { generateDungeon, type DungeonLayout } from './DungeonGenerator';
 
 type Block = [number, number, number, BlockType]; // [dx, dy, dz, type]
 
@@ -193,6 +194,13 @@ const BIOME_STRUCTURES: Record<string, Structure[]> = {
   cave: [createMineCorridor()],
 };
 
+/** Last generated dungeon layout (for enemy spawning) */
+let lastDungeonLayout: DungeonLayout | null = null;
+
+export function getLastDungeonLayout(): DungeonLayout | null {
+  return lastDungeonLayout;
+}
+
 /**
  * Try to place structures in a chunk based on biome type.
  * Called after terrain generation.
@@ -219,7 +227,7 @@ export function placeStructures(
 
     // Find ground height at center
     let groundY = -1;
-    for (let y = 28; y >= 0; y--) {
+    for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
       const block = chunk.getBlock(sx + Math.floor(structure.width / 2), y, sz + Math.floor(structure.depth / 2));
       if (block !== BlockType.AIR && block !== BlockType.WATER &&
           block !== BlockType.TALL_GRASS && block !== BlockType.FLOWER_RED &&
@@ -237,9 +245,18 @@ export function placeStructures(
       const bx = sx + dx;
       const by = groundY + dy + 1;
       const bz = sz + dz;
-      if (bx >= 0 && bx < CHUNK_SIZE && bz >= 0 && bz < CHUNK_SIZE && by < 32) {
+      if (bx >= 0 && bx < CHUNK_SIZE && bz >= 0 && bz < CHUNK_SIZE && by >= 0 && by < CHUNK_HEIGHT) {
         chunk.setBlock(bx, by, bz, type);
       }
+    }
+  }
+
+  // Generate dungeon in cave biome
+  if (biomeType === 'cave') {
+    const dungeonSeed = Math.abs(ox * 73856093 ^ oz * 19349663) | 0;
+    const dungeonNoise = noise.get2D(ox * 0.05 + 2000, oz * 0.05 + 2000, 0.5);
+    if (dungeonNoise > 0.1) {
+      lastDungeonLayout = generateDungeon(chunk, dungeonSeed);
     }
   }
 }

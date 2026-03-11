@@ -105,7 +105,8 @@ function CraftingJobSlot({ job, onCollect }: {
     if (done) { setProgress(1); return; }
     const interval = setInterval(() => {
       const now = Date.now();
-      const p = Math.min(1, (now - job.startTime) / (job.endTime - job.startTime));
+      const duration = job.endTime - job.startTime;
+      const p = duration <= 0 ? 1 : Math.min(1, (now - job.startTime) / duration);
       setProgress(p);
       if (p >= 1) clearInterval(interval);
     }, 100);

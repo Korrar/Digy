@@ -49,10 +49,22 @@ const LOOT_POOLS: Record<string, { type: BlockType; weight: number; min: number;
     { type: BlockType.RAIL, weight: 2, min: 2, max: 8 },
     { type: BlockType.COOKED_MEAT, weight: 2, min: 1, max: 2 },
   ],
+  dungeon: [
+    { type: BlockType.IRON_INGOT, weight: 4, min: 2, max: 5 },
+    { type: BlockType.GOLD_INGOT, weight: 3, min: 1, max: 3 },
+    { type: BlockType.DIAMOND, weight: 2, min: 1, max: 2 },
+    { type: BlockType.IRON_SWORD, weight: 2, min: 1, max: 1 },
+    { type: BlockType.IRON_PICKAXE, weight: 2, min: 1, max: 1 },
+    { type: BlockType.DIAMOND_SWORD, weight: 1, min: 1, max: 1 },
+    { type: BlockType.COOKED_MEAT, weight: 3, min: 2, max: 4 },
+    { type: BlockType.APPLE, weight: 3, min: 2, max: 5 },
+    { type: BlockType.TORCH, weight: 3, min: 3, max: 8 },
+    { type: BlockType.BREAD, weight: 3, min: 2, max: 4 },
+  ],
 };
 
-function generateChestLoot(itemCount: number = 3): InventorySlot[] {
-  const pool = LOOT_POOLS.default;
+function generateChestLoot(itemCount: number = 3, poolName: string = 'default'): InventorySlot[] {
+  const pool = LOOT_POOLS[poolName] || LOOT_POOLS.default;
   const totalWeight = pool.reduce((sum, item) => sum + item.weight, 0);
   const loot: InventorySlot[] = [];
 

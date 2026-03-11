@@ -1,9 +1,9 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
-import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, isLever, isButton, isCable, isPiston, isPistonHead, isPressurePlate, isRepeater, isRepeaterItem, isComparator, isComparatorItem, getOrientedRepeater, getOrientedComparator, needsSupportFromBelow } from '../../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, isLever, isButton, isCable, isPiston, isPistonHead, isPressurePlate, isRepeater, isRepeaterItem, isComparator, isComparatorItem, getOrientedRepeater, getOrientedComparator, needsSupportFromBelow, isSpikeTrap, isArrowTrap } from '../../core/voxel/BlockRegistry';
 import { computeRailBlockType, shouldRailUpdate } from '../../core/voxel/ChunkMesher';
 import { soundManager } from '../../systems/SoundManager';
 import { spawnParticles } from './DiggingParticles';
@@ -31,6 +31,11 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
   const isPointerDownRef = useRef(false);
   const lastSoundTimeRef = useRef(0);
   const [miningProgress, setMiningProgress] = useState(0);
+
+  // Clear stale hidden cables when component mounts (scene change)
+  useEffect(() => {
+    hiddenCables.clear();
+  }, []);
 
   const { raycaster, pointer, camera, scene } = useThree();
   const getBlockW = useWorldStore((s) => s.getBlock);
@@ -266,7 +271,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
         highlightRef.current.visible = false;
         miningBlockRef.current = null;
         miningTimeRef.current = 0;
-        setMiningProgress(0);
+        if (miningProgress !== 0) setMiningProgress(0);
       }
     }
   });
@@ -332,6 +337,26 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
           const plateDef = getBlock(interactCheck.blockType);
           const isOn = plateDef.pressurePlateOn === true;
           activatePressurePlate(bx, by, bz, !isOn);
+          return;
+        }
+
+        // Spike trap - deals damage when clicked (stepped on)
+        if (isSpikeTrap(interactCheck.blockType)) {
+          const takeDamage = useCombatStore.getState().takeDamage;
+          takeDamage(3);
+          soundManager.playDigSound(BlockType.STONE);
+          return;
+        }
+
+        // Arrow trap - fires arrow (deals damage) when clicked
+        if (isArrowTrap(interactCheck.blockType)) {
+          const takeDamage = useCombatStore.getState().takeDamage;
+          takeDamage(4);
+          soundManager.playBreakSound(BlockType.STONE);
+          // Dispatch visual event for arrow particles
+          window.dispatchEvent(new CustomEvent('digy:arrow-trap', {
+            detail: { x: bx + 0.5, y: by + 0.5, z: bz + 0.5 }
+          }));
           return;
         }
 
