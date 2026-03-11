@@ -1,6 +1,7 @@
 import { BlockType, getBlock, isSolid, isRepeater, getRepeaterOn, getRepeaterOff, getComparatorOn, getComparatorOff, getDirectionOffsets, needsSupportFromBelow, isArrowTrap } from '../core/voxel/BlockRegistry';
 import { useWorldStore } from '../stores/worldStore';
 import { soundManager } from './SoundManager';
+import { CHUNK_HEIGHT } from '../utils/constants';
 
 const MAX_CABLE_DISTANCE = 16;
 
@@ -280,7 +281,7 @@ export function detonateTNT(_store: ReturnType<typeof useWorldStore.getState>, t
           const checkX = tx + dx;
           const checkZ = tz + dz;
           let cy = ty + dy + 1;
-          while (true) {
+          while (cy < CHUNK_HEIGHT) {
             const above = s.getBlock(checkX, cy, checkZ);
             if (!needsSupportFromBelow(above)) break;
             s.setBlock(checkX, cy, checkZ, BlockType.AIR);

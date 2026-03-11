@@ -189,6 +189,7 @@ export const useCombatStore = create<CombatState>((set, get) => ({
       lastDamageTime: 0,
       damageFlash: false,
       isGameOver: false,
+      enemies: [],
     });
   },
 

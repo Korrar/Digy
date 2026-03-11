@@ -787,7 +787,7 @@ export function buildChunkMesh(
             const chestAtlas = getAtlasUV(block, chestFaceName);
             for (let ci = 0; ci < 4; ci++) {
               const [cx, cy, cz] = face.corners[ci];
-              positions.push(ox + x + cx, y + cy, oz + z + cz);
+              positions.push(x + cx, y + cy, z + cz);
               normals.push(...face.normal);
               colors.push(brightness, brightness, brightness);
               const lu = ci % 2 === 0 ? 0 : 1;
@@ -1252,7 +1252,7 @@ export function buildChunkMesh(
           for (const face of bodyFaces) {
             for (let ci = 0; ci < 4; ci++) {
               const [cx, cy, cz] = face.corners[ci];
-              positions.push(ox + x + cx, y + cy, oz + z + cz);
+              positions.push(x + cx, y + cy, z + cz);
               normals.push(...face.normal);
               colors.push(face.col.r * face.brightness, face.col.g * face.brightness, face.col.b * face.brightness);
               uvs.push(pistonAtlas.u0, pistonAtlas.v0);
@@ -1291,7 +1291,7 @@ export function buildChunkMesh(
           for (const face of headFaces) {
             for (let ci = 0; ci < 4; ci++) {
               const [cx, cy, cz] = face.corners[ci];
-              positions.push(ox + x + cx, y + cy, oz + z + cz);
+              positions.push(x + cx, y + cy, z + cz);
               normals.push(...face.normal);
               colors.push(face.col.r * face.brightness, face.col.g * face.brightness, face.col.b * face.brightness);
               uvs.push(phAtlas.u0, phAtlas.v0);
@@ -1338,7 +1338,7 @@ export function buildChunkMesh(
           for (const face of signFaces) {
             for (let ci = 0; ci < 4; ci++) {
               const [cx, cy, cz] = face.corners[ci];
-              positions.push(ox + x + cx, y + cy, oz + z + cz);
+              positions.push(x + cx, y + cy, z + cz);
               normals.push(...face.normal);
               colors.push(face.col.r * face.brightness, face.col.g * face.brightness, face.col.b * face.brightness);
               uvs.push(signAtlas.u0, signAtlas.v0);

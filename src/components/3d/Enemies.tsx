@@ -328,8 +328,9 @@ function EnemyMesh({ enemy }: { enemy: Enemy }) {
       });
     }
 
-    // Check if enemy died
-    if (enemy.hp - dmg <= 0) {
+    // Check if enemy died (read fresh HP from store to avoid stale closure)
+    const freshEnemy = useCombatStore.getState().enemies.find(e => e.id === enemy.id);
+    if (freshEnemy && freshEnemy.hp - dmg <= 0) {
       const xpReward = enemy.isBoss ? (enemy.type === 'dragon' ? 100 : 50) : enemy.type === 'creeper' ? 15 : 10;
       addXp(xpReward);
       // Drop loot
@@ -482,12 +483,15 @@ export function EnemiesRenderer({ biomeType, center }: { biomeType: string; cent
   }, [biomeType, center, spawnEnemy]);
 
   // Enemy AI update
-  useFrame((state) => {
+  useFrame((state, delta) => {
     const t = state.clock.elapsedTime;
     // Camera position as rough player position
     const playerPos = camera.position.clone();
     // Project down to ground level
     playerPos.y = center[1] + 0.5;
+
+    // Clamp delta to avoid huge jumps after tab-switch or lag spikes
+    const dt = Math.min(delta, 0.1);
 
     for (const enemy of enemies) {
       if (enemy.isDead) continue;
@@ -519,7 +523,7 @@ export function EnemiesRenderer({ biomeType, center }: { biomeType: string; cent
       const dz = tz - ez;
       const dist = Math.sqrt(dx * dx + dz * dz);
       if (dist > 0.1) {
-        const speed = enemy.speed * 0.016;
+        const speed = enemy.speed * dt;
         const newX = ex + (dx / dist) * speed;
         const newZ = ez + (dz / dist) * speed;
         updateEnemy(enemy.id, {

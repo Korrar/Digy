@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
@@ -31,6 +31,11 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
   const isPointerDownRef = useRef(false);
   const lastSoundTimeRef = useRef(0);
   const [miningProgress, setMiningProgress] = useState(0);
+
+  // Clear stale hidden cables when component mounts (scene change)
+  useEffect(() => {
+    hiddenCables.clear();
+  }, []);
 
   const { raycaster, pointer, camera, scene } = useThree();
   const getBlockW = useWorldStore((s) => s.getBlock);
@@ -266,7 +271,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
         highlightRef.current.visible = false;
         miningBlockRef.current = null;
         miningTimeRef.current = 0;
-        setMiningProgress(0);
+        if (miningProgress !== 0) setMiningProgress(0);
       }
     }
   });
