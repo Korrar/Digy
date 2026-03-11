@@ -1,4 +1,4 @@
-import { BlockType, getBlock, isSolid, isRepeater, getRepeaterOn, getRepeaterOff, getComparatorOn, getComparatorOff, getDirectionOffsets, needsSupportFromBelow, isArrowTrap } from '../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid, isRepeater, getRepeaterOn, getRepeaterOff, getComparatorOn, getComparatorOff, getDirectionOffsets, needsSupportFromBelow } from '../core/voxel/BlockRegistry';
 import { useWorldStore } from '../stores/worldStore';
 import { soundManager } from './SoundManager';
 import { CHUNK_HEIGHT } from '../utils/constants';

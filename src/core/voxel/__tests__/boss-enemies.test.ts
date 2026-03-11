@@ -38,7 +38,7 @@ describe('Boss enemies', () => {
     });
 
     it('should award more XP on death', () => {
-      const { spawnEnemy, damageEnemy, addXp } = useCombatStore.getState();
+      const { spawnEnemy } = useCombatStore.getState();
       spawnEnemy('golem', [0, 0, 0]);
       const golem = useCombatStore.getState().enemies.find(e => e.type === 'golem')!;
       // Golem XP should be high
