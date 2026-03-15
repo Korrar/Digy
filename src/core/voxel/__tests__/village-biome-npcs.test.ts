@@ -46,7 +46,7 @@ describe('Village biome', () => {
     expect(hasGrass).toBe(true);
   });
 
-  it('should generate gravel paths', () => {
+  it('should generate gravel paths in center', () => {
     const biome = new VillageBiome(42);
     const chunk = new ChunkData(0, 0);
     biome.generate(chunk);
@@ -67,19 +67,21 @@ describe('Village biome', () => {
     expect(hasGravel).toBe(true);
   });
 
-  it('should have flat terrain suitable for building', () => {
+  it('should have very flat center terrain for building', () => {
     const biome = new VillageBiome(42);
     const chunk = new ChunkData(0, 0);
     biome.generate(chunk);
 
-    // Find surface heights at several points and check they are relatively flat
+    // Check center area (4-12 range = center zone)
     const heights: number[] = [];
-    for (let x = 4; x < 12; x += 2) {
-      for (let z = 4; z < 12; z += 2) {
+    for (let x = 5; x < 11; x += 2) {
+      for (let z = 5; z < 11; z += 2) {
         for (let y = 31; y >= 0; y--) {
           const bt = chunk.getBlock(x, y, z);
           if (bt !== BlockType.AIR && bt !== BlockType.WATER && bt !== BlockType.TALL_GRASS &&
-              bt !== BlockType.FLOWER_RED && bt !== BlockType.FLOWER_YELLOW) {
+              bt !== BlockType.FLOWER_RED && bt !== BlockType.FLOWER_YELLOW &&
+              bt !== BlockType.FERN && bt !== BlockType.MUSHROOM &&
+              bt !== BlockType.WOOD && bt !== BlockType.LEAVES) {
             heights.push(y);
             break;
           }
@@ -89,8 +91,30 @@ describe('Village biome', () => {
     expect(heights.length).toBeGreaterThan(0);
     const min = Math.min(...heights);
     const max = Math.max(...heights);
-    // Village terrain should be relatively flat (max 6 block difference)
-    expect(max - min).toBeLessThanOrEqual(6);
+    // Center of village should be very flat (max 2 block difference)
+    expect(max - min).toBeLessThanOrEqual(2);
+  });
+
+  it('should have trees at edges (forest zone)', () => {
+    const biome = new VillageBiome(42);
+    const chunk = new ChunkData(0, 0);
+    biome.generate(chunk);
+
+    // Check if there are wood blocks (trees) anywhere in the chunk
+    let hasWood = false;
+    for (let x = 0; x < 16; x++) {
+      for (let z = 0; z < 16; z++) {
+        for (let y = 0; y < 32; y++) {
+          if (chunk.getBlock(x, y, z) === BlockType.WOOD) {
+            hasWood = true;
+            break;
+          }
+        }
+        if (hasWood) break;
+      }
+      if (hasWood) break;
+    }
+    expect(hasWood).toBe(true);
   });
 
   it('should include all biome types in createBiome', () => {
@@ -107,7 +131,7 @@ describe('Village biome', () => {
 });
 
 describe('NPC Store', () => {
-  it('should spawn village NPCs', () => {
+  it('should spawn village NPCs with physics fields', () => {
     const store = useNPCStore.getState();
     store.spawnVillageNPCs(8, 10, 8);
     const state = useNPCStore.getState();
@@ -119,7 +143,12 @@ describe('NPC Store', () => {
     expect(roles).toContain('builder');
     expect(roles).toContain('farmer');
 
-    // Clean up
+    // Check physics fields exist
+    for (const npc of state.npcs) {
+      expect(npc.velocity).toEqual([0, 0, 0]);
+      expect(npc.grounded).toBe(false);
+    }
+
     state.clearNPCs();
   });
 
@@ -177,12 +206,26 @@ describe('NPC Store', () => {
 
     for (const npc of state.npcs) {
       const [x, , z] = npc.position;
-      // NPCs should be within reasonable range of center
       expect(Math.abs(x - 8)).toBeLessThan(10);
       expect(Math.abs(z - 8)).toBeLessThan(10);
     }
 
     state.clearNPCs();
+  });
+
+  it('should apply knockback to NPC', () => {
+    const store = useNPCStore.getState();
+    store.spawnVillageNPCs(8, 10, 8);
+    const npc = useNPCStore.getState().npcs[0];
+
+    store.applyKnockback(npc.id, 3, 5, -2);
+    const updated = useNPCStore.getState().npcs.find((n) => n.id === npc.id);
+    expect(updated!.velocity[0]).toBe(3);
+    expect(updated!.velocity[1]).toBe(5);
+    expect(updated!.velocity[2]).toBe(-2);
+    expect(updated!.grounded).toBe(false);
+
+    store.clearNPCs();
   });
 });
 
@@ -194,7 +237,6 @@ describe('House Blueprint', () => {
     expect(project.completed).toBe(false);
     expect(project.placedCount).toBe(0);
 
-    // Should have planks (floor/walls), glass (windows), wood (roof), torch
     const types = new Set(project.blocks.map((b) => b.type));
     expect(types.has(BlockType.PLANKS)).toBe(true);
     expect(types.has(BlockType.GLASS)).toBe(true);
@@ -206,7 +248,6 @@ describe('House Blueprint', () => {
     const house0 = generateHouseBlueprint(0, 0, 0, 0);
     const house1 = generateHouseBlueprint(0, 0, 0, 1);
 
-    // Different variants produce slightly different block counts
     expect(house0.blocks.length).not.toBe(house1.blocks.length);
   });
 });

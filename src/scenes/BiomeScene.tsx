@@ -237,7 +237,7 @@ export function BiomeScene() {
         <WeatherRenderer biomeType={biomeType} center={[8, 8, 8]} />
         <TappablesRenderer biomeType={biomeType} center={[8, 8, 8]} />
         <EnemiesRenderer biomeType={biomeType} center={[8, 8, 8]} />
-        {biomeType === 'village' && <VillageNPCs center={[8, 8, 8]} />}
+        {biomeType === 'village' && <VillageNPCs />}
 
         {biomeType !== 'cave' && (
           <WaterPlane
