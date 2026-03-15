@@ -23,6 +23,15 @@ const JUMP_COOLDOWN = 0.6; // seconds between jumps
 const PATH_RECALC_INTERVAL = 3.0; // seconds between A* path recalculations
 const ASTAR_MAX_NODES = 200; // max nodes to explore in A*
 const ASTAR_MAX_RANGE = 16; // max Manhattan distance for A*
+const BREAK_REACH = 2.5; // max distance NPC can break a block
+const BREAK_COOLDOWN = 1.0; // seconds between breaking blocks
+
+/** Blocks NPCs are allowed to break to clear a path */
+const BREAKABLE_BLOCKS = new Set([
+  BlockType.DIRT, BlockType.GRASS, BlockType.SAND, BlockType.GRAVEL,
+  BlockType.WOOD, BlockType.LEAVES, BlockType.SNOW,
+  BlockType.COBBLESTONE, BlockType.STONE,
+]);
 
 /** Build a humanoid geometry for NPC (body + head + 2 arms + 2 legs) */
 function buildNPCGeometry(role: NPCRole): THREE.BufferGeometry {
@@ -539,6 +548,68 @@ function generateAvoidanceWaypoints(
   return waypoints;
 }
 
+/** Find a position adjacent to a block where NPC can stand to work on it */
+function findStandPosition(
+  getBlock: (x: number, y: number, z: number) => BlockType,
+  bx: number, by: number, bz: number,
+  npcX: number, npcY: number, npcZ: number,
+): [number, number, number] {
+  // Try 4 adjacent positions, pick the closest walkable one
+  const candidates: [number, number, number, number][] = []; // [x, y, z, dist]
+  const offsets: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+  for (const [ox, oz] of offsets) {
+    const cx = bx + ox;
+    const cz = bz + oz;
+    // Check if walkable at ground level near the block
+    const groundY = getTerrainHeight(getBlock, cx + 0.5, cz + 0.5);
+    if (isWalkable(getBlock, cx + 0.5, groundY, cz + 0.5)) {
+      const dx = (cx + 0.5) - npcX;
+      const dz = (cz + 0.5) - npcZ;
+      candidates.push([cx + 0.5, groundY, cz + 0.5, dx * dx + dz * dz]);
+    }
+  }
+
+  if (candidates.length > 0) {
+    candidates.sort((a, b) => a[3] - b[3]);
+    return [candidates[0][0], candidates[0][1], candidates[0][2]];
+  }
+
+  // Fallback: stand at XZ of block (old behavior)
+  return [bx + 0.5, npcY, bz + 0.5];
+}
+
+/** Try to break a blocking block ahead. Returns true if a block was broken. */
+function tryBreakBlockingBlock(
+  getBlock: (x: number, y: number, z: number) => BlockType,
+  setBlock: (x: number, y: number, z: number, type: BlockType) => void,
+  px: number, py: number, pz: number,
+  targetX: number, targetZ: number,
+): boolean {
+  const dx = targetX - px;
+  const dz = targetZ - pz;
+  const dist = Math.sqrt(dx * dx + dz * dz);
+  if (dist < 0.1) return false;
+
+  const ndx = dx / dist;
+  const ndz = dz / dist;
+
+  // Check blocks at feet and head level ahead
+  for (const checkDist of [0.8, 1.2]) {
+    const checkX = Math.floor(px + ndx * checkDist);
+    const checkZ = Math.floor(pz + ndz * checkDist);
+    for (const yOff of [0, 1]) {
+      const checkY = Math.floor(py) + yOff;
+      const block = getBlock(checkX, checkY, checkZ);
+      if (isSolid(block) && BREAKABLE_BLOCKS.has(block)) {
+        setBlock(checkX, checkY, checkZ, BlockType.AIR);
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 /** Apply physics: gravity, ground collision, wall sliding */
 function applyPhysics(
   npc: NPC,
@@ -678,11 +749,24 @@ function tickAI(
   updates.stuckTimer = newStuckTimer;
   updates.lastPos = [px, py, pz];
 
-  // If stuck for too long, try A* pathfinding or abandon target
-  if (newStuckTimer >= STUCK_THRESHOLD && (npc.state === 'walking' || npc.state === 'idle')) {
+  // If stuck for too long, try solutions in order: break block > A* > avoidance > abandon
+  const isMovingState = npc.state === 'walking' || npc.state === 'idle' ||
+    npc.state === 'building' || npc.state === 'gathering' ||
+    npc.state === 'planting' || npc.state === 'farming';
+  if (newStuckTimer >= STUCK_THRESHOLD && isMovingState) {
     const newStuckCount = npc.stuckCount + 1;
     updates.stuckCount = newStuckCount;
     updates.stuckTimer = 0;
+
+    // Try breaking a blocking block first
+    if ((elapsedTime - npc.lastBreakTime) >= BREAK_COOLDOWN) {
+      const activeTarget = npc.waypoints.length > 0 ? npc.waypoints[0] : npc.target;
+      if (tryBreakBlockingBlock(getBlock, setBlock, px, py, pz, activeTarget[0], activeTarget[2])) {
+        updates.lastBreakTime = elapsedTime;
+        updates.stuckCount = Math.max(0, newStuckCount - 1); // breaking counts as progress
+        return updates;
+      }
+    }
 
     if (newStuckCount >= MAX_STUCK_COUNT) {
       // Abandon current target, go back home and reset
@@ -807,10 +891,14 @@ function tickAI(
         const project = buildProjects.find((p) => !p.completed);
         if (project && project.placedCount < project.blocks.length) {
           const block = project.blocks[project.placedCount];
-          updates.target = [block.x + 0.5, py, block.z + 0.5];
+          // Stand near the block, not on it - find best adjacent position
+          const standPos = findStandPosition(getBlock, block.x, block.y, block.z, px, py, pz);
+          updates.target = standPos;
           updates.state = 'building';
           updates.workTarget = [block.x, block.y, block.z];
           updates.buildIndex = project.placedCount;
+          updates.waypoints = [];
+          updates.pathCache = [];
           return updates;
         }
         // No active project - look for a river to bridge
@@ -949,6 +1037,17 @@ function tickAI(
     case 'building': {
       if (!npc.workTarget) {
         updates.state = 'idle';
+        return updates;
+      }
+      // Check if close enough to work target to build
+      const [wx, wy, wz] = npc.workTarget;
+      const workDist = Math.sqrt((px - (wx + 0.5)) ** 2 + (pz - (wz + 0.5)) ** 2);
+      if (workDist > BREAK_REACH) {
+        // Not close enough - recalculate stand position and walk there
+        const standPos = findStandPosition(getBlock, wx, wy, wz, px, py, pz);
+        updates.target = standPos;
+        updates.waypoints = [];
+        updates.pathCache = [];
         return updates;
       }
       const newBuildTimer = npc.buildTimer + dt;
