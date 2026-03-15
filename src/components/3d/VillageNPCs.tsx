@@ -744,8 +744,27 @@ function tickAI(
   const updates: Partial<NPC> = {};
   const [px, py, pz] = npc.position;
 
-  // Only do movement AI when grounded
-  if (!npc.grounded) return updates;
+  // Only do movement AI when grounded.
+  // But if airborne too long (>3s), reset to home to unstick.
+  if (!npc.grounded) {
+    const airDist = Math.sqrt(
+      (px - npc.lastPos[0]) ** 2 + (py - npc.lastPos[1]) ** 2 + (pz - npc.lastPos[2]) ** 2
+    );
+    if (airDist < 0.01 && npc.stuckTimer > 3.0) {
+      // Stuck in air - teleport to home and reset
+      updates.position = [...npc.homePosition] as [number, number, number];
+      updates.velocity = [0, 0, 0];
+      updates.grounded = true;
+      updates.state = 'idle';
+      updates.workTarget = null;
+      updates.waypoints = [];
+      updates.stuckTimer = 0;
+      return updates;
+    }
+    updates.stuckTimer = npc.stuckTimer + dt;
+    updates.lastPos = [px, py, pz];
+    return updates;
+  }
 
   // --- Stuck detection ---
   const movedDist = Math.sqrt(
@@ -1047,15 +1066,26 @@ function tickAI(
         return updates;
       }
 
-      // Wander randomly
-      const angle = Math.random() * Math.PI * 2;
-      const wanderDist = 2 + Math.random() * 3;
-      updates.target = [
-        npc.homePosition[0] + Math.cos(angle) * wanderDist,
-        py,
-        npc.homePosition[2] + Math.sin(angle) * wanderDist,
-      ];
+      // Wander randomly - find a walkable spot near home
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const angle = Math.random() * Math.PI * 2;
+        const wanderDist = 2 + Math.random() * 3;
+        const wx = npc.homePosition[0] + Math.cos(angle) * wanderDist;
+        const wz = npc.homePosition[2] + Math.sin(angle) * wanderDist;
+        const wy = getTerrainHeight(getBlock, wx, wz);
+        if (isWalkable(getBlock, wx, wy, wz) && !isDangerous(getBlock, wx, wz, wy)) {
+          updates.target = [wx, wy, wz];
+          updates.state = 'walking';
+          return updates;
+        }
+      }
+      // All wander attempts failed - walk toward home position
+      updates.target = [npc.homePosition[0], py, npc.homePosition[2]];
       updates.state = 'walking';
+      // Clear some failed targets so NPC can retry after reaching home
+      if (npc.failedTargets.length > 3) {
+        updates.failedTargets = npc.failedTargets.slice(-3);
+      }
       return updates;
     }
 
