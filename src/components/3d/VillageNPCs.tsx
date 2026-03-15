@@ -557,7 +557,7 @@ function generateAvoidanceWaypoints(
 function findStandPosition(
   getBlock: (x: number, y: number, z: number) => BlockType,
   bx: number, _by: number, bz: number,
-  npcX: number, npcY: number, npcZ: number,
+  npcX: number, _npcY: number, npcZ: number,
 ): [number, number, number] | null {
   const candidates: [number, number, number, number][] = []; // [x, y, z, dist]
   // Cardinal + diagonal + 2-block-away positions
