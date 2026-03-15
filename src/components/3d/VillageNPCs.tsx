@@ -324,7 +324,7 @@ function isDangerous(
 /** Generate avoidance waypoints when NPC is stuck */
 function generateAvoidanceWaypoints(
   getBlock: (x: number, y: number, z: number) => BlockType,
-  px: number, py: number, pz: number,
+  px: number, _py: number, pz: number,
   tx: number, tz: number
 ): [number, number, number][] {
   const dx = tx - px;
