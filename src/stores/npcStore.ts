@@ -33,6 +33,8 @@ export interface NPC {
   stuckCount: number;
   /** Timestamp of last jump for cooldown */
   lastJumpTime: number;
+  /** Timestamp of last block break for cooldown */
+  lastBreakTime: number;
   /** Cached A* path, recalculated periodically */
   pathCache: [number, number, number][];
   /** Time when path was last calculated */
@@ -108,6 +110,7 @@ function createNPC(id: string, role: NPCRole, cx: number, cy: number, cz: number
     waypoints: [],
     stuckCount: 0,
     lastJumpTime: 0,
+    lastBreakTime: 0,
     pathCache: [],
     pathCacheTime: 0,
   };
