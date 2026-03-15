@@ -19,6 +19,10 @@ const STUCK_THRESHOLD = 1.5; // seconds before NPC is considered stuck
 const STUCK_DISTANCE = 0.3; // minimum distance to count as "made progress"
 const MAX_STUCK_COUNT = 3;   // abandon target after this many stuck events
 const WAYPOINT_REACH_DIST = 0.8; // distance to consider waypoint reached
+const JUMP_COOLDOWN = 0.6; // seconds between jumps
+const PATH_RECALC_INTERVAL = 3.0; // seconds between A* path recalculations
+const ASTAR_MAX_NODES = 200; // max nodes to explore in A*
+const ASTAR_MAX_RANGE = 16; // max Manhattan distance for A*
 
 /** Build a humanoid geometry for NPC (body + head + 2 arms + 2 legs) */
 function buildNPCGeometry(role: NPCRole): THREE.BufferGeometry {
@@ -321,6 +325,163 @@ function isDangerous(
   return false;
 }
 
+/** A* pathfinding on block grid. Returns waypoints or empty array if no path. */
+function findPathAStar(
+  getBlock: (x: number, y: number, z: number) => BlockType,
+  startX: number, startY: number, startZ: number,
+  goalX: number, goalZ: number,
+): [number, number, number][] {
+  const sx = Math.floor(startX);
+  const sy = Math.floor(startY);
+  const sz = Math.floor(startZ);
+  const gx = Math.floor(goalX);
+  const gz = Math.floor(goalZ);
+
+  // Already at goal
+  if (sx === gx && sz === gz) return [];
+
+  // Too far for A*
+  if (Math.abs(gx - sx) + Math.abs(gz - sz) > ASTAR_MAX_RANGE) return [];
+
+  const key = (x: number, y: number, z: number) => `${x},${y},${z}`;
+
+  // Open set as a simple sorted array (small search space)
+  interface ANode {
+    x: number; y: number; z: number;
+    g: number; f: number;
+    parent: ANode | null;
+    jumped: boolean; // did we need a jump to get here?
+  }
+
+  const open: ANode[] = [];
+  const closed = new Set<string>();
+
+  const heuristic = (x: number, z: number) =>
+    Math.abs(x - gx) + Math.abs(z - gz);
+
+  const startNode: ANode = {
+    x: sx, y: sy, z: sz,
+    g: 0, f: heuristic(sx, sz),
+    parent: null, jumped: false,
+  };
+  open.push(startNode);
+
+  // 4-directional neighbors
+  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+  let explored = 0;
+  while (open.length > 0 && explored < ASTAR_MAX_NODES) {
+    // Find lowest f-score
+    let bestIdx = 0;
+    for (let i = 1; i < open.length; i++) {
+      if (open[i].f < open[bestIdx].f) bestIdx = i;
+    }
+    const current = open[bestIdx];
+    open.splice(bestIdx, 1);
+    explored++;
+
+    const ck = key(current.x, current.y, current.z);
+    if (closed.has(ck)) continue;
+    closed.add(ck);
+
+    // Goal reached?
+    if (current.x === gx && current.z === gz) {
+      // Reconstruct path
+      const path: [number, number, number][] = [];
+      let node: ANode | null = current;
+      while (node && node.parent) {
+        path.push([node.x + 0.5, node.y, node.z + 0.5]);
+        node = node.parent;
+      }
+      path.reverse();
+      // Simplify path: remove intermediate points on straight lines
+      return simplifyPath(path);
+    }
+
+    for (const [ddx, ddz] of dirs) {
+      const nx = current.x + ddx;
+      const nz = current.z + ddz;
+
+      // Same level: walkable at current Y
+      const sameY = current.y;
+      if (!closed.has(key(nx, sameY, nz)) && isWalkableGrid(getBlock, nx, sameY, nz)) {
+        if (!isDangerousGrid(getBlock, nx, nz, sameY)) {
+          const ng = current.g + 1;
+          const nf = ng + heuristic(nx, nz);
+          open.push({ x: nx, y: sameY, z: nz, g: ng, f: nf, parent: current, jumped: false });
+        }
+      }
+
+      // Step up: solid block at current Y feet level, walkable at Y+1
+      const upY = current.y + 1;
+      if (!closed.has(key(nx, upY, nz)) && isWalkableGrid(getBlock, nx, upY, nz)) {
+        // Check head clearance at current position for jump
+        if (!isSolid(getBlock(current.x, current.y + 2, current.z)) &&
+            !isDangerousGrid(getBlock, nx, nz, upY)) {
+          const ng = current.g + 2; // jumping costs more
+          const nf = ng + heuristic(nx, nz);
+          open.push({ x: nx, y: upY, z: nz, g: ng, f: nf, parent: current, jumped: true });
+        }
+      }
+
+      // Step down: no ground at same level, walkable at Y-1
+      const downY = current.y - 1;
+      if (downY >= 0 && !closed.has(key(nx, downY, nz)) && isWalkableGrid(getBlock, nx, downY, nz)) {
+        if (!isDangerousGrid(getBlock, nx, nz, downY)) {
+          const ng = current.g + 1.2; // slight cost for dropping
+          const nf = ng + heuristic(nx, nz);
+          open.push({ x: nx, y: downY, z: nz, g: ng, f: nf, parent: current, jumped: false });
+        }
+      }
+    }
+  }
+
+  return []; // no path found
+}
+
+/** Grid-based walkability check for A* (integer coords) */
+function isWalkableGrid(
+  getBlock: (x: number, y: number, z: number) => BlockType,
+  x: number, y: number, z: number,
+): boolean {
+  return isSolid(getBlock(x, y - 1, z)) &&
+    !isSolid(getBlock(x, y, z)) &&
+    !isSolid(getBlock(x, y + 1, z));
+}
+
+/** Grid-based danger check for A* (integer coords) */
+function isDangerousGrid(
+  getBlock: (x: number, y: number, z: number) => BlockType,
+  x: number, z: number, y: number,
+): boolean {
+  // Check for water
+  for (let dy = 0; dy >= -3; dy--) {
+    if (getBlock(x, y + dy, z) === BlockType.WATER) return true;
+  }
+  return false;
+}
+
+/** Remove intermediate waypoints on straight lines */
+function simplifyPath(path: [number, number, number][]): [number, number, number][] {
+  if (path.length <= 2) return path;
+  const result: [number, number, number][] = [path[0]];
+  for (let i = 1; i < path.length - 1; i++) {
+    const prev = path[i - 1];
+    const curr = path[i];
+    const next = path[i + 1];
+    // Keep waypoint if direction changes or height changes
+    const dx1 = curr[0] - prev[0];
+    const dz1 = curr[2] - prev[2];
+    const dx2 = next[0] - curr[0];
+    const dz2 = next[2] - curr[2];
+    if (dx1 !== dx2 || dz1 !== dz2 || curr[1] !== prev[1] || curr[1] !== next[1]) {
+      result.push(curr);
+    }
+  }
+  result.push(path[path.length - 1]);
+  return result;
+}
+
 /** Generate avoidance waypoints when NPC is stuck */
 function generateAvoidanceWaypoints(
   getBlock: (x: number, y: number, z: number) => BlockType,
@@ -383,6 +544,7 @@ function applyPhysics(
   npc: NPC,
   dt: number,
   getBlock: (x: number, y: number, z: number) => BlockType,
+  elapsedTime: number,
 ): Partial<NPC> {
   const updates: Partial<NPC> = {};
   let [vx, vy, vz] = npc.velocity;
@@ -443,8 +605,8 @@ function applyPhysics(
     }
   }
 
-  // Step-up / jump: if grounded, check ahead for 1-block obstacles to jump over
-  if (grounded) {
+  // Step-up / jump: only when grounded, path requires it, and cooldown elapsed
+  if (grounded && (elapsedTime - npc.lastJumpTime) >= JUMP_COOLDOWN) {
     const activeTarget = npc.waypoints.length > 0 ? npc.waypoints[0] : npc.target;
     const moveX = activeTarget[0] - px;
     const moveZ = activeTarget[2] - pz;
@@ -455,19 +617,15 @@ function applyPhysics(
       const aheadX = newX + ndirX * 0.6;
       const aheadZ = newZ + ndirZ * 0.6;
 
-      // Check if blocked by wall or terrain is 1 block higher ahead
+      // Only jump when there's an actual solid block at feet level ahead
       const blockAtFeet = isSolidAt(getBlock, aheadX, newY + 0.2, aheadZ);
       const spaceAbove = !isSolidAt(getBlock, aheadX, newY + 1.2, aheadZ) &&
                          !isSolidAt(getBlock, aheadX, newY + 2.0, aheadZ);
 
-      // Also check terrain height difference ahead
-      const aheadGroundY = getTerrainHeight(getBlock, aheadX, aheadZ);
-      const heightDiff = aheadGroundY - newY;
-
-      // Jump if: wall ahead with space above, OR terrain 1 block higher ahead
-      if ((blockAtFeet && spaceAbove) || (heightDiff > 0.5 && heightDiff <= 1.2 && spaceAbove)) {
+      if (blockAtFeet && spaceAbove) {
         vy = JUMP_VELOCITY;
         grounded = false;
+        updates.lastJumpTime = elapsedTime;
       }
     }
   }
@@ -520,7 +678,7 @@ function tickAI(
   updates.stuckTimer = newStuckTimer;
   updates.lastPos = [px, py, pz];
 
-  // If stuck for too long, generate avoidance waypoints or abandon target
+  // If stuck for too long, try A* pathfinding or abandon target
   if (newStuckTimer >= STUCK_THRESHOLD && (npc.state === 'walking' || npc.state === 'idle')) {
     const newStuckCount = npc.stuckCount + 1;
     updates.stuckCount = newStuckCount;
@@ -532,25 +690,50 @@ function tickAI(
       updates.state = 'idle';
       updates.workTarget = null;
       updates.waypoints = [];
+      updates.pathCache = [];
       updates.stuckCount = 0;
       return updates;
     }
 
-    // Generate avoidance waypoints around the obstacle
+    // Try A* pathfinding around the obstacle
     const finalTarget = npc.target;
+    const astarPath = findPathAStar(getBlock, px, py, pz, finalTarget[0], finalTarget[2]);
+    if (astarPath.length > 0) {
+      updates.waypoints = astarPath;
+      updates.pathCache = astarPath;
+      updates.pathCacheTime = elapsedTime;
+      return updates;
+    }
+
+    // Fallback: try simple avoidance waypoints
     const avoidWaypoints = generateAvoidanceWaypoints(
       getBlock, px, py, pz, finalTarget[0], finalTarget[2]
     );
     if (avoidWaypoints.length > 0) {
       updates.waypoints = [...avoidWaypoints, finalTarget];
-      updates.target = avoidWaypoints[0];
       return updates;
     }
   }
 
+  // --- Proactive A* path planning ---
+  // If we have a target far enough and no waypoints (or path is stale), plan a path
+  const distToTarget = Math.sqrt((px - npc.target[0]) ** 2 + (pz - npc.target[2]) ** 2);
+  if (distToTarget > 2 && npc.waypoints.length === 0 &&
+      (elapsedTime - npc.pathCacheTime) > PATH_RECALC_INTERVAL) {
+    const astarPath = findPathAStar(getBlock, px, py, pz, npc.target[0], npc.target[2]);
+    if (astarPath.length > 0) {
+      updates.waypoints = astarPath;
+      updates.pathCache = astarPath;
+      updates.pathCacheTime = elapsedTime;
+    } else {
+      // No A* path - just update cache time to avoid recalculating every frame
+      updates.pathCacheTime = elapsedTime;
+    }
+  }
+
   // --- Waypoint following ---
-  // Determine current movement target (waypoint or final target)
-  const activeTarget = npc.waypoints.length > 0 ? npc.waypoints[0] : npc.target;
+  const currentWaypoints = updates.waypoints ?? npc.waypoints;
+  const activeTarget = currentWaypoints.length > 0 ? currentWaypoints[0] : npc.target;
   const tx = activeTarget[0];
   const tz = activeTarget[2];
   const dist = Math.sqrt((px - tx) ** 2 + (pz - tz) ** 2);
@@ -564,19 +747,26 @@ function tickAI(
     const nextX = px + dx * 0.5;
     const nextZ = pz + dz * 0.5;
     if (isDangerous(getBlock, nextX, nextZ, py)) {
-      // Don't walk into danger - try avoidance
-      const avoidWaypoints = generateAvoidanceWaypoints(
-        getBlock, px, py, pz, npc.target[0], npc.target[2]
-      );
-      if (avoidWaypoints.length > 0) {
-        updates.waypoints = [...avoidWaypoints, npc.target];
-        updates.target = avoidWaypoints[0];
+      // Don't walk into danger - try A* first, then avoidance
+      const astarPath = findPathAStar(getBlock, px, py, pz, npc.target[0], npc.target[2]);
+      if (astarPath.length > 0) {
+        updates.waypoints = astarPath;
+        updates.pathCache = astarPath;
+        updates.pathCacheTime = elapsedTime;
       } else {
-        // Can't avoid - abandon and go home
-        updates.target = [npc.homePosition[0], py, npc.homePosition[2]];
-        updates.state = 'idle';
-        updates.workTarget = null;
-        updates.waypoints = [];
+        const avoidWaypoints = generateAvoidanceWaypoints(
+          getBlock, px, py, pz, npc.target[0], npc.target[2]
+        );
+        if (avoidWaypoints.length > 0) {
+          updates.waypoints = [...avoidWaypoints, npc.target];
+        } else {
+          // Can't avoid - abandon and go home
+          updates.target = [npc.homePosition[0], py, npc.homePosition[2]];
+          updates.state = 'idle';
+          updates.workTarget = null;
+          updates.waypoints = [];
+          updates.pathCache = [];
+        }
       }
       return updates;
     }
@@ -593,11 +783,10 @@ function tickAI(
   }
 
   // Reached current waypoint - advance to next
-  if (npc.waypoints.length > 0) {
-    const remaining = npc.waypoints.slice(1);
+  if (currentWaypoints.length > 0) {
+    const remaining = currentWaypoints.slice(1);
     updates.waypoints = remaining;
     if (remaining.length > 0) {
-      updates.target = remaining[0];
       return updates;
     }
     // All waypoints consumed, reset stuck count
@@ -906,7 +1095,7 @@ export function VillageNPCs() {
 
     for (const npc of npcs) {
       // Apply physics first (gravity, collision, ground detection)
-      const physUpdates = applyPhysics(npc, dt, getBlock);
+      const physUpdates = applyPhysics(npc, dt, getBlock, t);
 
       // Then apply AI logic
       const mergedNPC = { ...npc, ...physUpdates };
