@@ -3,7 +3,7 @@ import { BlockType } from '../BlockRegistry';
 import { ChunkData } from '../ChunkData';
 import { VillageBiome } from '../../terrain/biomes/VillageBiome';
 import { createBiome, BIOME_LIST, type BiomeType } from '../../terrain/biomes';
-import { useNPCStore, generateHouseBlueprint } from '../../../stores/npcStore';
+import { useNPCStore, generateHouseBlueprint, generateBridgeBlueprint } from '../../../stores/npcStore';
 
 describe('Village biome', () => {
   it('should have correct config', () => {
@@ -211,14 +211,16 @@ describe('NPC Store', () => {
     state.clearNPCs();
   });
 
-  it('should clear NPCs', () => {
+  it('should clear NPCs and saplings', () => {
     const store = useNPCStore.getState();
     store.spawnVillageNPCs(8, 10, 8);
+    store.addSapling(5, 11, 5, 100);
     store.clearNPCs();
     const state = useNPCStore.getState();
 
     expect(state.npcs.length).toBe(0);
     expect(state.buildProjects.length).toBe(0);
+    expect(state.saplings.length).toBe(0);
   });
 
   it('should update NPC state', () => {
@@ -295,5 +297,72 @@ describe('House Blueprint', () => {
     const house1 = generateHouseBlueprint(0, 0, 0, 1);
 
     expect(house0.blocks.length).not.toBe(house1.blocks.length);
+  });
+});
+
+describe('Bridge Blueprint', () => {
+  it('should generate bridge with planks deck and wood railings', () => {
+    const bridge = generateBridgeBlueprint(5, 10, 4, 8, 0);
+
+    expect(bridge.blocks.length).toBeGreaterThan(0);
+    expect(bridge.completed).toBe(false);
+    expect(bridge.placedCount).toBe(0);
+    expect(bridge.id).toContain('bridge_');
+
+    const types = new Set(bridge.blocks.map((b) => b.type));
+    expect(types.has(BlockType.PLANKS)).toBe(true);
+    expect(types.has(BlockType.WOOD)).toBe(true);
+  });
+
+  it('should span the correct X range', () => {
+    const bridge = generateBridgeBlueprint(5, 10, 4, 8, 0);
+    const xs = bridge.blocks.map((b) => b.x);
+    expect(Math.min(...xs)).toBe(4);  // startX - 1
+    expect(Math.max(...xs)).toBe(11); // endX + 1
+  });
+});
+
+describe('Sapling Tracking', () => {
+  it('should add and remove saplings', () => {
+    const store = useNPCStore.getState();
+    store.spawnVillageNPCs(8, 10, 8);
+
+    store.addSapling(5, 11, 5, 100);
+    store.addSapling(10, 11, 10, 105);
+    expect(useNPCStore.getState().saplings.length).toBe(2);
+
+    store.removeSapling(5, 11, 5);
+    expect(useNPCStore.getState().saplings.length).toBe(1);
+    expect(useNPCStore.getState().saplings[0].x).toBe(10);
+
+    store.clearNPCs();
+  });
+
+  it('should track planted time', () => {
+    const store = useNPCStore.getState();
+    store.spawnVillageNPCs(8, 10, 8);
+
+    store.addSapling(5, 11, 5, 42.5);
+    const sapling = useNPCStore.getState().saplings[0];
+    expect(sapling.plantedAt).toBe(42.5);
+    expect(sapling.x).toBe(5);
+    expect(sapling.y).toBe(11);
+    expect(sapling.z).toBe(5);
+
+    store.clearNPCs();
+  });
+
+  it('should support new NPC states', () => {
+    const store = useNPCStore.getState();
+    store.spawnVillageNPCs(8, 10, 8);
+    const npc = useNPCStore.getState().npcs[0];
+
+    store.updateNPC(npc.id, { state: 'planting' });
+    expect(useNPCStore.getState().npcs.find((n) => n.id === npc.id)!.state).toBe('planting');
+
+    store.updateNPC(npc.id, { state: 'farming' });
+    expect(useNPCStore.getState().npcs.find((n) => n.id === npc.id)!.state).toBe('farming');
+
+    store.clearNPCs();
   });
 });

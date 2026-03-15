@@ -1,10 +1,12 @@
 import { useRef, useMemo, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { useNPCStore, ROLE_COLORS, type NPC, type NPCRole } from '../../stores/npcStore';
+import { useNPCStore, ROLE_COLORS, generateBridgeBlueprint, type NPC, type NPCRole } from '../../stores/npcStore';
 import { useWorldStore } from '../../stores/worldStore';
 import { BlockType, isSolid } from '../../core/voxel/BlockRegistry';
 import { CHUNK_HEIGHT } from '../../utils/constants';
+
+const SAPLING_GROW_TIME = 30; // seconds until sapling becomes a tree
 
 const GRAVITY = 20;
 const NPC_HEIGHT = 1.8; // total NPC height in blocks
@@ -156,7 +158,7 @@ function getGatherTargets(role: NPCRole): BlockType[] {
   switch (role) {
     case 'lumberjack': return [BlockType.WOOD];
     case 'miner': return [BlockType.STONE, BlockType.COBBLESTONE, BlockType.COAL_ORE];
-    case 'farmer': return [BlockType.TALL_GRASS, BlockType.FLOWER_RED, BlockType.FLOWER_YELLOW];
+    case 'farmer': return [BlockType.WHEAT];
     case 'builder': return [BlockType.WOOD, BlockType.PLANKS];
   }
 }
@@ -165,8 +167,121 @@ function getDropType(role: NPCRole): BlockType {
   switch (role) {
     case 'lumberjack': return BlockType.PLANKS;
     case 'miner': return BlockType.COBBLESTONE;
-    case 'farmer': return BlockType.APPLE;
+    case 'farmer': return BlockType.BREAD;
     case 'builder': return BlockType.PLANKS;
+  }
+}
+
+/** Find a flat grass spot near the NPC for farming */
+function findFarmSpot(
+  getBlock: (x: number, y: number, z: number) => BlockType,
+  cx: number, cy: number, cz: number,
+  radius: number
+): [number, number, number] | null {
+  for (let r = 2; r <= radius; r++) {
+    for (let dx = -r; dx <= r; dx++) {
+      for (let dz = -r; dz <= r; dz++) {
+        const bx = Math.floor(cx) + dx;
+        const bz = Math.floor(cz) + dz;
+        for (let dy = -2; dy <= 2; dy++) {
+          const by = Math.floor(cy) + dy;
+          if (getBlock(bx, by, bz) === BlockType.GRASS &&
+              getBlock(bx, by + 1, bz) === BlockType.AIR &&
+              getBlock(bx, by + 2, bz) === BlockType.AIR) {
+            return [bx, by, bz];
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/** Find a spot where lumberjack just chopped wood to plant a sapling */
+function findSaplingSpot(
+  getBlock: (x: number, y: number, z: number) => BlockType,
+  cx: number, cy: number, cz: number,
+  radius: number
+): [number, number, number] | null {
+  for (let r = 1; r <= radius; r++) {
+    for (let dx = -r; dx <= r; dx++) {
+      for (let dz = -r; dz <= r; dz++) {
+        const bx = Math.floor(cx) + dx;
+        const bz = Math.floor(cz) + dz;
+        for (let dy = -2; dy <= 2; dy++) {
+          const by = Math.floor(cy) + dy;
+          if ((getBlock(bx, by, bz) === BlockType.GRASS || getBlock(bx, by, bz) === BlockType.DIRT) &&
+              getBlock(bx, by + 1, bz) === BlockType.AIR &&
+              getBlock(bx, by + 2, bz) === BlockType.AIR &&
+              getBlock(bx, by + 3, bz) === BlockType.AIR) {
+            return [bx, by + 1, bz];
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/** Scan for water gap to build a bridge */
+function findBridgeLocation(
+  getBlock: (x: number, y: number, z: number) => BlockType,
+  cx: number, cy: number, cz: number,
+  radius: number
+): { startX: number; endX: number; bridgeY: number; bridgeZ: number } | null {
+  for (let dz = -radius; dz <= radius; dz++) {
+    const bz = Math.floor(cz) + dz;
+    let waterStart = -1;
+    let waterEnd = -1;
+    let waterY = -1;
+    for (let dx = -radius; dx <= radius; dx++) {
+      const bx = Math.floor(cx) + dx;
+      let foundWater = false;
+      for (let dy = -2; dy <= 4; dy++) {
+        const by = Math.floor(cy) + dy;
+        if (getBlock(bx, by, bz) === BlockType.WATER) {
+          foundWater = true;
+          waterY = by;
+          break;
+        }
+      }
+      if (foundWater) {
+        if (waterStart === -1) waterStart = bx;
+        waterEnd = bx;
+      } else if (waterStart !== -1) {
+        break; // end of water gap
+      }
+    }
+    const span = waterEnd - waterStart;
+    if (waterStart !== -1 && span >= 2 && span <= 12) {
+      return { startX: waterStart, endX: waterEnd, bridgeY: waterY + 1, bridgeZ: bz };
+    }
+  }
+  return null;
+}
+
+/** Grow a sapling into a tree (simplified version) */
+function growSaplingToTree(
+  setBlock: (x: number, y: number, z: number, type: BlockType) => void,
+  sx: number, sy: number, sz: number
+): void {
+  // Remove sapling
+  setBlock(sx, sy, sz, BlockType.AIR);
+  // Trunk (4 blocks)
+  for (let ty = 0; ty < 4; ty++) {
+    setBlock(sx, sy + ty, sz, BlockType.WOOD);
+  }
+  // Leaves (simple canopy)
+  const leafBase = sy + 3;
+  for (let ly = 0; ly < 3; ly++) {
+    const r = ly < 2 ? 2 : 1;
+    for (let lx = -r; lx <= r; lx++) {
+      for (let lz = -r; lz <= r; lz++) {
+        if (lx === 0 && lz === 0 && ly < 1) continue;
+        if (Math.abs(lx) === r && Math.abs(lz) === r && ly === 0) continue;
+        setBlock(sx + lx, leafBase + ly, sz + lz, BlockType.LEAVES);
+      }
+    }
   }
 }
 
@@ -278,10 +393,13 @@ function applyPhysics(
 function tickAI(
   npc: NPC,
   dt: number,
+  elapsedTime: number,
   getBlock: (x: number, y: number, z: number) => BlockType,
   setBlock: (x: number, y: number, z: number, type: BlockType) => void,
   buildProjects: { id: string; blocks: { x: number; y: number; z: number; type: BlockType }[]; placedCount: number; completed: boolean }[],
   completeBuildBlock: (id: string) => void,
+  addBuildProject: (project: { id: string; blocks: { x: number; y: number; z: number; type: BlockType }[]; placedCount: number; completed: boolean }) => void,
+  addSapling: (x: number, y: number, z: number, time: number) => void,
 ): Partial<NPC> {
   const updates: Partial<NPC> = {};
   const [px, py, pz] = npc.position;
@@ -315,7 +433,7 @@ function tickAI(
   switch (npc.state) {
     case 'idle':
     case 'walking': {
-      // Builders try to build if there's a project
+      // === BUILDER: build houses or bridges ===
       if (npc.role === 'builder') {
         const project = buildProjects.find((p) => !p.completed);
         if (project && project.placedCount < project.blocks.length) {
@@ -326,17 +444,87 @@ function tickAI(
           updates.buildIndex = project.placedCount;
           return updates;
         }
+        // No active project - look for a river to bridge
+        const hasBridge = buildProjects.some((p) => p.id.startsWith('bridge_'));
+        if (!hasBridge) {
+          const bridgeLoc = findBridgeLocation(getBlock, px, py, pz, 15);
+          if (bridgeLoc) {
+            const bridge = generateBridgeBlueprint(
+              bridgeLoc.startX, bridgeLoc.endX,
+              bridgeLoc.bridgeY, bridgeLoc.bridgeZ, 0
+            );
+            addBuildProject(bridge);
+            return updates; // will pick up bridge next tick
+          }
+        }
       }
 
-      // Others gather materials
-      if (totalItems < npc.inventoryCapacity) {
-        const targets = getGatherTargets(npc.role);
-        const found = findNearbyBlock(getBlock, px, py, pz, targets, 8);
-        if (found) {
-          updates.target = [found[0] + 0.5, py, found[2] + 0.5];
-          updates.state = 'gathering';
-          updates.workTarget = found;
+      // === LUMBERJACK: chop wood, then plant sapling ===
+      if (npc.role === 'lumberjack') {
+        // After chopping (has items), try to plant a sapling
+        if (totalItems > 0 && totalItems % 3 === 0) {
+          const spot = findSaplingSpot(getBlock, px, py, pz, 6);
+          if (spot) {
+            updates.target = [spot[0] + 0.5, py, spot[2] + 0.5];
+            updates.state = 'planting';
+            updates.workTarget = spot;
+            return updates;
+          }
+        }
+        // Chop wood
+        if (totalItems < npc.inventoryCapacity) {
+          const found = findNearbyBlock(getBlock, px, py, pz, [BlockType.WOOD], 12);
+          if (found) {
+            updates.target = [found[0] + 0.5, py, found[2] + 0.5];
+            updates.state = 'gathering';
+            updates.workTarget = found;
+            return updates;
+          }
+        }
+      }
+
+      // === FARMER: create farmland and plant wheat ===
+      if (npc.role === 'farmer') {
+        // Look for existing farmland to plant wheat on
+        const farmland = findNearbyBlock(getBlock, px, py, pz, [BlockType.FARMLAND], 8);
+        if (farmland) {
+          const above = getBlock(farmland[0], farmland[1] + 1, farmland[2]);
+          if (above === BlockType.AIR) {
+            updates.target = [farmland[0] + 0.5, py, farmland[2] + 0.5];
+            updates.state = 'farming';
+            updates.workTarget = [farmland[0], farmland[1] + 1, farmland[2]];
+            return updates;
+          }
+        }
+        // Find grass to convert to farmland
+        const grassSpot = findFarmSpot(getBlock, px, py, pz, 8);
+        if (grassSpot) {
+          updates.target = [grassSpot[0] + 0.5, py, grassSpot[2] + 0.5];
+          updates.state = 'farming';
+          updates.workTarget = grassSpot;
           return updates;
+        }
+        // Harvest mature wheat
+        const wheat = findNearbyBlock(getBlock, px, py, pz, [BlockType.WHEAT], 8);
+        if (wheat) {
+          updates.target = [wheat[0] + 0.5, py, wheat[2] + 0.5];
+          updates.state = 'gathering';
+          updates.workTarget = wheat;
+          return updates;
+        }
+      }
+
+      // === MINER: gather stone/ores ===
+      if (npc.role === 'miner') {
+        if (totalItems < npc.inventoryCapacity) {
+          const targets = getGatherTargets(npc.role);
+          const found = findNearbyBlock(getBlock, px, py, pz, targets, 8);
+          if (found) {
+            updates.target = [found[0] + 0.5, py, found[2] + 0.5];
+            updates.state = 'gathering';
+            updates.workTarget = found;
+            return updates;
+          }
         }
       }
 
@@ -371,13 +559,14 @@ function tickAI(
         if (bt !== BlockType.AIR) {
           setBlock(bx, by, bz, BlockType.AIR);
           const drop = getDropType(npc.role);
-          const existingSlot = npc.inventory.find((i) => i.type === drop);
+          const inv = [...npc.inventory];
+          const existingSlot = inv.find((i) => i.type === drop);
           if (existingSlot) {
             existingSlot.count++;
           } else {
-            npc.inventory.push({ type: drop, count: 1 });
+            inv.push({ type: drop, count: 1 });
           }
-          updates.inventory = [...npc.inventory];
+          updates.inventory = inv;
         }
         updates.gatherTimer = 0;
         updates.workTarget = null;
@@ -410,6 +599,57 @@ function tickAI(
       return updates;
     }
 
+    case 'planting': {
+      // Lumberjack plants a sapling
+      if (!npc.workTarget) {
+        updates.state = 'idle';
+        return updates;
+      }
+      const plantTimer = npc.buildTimer + dt;
+      if (plantTimer >= 1.0) {
+        const [sx, sy, sz] = npc.workTarget;
+        if (getBlock(sx, sy, sz) === BlockType.AIR) {
+          setBlock(sx, sy, sz, BlockType.SAPLING);
+          addSapling(sx, sy, sz, elapsedTime);
+        }
+        updates.buildTimer = 0;
+        updates.workTarget = null;
+        updates.state = 'idle';
+      } else {
+        updates.buildTimer = plantTimer;
+      }
+      return updates;
+    }
+
+    case 'farming': {
+      // Farmer: convert grass to farmland or plant wheat on farmland
+      if (!npc.workTarget) {
+        updates.state = 'idle';
+        return updates;
+      }
+      const farmTimer = npc.buildTimer + dt;
+      if (farmTimer >= 1.2) {
+        const [fx, fy, fz] = npc.workTarget;
+        const blockHere = getBlock(fx, fy, fz);
+        if (blockHere === BlockType.GRASS) {
+          // Convert grass to farmland
+          setBlock(fx, fy, fz, BlockType.FARMLAND);
+        } else if (blockHere === BlockType.AIR) {
+          // Plant wheat above farmland
+          const below = getBlock(fx, fy - 1, fz);
+          if (below === BlockType.FARMLAND) {
+            setBlock(fx, fy, fz, BlockType.WHEAT);
+          }
+        }
+        updates.buildTimer = 0;
+        updates.workTarget = null;
+        updates.state = 'idle';
+      } else {
+        updates.buildTimer = farmTimer;
+      }
+      return updates;
+    }
+
     case 'returning': {
       updates.inventory = [];
       updates.state = 'idle';
@@ -431,8 +671,12 @@ const ROLE_LABELS: Record<NPCRole, string> = {
 export function VillageNPCs() {
   const npcs = useNPCStore((s) => s.npcs);
   const buildProjects = useNPCStore((s) => s.buildProjects);
+  const saplings = useNPCStore((s) => s.saplings);
   const updateNPC = useNPCStore((s) => s.updateNPC);
   const completeBuildBlock = useNPCStore((s) => s.completeBuildBlock);
+  const addBuildProject = useNPCStore((s) => s.addBuildProject);
+  const addSapling = useNPCStore((s) => s.addSapling);
+  const removeSapling = useNPCStore((s) => s.removeSapling);
   const getBlock = useWorldStore((s) => s.getBlock);
   const setBlock = useWorldStore((s) => s.setBlock);
 
@@ -469,13 +713,27 @@ export function VillageNPCs() {
     const dt = Math.min(delta, 0.05); // cap dt for stability
     const t = state.clock.elapsedTime;
 
+    // Sapling growth system: check if any saplings are ready to grow
+    for (const sapling of saplings) {
+      if (t - sapling.plantedAt >= SAPLING_GROW_TIME) {
+        const bt = getBlock(sapling.x, sapling.y, sapling.z);
+        if (bt === BlockType.SAPLING) {
+          growSaplingToTree(setBlock, sapling.x, sapling.y, sapling.z);
+        }
+        removeSapling(sapling.x, sapling.y, sapling.z);
+      }
+    }
+
     for (const npc of npcs) {
       // Apply physics first (gravity, collision, ground detection)
       const physUpdates = applyPhysics(npc, dt, getBlock);
 
       // Then apply AI logic
       const mergedNPC = { ...npc, ...physUpdates };
-      const aiUpdates = tickAI(mergedNPC, dt, getBlock, setBlock, buildProjects, completeBuildBlock);
+      const aiUpdates = tickAI(
+        mergedNPC, dt, t, getBlock, setBlock,
+        buildProjects, completeBuildBlock, addBuildProject, addSapling
+      );
 
       // Merge AI velocity with physics velocity (AI sets horizontal, physics keeps vertical)
       if (aiUpdates.velocity && physUpdates.velocity) {
@@ -506,8 +764,8 @@ export function VillageNPCs() {
         const isMoving = npc.grounded && (npc.state === 'walking' || npc.state === 'returning');
         const bounce = isMoving ? Math.abs(Math.sin(t * 8 + npc.phase)) * 0.06 : 0;
 
-        // Working bob when gathering/building
-        const workBob = npc.grounded && (npc.state === 'gathering' || npc.state === 'building')
+        // Working bob when gathering/building/planting/farming
+        const workBob = npc.grounded && (npc.state === 'gathering' || npc.state === 'building' || npc.state === 'planting' || npc.state === 'farming')
           ? Math.sin(t * 8 + npc.phase) * 0.05 : 0;
 
         dummy.position.set(px, py + bounce + workBob, pz);
