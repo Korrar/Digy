@@ -118,7 +118,7 @@ export function BiomeScene() {
 
   useEffect(() => {
     setDifficulty(BIOME_DIFFICULTY[biomeType] ?? 1.0);
-    generateWorld(biomeType, biomeSeed, 1);
+    generateWorld(biomeType, biomeSeed, biomeType === 'village' ? 2 : 1);
     settleWorld();
     // Spawn village NPCs
     if (biomeType === 'village') {
@@ -242,13 +242,13 @@ export function BiomeScene() {
         {biomeType !== 'cave' && (
           <WaterPlane
             waterLevel={3.4}
-            size={80}
+            size={biomeType === 'village' ? 160 : 80}
             position={[8, 8]}
             color={BIOME_WATER_COLOR[biomeType] || '#2a6090'}
           />
         )}
 
-        <fog attach="fog" args={[skyColor, 30, 80]} />
+        <fog attach="fog" args={[skyColor, biomeType === 'village' ? 50 : 30, biomeType === 'village' ? 140 : 80]} />
       </Canvas>
 
       <HUD timeIndicator={biomeType !== 'cave' ? timeIndicator : undefined} />
