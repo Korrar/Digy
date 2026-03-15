@@ -366,3 +366,59 @@ describe('Sapling Tracking', () => {
     store.clearNPCs();
   });
 });
+
+describe('NPC Advanced AI', () => {
+  it('should have stuck detection fields on spawn', () => {
+    const store = useNPCStore.getState();
+    store.spawnVillageNPCs(8, 10, 8);
+    const state = useNPCStore.getState();
+
+    for (const npc of state.npcs) {
+      expect(npc.stuckTimer).toBe(0);
+      expect(npc.lastPos).toBeDefined();
+      expect(npc.waypoints).toEqual([]);
+      expect(npc.stuckCount).toBe(0);
+    }
+
+    state.clearNPCs();
+  });
+
+  it('should update stuckTimer and lastPos', () => {
+    const store = useNPCStore.getState();
+    store.spawnVillageNPCs(8, 10, 8);
+    const npc = useNPCStore.getState().npcs[0];
+
+    store.updateNPC(npc.id, { stuckTimer: 1.5, lastPos: [5, 10, 5] });
+    const updated = useNPCStore.getState().npcs.find((n) => n.id === npc.id)!;
+    expect(updated.stuckTimer).toBe(1.5);
+    expect(updated.lastPos).toEqual([5, 10, 5]);
+
+    store.clearNPCs();
+  });
+
+  it('should support waypoints queue', () => {
+    const store = useNPCStore.getState();
+    store.spawnVillageNPCs(8, 10, 8);
+    const npc = useNPCStore.getState().npcs[0];
+
+    const waypoints: [number, number, number][] = [[10, 11, 8], [12, 11, 10]];
+    store.updateNPC(npc.id, { waypoints });
+    const updated = useNPCStore.getState().npcs.find((n) => n.id === npc.id)!;
+    expect(updated.waypoints.length).toBe(2);
+    expect(updated.waypoints[0]).toEqual([10, 11, 8]);
+
+    store.clearNPCs();
+  });
+
+  it('should track stuckCount for abandon logic', () => {
+    const store = useNPCStore.getState();
+    store.spawnVillageNPCs(8, 10, 8);
+    const npc = useNPCStore.getState().npcs[0];
+
+    store.updateNPC(npc.id, { stuckCount: 2 });
+    const updated = useNPCStore.getState().npcs.find((n) => n.id === npc.id)!;
+    expect(updated.stuckCount).toBe(2);
+
+    store.clearNPCs();
+  });
+});

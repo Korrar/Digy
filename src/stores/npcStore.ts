@@ -23,6 +23,14 @@ export interface NPC {
   /** Blueprint block index the builder NPC is currently placing */
   buildIndex: number;
   phase: number;
+  /** Time spent stuck (not making progress toward target) */
+  stuckTimer: number;
+  /** Last recorded position for stuck detection */
+  lastPos: [number, number, number];
+  /** Waypoints queue for pathfinding around obstacles */
+  waypoints: [number, number, number][];
+  /** Number of times NPC got stuck on current target - triggers abandon */
+  stuckCount: number;
 }
 
 /** Tracked sapling that will grow into a tree after delay */
@@ -89,6 +97,10 @@ function createNPC(id: string, role: NPCRole, cx: number, cy: number, cz: number
     workTarget: null,
     buildIndex: 0,
     phase: Math.random() * Math.PI * 2,
+    stuckTimer: 0,
+    lastPos: [x, cy + 1, z],
+    waypoints: [],
+    stuckCount: 0,
   };
 }
 

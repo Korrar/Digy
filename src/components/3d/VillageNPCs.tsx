@@ -15,6 +15,10 @@ const GROUND_FRICTION = 0.85;
 const AIR_FRICTION = 0.98;
 const JUMP_VELOCITY = 6;
 const MAX_FALL_SPEED = 30;
+const STUCK_THRESHOLD = 1.5; // seconds before NPC is considered stuck
+const STUCK_DISTANCE = 0.3; // minimum distance to count as "made progress"
+const MAX_STUCK_COUNT = 3;   // abandon target after this many stuck events
+const WAYPOINT_REACH_DIST = 0.8; // distance to consider waypoint reached
 
 /** Build a humanoid geometry for NPC (body + head + 2 arms + 2 legs) */
 function buildNPCGeometry(role: NPCRole): THREE.BufferGeometry {
@@ -285,7 +289,96 @@ function growSaplingToTree(
   }
 }
 
-/** Apply physics: gravity, ground collision, wall collision */
+/** Check if a position is walkable (has ground below, air at feet+head level) */
+function isWalkable(
+  getBlock: (x: number, y: number, z: number) => BlockType,
+  x: number, y: number, z: number
+): boolean {
+  const bx = Math.floor(x);
+  const by = Math.floor(y);
+  const bz = Math.floor(z);
+  // Need solid below, air at feet and head
+  return isSolid(getBlock(bx, by - 1, bz)) &&
+    !isSolid(getBlock(bx, by, bz)) &&
+    !isSolid(getBlock(bx, by + 1, bz));
+}
+
+/** Check if position is dangerous (water or cliff) */
+function isDangerous(
+  getBlock: (x: number, y: number, z: number) => BlockType,
+  x: number, z: number, currentY: number
+): boolean {
+  const bx = Math.floor(x);
+  const bz = Math.floor(z);
+  // Check for water at or below current level
+  for (let dy = 0; dy >= -3; dy--) {
+    const by = Math.floor(currentY) + dy;
+    if (getBlock(bx, by, bz) === BlockType.WATER) return true;
+  }
+  // Check for cliff (no solid block within 3 below)
+  const groundY = getTerrainHeight(getBlock, x, z);
+  if (currentY - groundY > 3) return true;
+  return false;
+}
+
+/** Generate avoidance waypoints when NPC is stuck */
+function generateAvoidanceWaypoints(
+  getBlock: (x: number, y: number, z: number) => BlockType,
+  px: number, py: number, pz: number,
+  tx: number, tz: number
+): [number, number, number][] {
+  const dx = tx - px;
+  const dz = tz - pz;
+  const dist = Math.sqrt(dx * dx + dz * dz);
+  if (dist < 0.5) return [];
+
+  const dirX = dx / dist;
+  const dirZ = dz / dist;
+  // Perpendicular directions (left and right)
+  const perpLX = -dirZ;
+  const perpLZ = dirX;
+  const perpRX = dirZ;
+  const perpRZ = -dirX;
+
+  const waypoints: [number, number, number][] = [];
+  // Try both sides, pick the one that's walkable and not dangerous
+  const offsets = [3, 5, 7];
+  for (const off of offsets) {
+    // Try left
+    const lx = px + perpLX * off;
+    const lz = pz + perpLZ * off;
+    const lGroundY = getTerrainHeight(getBlock, lx, lz);
+    if (isWalkable(getBlock, lx, lGroundY, lz) && !isDangerous(getBlock, lx, lz, lGroundY)) {
+      waypoints.push([lx, lGroundY, lz]);
+      // Add a point closer to target from the side
+      const forwardX = lx + dirX * off;
+      const forwardZ = lz + dirZ * off;
+      const fGroundY = getTerrainHeight(getBlock, forwardX, forwardZ);
+      if (!isDangerous(getBlock, forwardX, forwardZ, fGroundY)) {
+        waypoints.push([forwardX, fGroundY, forwardZ]);
+      }
+      return waypoints;
+    }
+
+    // Try right
+    const rx = px + perpRX * off;
+    const rz = pz + perpRZ * off;
+    const rGroundY = getTerrainHeight(getBlock, rx, rz);
+    if (isWalkable(getBlock, rx, rGroundY, rz) && !isDangerous(getBlock, rx, rz, rGroundY)) {
+      waypoints.push([rx, rGroundY, rz]);
+      const forwardX = rx + dirX * off;
+      const forwardZ = rz + dirZ * off;
+      const fGroundY = getTerrainHeight(getBlock, forwardX, forwardZ);
+      if (!isDangerous(getBlock, forwardX, forwardZ, fGroundY)) {
+        waypoints.push([forwardX, fGroundY, forwardZ]);
+      }
+      return waypoints;
+    }
+  }
+  return waypoints;
+}
+
+/** Apply physics: gravity, ground collision, wall sliding */
 function applyPhysics(
   npc: NPC,
   dt: number,
@@ -293,7 +386,7 @@ function applyPhysics(
 ): Partial<NPC> {
   const updates: Partial<NPC> = {};
   let [vx, vy, vz] = npc.velocity;
-  let [px, py, pz] = npc.position;
+  const [px, py, pz] = npc.position;
 
   // Apply gravity
   vy -= GRAVITY * dt;
@@ -316,9 +409,8 @@ function applyPhysics(
   if (newY <= groundY) {
     newY = groundY;
     if (vy < 0) {
-      // Bounce if falling fast, otherwise stop
       if (vy < -8) {
-        vy = -vy * 0.3; // bounce with damping
+        vy = -vy * 0.3;
       } else {
         vy = 0;
       }
@@ -326,46 +418,51 @@ function applyPhysics(
     grounded = true;
   }
 
-  // Ceiling collision: check block at head height
+  // Ceiling collision
   if (vy > 0 && isSolidAt(getBlock, newX, newY + NPC_HEIGHT, newZ)) {
     vy = 0;
   }
 
-  // Wall collision X: check at feet and body level
+  // Wall collision X with sliding: stop X motion but keep Z
+  let blockedX = false;
   if (vx !== 0) {
     const checkX = newX + (vx > 0 ? NPC_WIDTH : -NPC_WIDTH);
-    if (isSolidAt(getBlock, checkX, newY + 0.2, pz) ||
-        isSolidAt(getBlock, checkX, newY + 1.0, pz)) {
+    if (isSolidAt(getBlock, checkX, newY + 0.2, newZ) ||
+        isSolidAt(getBlock, checkX, newY + 1.0, newZ)) {
       newX = px;
-      vx = -vx * 0.3; // bounce off wall
+      vx = 0; // slide along wall (stop X, keep Z)
+      blockedX = true;
     }
   }
 
-  // Wall collision Z: check at feet and body level
+  // Wall collision Z with sliding: stop Z motion but keep X
+  let blockedZ = false;
   if (vz !== 0) {
     const checkZ = newZ + (vz > 0 ? NPC_WIDTH : -NPC_WIDTH);
-    if (isSolidAt(getBlock, px, newY + 0.2, checkZ) ||
-        isSolidAt(getBlock, px, newY + 1.0, checkZ)) {
+    if (isSolidAt(getBlock, newX, newY + 0.2, checkZ) ||
+        isSolidAt(getBlock, newX, newY + 1.0, checkZ)) {
       newZ = pz;
-      vz = -vz * 0.3; // bounce off wall
+      vz = 0; // slide along wall (stop Z, keep X)
+      blockedZ = true;
     }
   }
 
   // Step-up: if grounded and walking into a 1-block step, jump up
-  if (grounded) {
-    const [tx, , tz] = npc.target;
-    const moveX = tx - px;
-    const moveZ = tz - pz;
+  if (grounded && (blockedX || blockedZ)) {
+    // Determine direction NPC wants to go
+    const activeTarget = npc.waypoints.length > 0 ? npc.waypoints[0] : npc.target;
+    const moveX = activeTarget[0] - px;
+    const moveZ = activeTarget[2] - pz;
     const moveDist = Math.sqrt(moveX * moveX + moveZ * moveZ);
     if (moveDist > 0.3) {
-      const dirX = moveX / moveDist;
-      const dirZ = moveZ / moveDist;
-      const aheadX = newX + dirX * 0.5;
-      const aheadZ = newZ + dirZ * 0.5;
+      const ndirX = moveX / moveDist;
+      const ndirZ = moveZ / moveDist;
+      const aheadX = newX + ndirX * 0.6;
+      const aheadZ = newZ + ndirZ * 0.6;
       const blockAhead = isSolidAt(getBlock, aheadX, newY + 0.2, aheadZ);
-      const blockAboveAhead = isSolidAt(getBlock, aheadX, newY + 1.2, aheadZ);
-      // Can step up if block ahead but space above it
-      if (blockAhead && !blockAboveAhead) {
+      const spaceAbove = !isSolidAt(getBlock, aheadX, newY + 1.2, aheadZ) &&
+                         !isSolidAt(getBlock, aheadX, newY + 2.0, aheadZ);
+      if (blockAhead && spaceAbove) {
         vy = JUMP_VELOCITY;
         grounded = false;
       }
@@ -403,17 +500,84 @@ function tickAI(
 ): Partial<NPC> {
   const updates: Partial<NPC> = {};
   const [px, py, pz] = npc.position;
-  const [tx, , tz] = npc.target;
 
   // Only do movement AI when grounded
   if (!npc.grounded) return updates;
 
+  // --- Stuck detection ---
+  const movedDist = Math.sqrt(
+    (px - npc.lastPos[0]) ** 2 + (pz - npc.lastPos[2]) ** 2
+  );
+  let newStuckTimer = npc.stuckTimer;
+  if (movedDist < STUCK_DISTANCE * dt * 2) {
+    newStuckTimer += dt;
+  } else {
+    newStuckTimer = 0;
+  }
+  updates.stuckTimer = newStuckTimer;
+  updates.lastPos = [px, py, pz];
+
+  // If stuck for too long, generate avoidance waypoints or abandon target
+  if (newStuckTimer >= STUCK_THRESHOLD && (npc.state === 'walking' || npc.state === 'idle')) {
+    const newStuckCount = npc.stuckCount + 1;
+    updates.stuckCount = newStuckCount;
+    updates.stuckTimer = 0;
+
+    if (newStuckCount >= MAX_STUCK_COUNT) {
+      // Abandon current target, go back home and reset
+      updates.target = [npc.homePosition[0], py, npc.homePosition[2]];
+      updates.state = 'idle';
+      updates.workTarget = null;
+      updates.waypoints = [];
+      updates.stuckCount = 0;
+      return updates;
+    }
+
+    // Generate avoidance waypoints around the obstacle
+    const finalTarget = npc.target;
+    const avoidWaypoints = generateAvoidanceWaypoints(
+      getBlock, px, py, pz, finalTarget[0], finalTarget[2]
+    );
+    if (avoidWaypoints.length > 0) {
+      updates.waypoints = [...avoidWaypoints, finalTarget];
+      updates.target = avoidWaypoints[0];
+      return updates;
+    }
+  }
+
+  // --- Waypoint following ---
+  // Determine current movement target (waypoint or final target)
+  const activeTarget = npc.waypoints.length > 0 ? npc.waypoints[0] : npc.target;
+  const tx = activeTarget[0];
+  const tz = activeTarget[2];
   const dist = Math.sqrt((px - tx) ** 2 + (pz - tz) ** 2);
 
-  // Move toward target by applying horizontal velocity
-  if (dist > 0.5) {
+  // Move toward current target
+  if (dist > WAYPOINT_REACH_DIST) {
     const dx = (tx - px) / dist;
     const dz = (tz - pz) / dist;
+
+    // Check if next step would be dangerous (water/cliff)
+    const nextX = px + dx * 0.5;
+    const nextZ = pz + dz * 0.5;
+    if (isDangerous(getBlock, nextX, nextZ, py)) {
+      // Don't walk into danger - try avoidance
+      const avoidWaypoints = generateAvoidanceWaypoints(
+        getBlock, px, py, pz, npc.target[0], npc.target[2]
+      );
+      if (avoidWaypoints.length > 0) {
+        updates.waypoints = [...avoidWaypoints, npc.target];
+        updates.target = avoidWaypoints[0];
+      } else {
+        // Can't avoid - abandon and go home
+        updates.target = [npc.homePosition[0], py, npc.homePosition[2]];
+        updates.state = 'idle';
+        updates.workTarget = null;
+        updates.waypoints = [];
+      }
+      return updates;
+    }
+
     updates.velocity = [
       dx * npc.speed,
       npc.velocity[1],
@@ -425,8 +589,21 @@ function tickAI(
     return updates;
   }
 
-  // Arrived at target - stop horizontal movement
+  // Reached current waypoint - advance to next
+  if (npc.waypoints.length > 0) {
+    const remaining = npc.waypoints.slice(1);
+    updates.waypoints = remaining;
+    if (remaining.length > 0) {
+      updates.target = remaining[0];
+      return updates;
+    }
+    // All waypoints consumed, reset stuck count
+    updates.stuckCount = 0;
+  }
+
+  // Arrived at final target - stop horizontal movement
   updates.velocity = [0, npc.velocity[1], 0];
+  updates.stuckCount = 0;
 
   const totalItems = npc.inventory.reduce((s, i) => s + i.count, 0);
 
