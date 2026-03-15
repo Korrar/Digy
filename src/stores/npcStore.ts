@@ -39,6 +39,8 @@ export interface NPC {
   pathCache: [number, number, number][];
   /** Time when path was last calculated */
   pathCacheTime: number;
+  /** Recently failed/unreachable target positions (cleared after timeout) */
+  failedTargets: { key: string; time: number }[];
 }
 
 /** Tracked sapling that will grow into a tree after delay */
@@ -113,6 +115,7 @@ function createNPC(id: string, role: NPCRole, cx: number, cy: number, cz: number
     lastBreakTime: 0,
     pathCache: [],
     pathCacheTime: 0,
+    failedTargets: [],
   };
 }
 
