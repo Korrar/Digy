@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { BlockType } from '../core/voxel/BlockRegistry';
 
 export type NPCRole = 'lumberjack' | 'miner' | 'builder' | 'farmer';
-export type NPCState = 'idle' | 'walking' | 'gathering' | 'building' | 'returning';
+export type NPCState = 'idle' | 'walking' | 'gathering' | 'building' | 'returning' | 'planting' | 'farming';
 
 export interface NPC {
   id: string;
@@ -25,16 +25,28 @@ export interface NPC {
   phase: number;
 }
 
+/** Tracked sapling that will grow into a tree after delay */
+export interface TrackedSapling {
+  x: number;
+  y: number;
+  z: number;
+  plantedAt: number; // elapsed time when planted
+}
+
 export interface NPCStoreState {
   npcs: NPC[];
   /** Active village building projects */
   buildProjects: BuildProject[];
+  /** Saplings planted by lumberjacks, tracked for growth */
+  saplings: TrackedSapling[];
   spawnVillageNPCs: (centerX: number, centerY: number, centerZ: number) => void;
   updateNPC: (id: string, updates: Partial<NPC>) => void;
   clearNPCs: () => void;
   addBuildProject: (project: BuildProject) => void;
   completeBuildBlock: (projectId: string) => void;
   applyKnockback: (id: string, kx: number, ky: number, kz: number) => void;
+  addSapling: (x: number, y: number, z: number, time: number) => void;
+  removeSapling: (x: number, y: number, z: number) => void;
 }
 
 export interface BuildProject {
@@ -129,9 +141,37 @@ export function generateHouseBlueprint(
   };
 }
 
+/** Generate a bridge blueprint spanning water at given Z line */
+export function generateBridgeBlueprint(
+  startX: number, endX: number, bridgeY: number, bridgeZ: number, index: number
+): BuildProject {
+  const blocks: BuildProject['blocks'] = [];
+  const minX = Math.min(startX, endX);
+  const maxX = Math.max(startX, endX);
+
+  for (let x = minX - 1; x <= maxX + 1; x++) {
+    // Bridge deck
+    blocks.push({ x, y: bridgeY, z: bridgeZ, type: BlockType.PLANKS });
+    blocks.push({ x, y: bridgeY, z: bridgeZ + 1, type: BlockType.PLANKS });
+    // Railings on edges
+    if (x === minX - 1 || x === maxX + 1) {
+      blocks.push({ x, y: bridgeY + 1, z: bridgeZ, type: BlockType.WOOD });
+      blocks.push({ x, y: bridgeY + 1, z: bridgeZ + 1, type: BlockType.WOOD });
+    }
+  }
+
+  return {
+    id: `bridge_${bridgeZ}_${index}`,
+    blocks,
+    placedCount: 0,
+    completed: false,
+  };
+}
+
 export const useNPCStore = create<NPCStoreState>((set) => ({
   npcs: [],
   buildProjects: [],
+  saplings: [],
 
   spawnVillageNPCs: (cx, cy, cz) => {
     const npcs: NPC[] = [];
@@ -162,7 +202,7 @@ export const useNPCStore = create<NPCStoreState>((set) => ({
     ),
   })),
 
-  clearNPCs: () => set({ npcs: [], buildProjects: [] }),
+  clearNPCs: () => set({ npcs: [], buildProjects: [], saplings: [] }),
 
   addBuildProject: (project) => set((state) => ({
     buildProjects: [...state.buildProjects, project],
@@ -193,5 +233,13 @@ export const useNPCStore = create<NPCStoreState>((set) => ({
         grounded: false,
       };
     }),
+  })),
+
+  addSapling: (x, y, z, time) => set((state) => ({
+    saplings: [...state.saplings, { x, y, z, plantedAt: time }],
+  })),
+
+  removeSapling: (x, y, z) => set((state) => ({
+    saplings: state.saplings.filter((s) => s.x !== x || s.y !== y || s.z !== z),
   })),
 }));

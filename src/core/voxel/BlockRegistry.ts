@@ -186,6 +186,11 @@ export enum BlockType {
   SPAWNER = 144,
   SPIKE_TRAP = 145,
   ARROW_TRAP = 146,
+
+  // Village NPC blocks
+  SAPLING = 147,
+  FARMLAND = 148,
+  WHEAT = 149,
 }
 
 export interface BlockDefinition {
@@ -494,6 +499,11 @@ register({ id: BlockType.CRACKED_STONE_BRICKS, name: 'Cracked Stone Bricks', col
 register({ id: BlockType.SPAWNER, name: 'Spawner', color: new THREE.Color(0x1a3a1a), hardness: 5.0, transparent: true, drops: BlockType.AIR, stackSize: 0, emitsLight: true, isSpawner: true });
 register({ id: BlockType.SPIKE_TRAP, name: 'Spike Trap', color: new THREE.Color(0x555555), hardness: 2.0, transparent: true, drops: BlockType.IRON_INGOT, stackSize: 64, isSpikeTrap: true });
 register({ id: BlockType.ARROW_TRAP, name: 'Arrow Trap', color: new THREE.Color(0x606060), hardness: 3.0, transparent: false, drops: BlockType.COBBLESTONE, stackSize: 64, isArrowTrap: true });
+
+// Village NPC blocks
+register({ id: BlockType.SAPLING, name: 'Sapling', color: new THREE.Color(0x2d5a1e), hardness: 0.0, transparent: true, drops: BlockType.SAPLING, stackSize: 64, crossedQuad: true });
+register({ id: BlockType.FARMLAND, name: 'Farmland', color: new THREE.Color(0x6b4423), topColor: new THREE.Color(0x5a3a1a), hardness: 0.5, transparent: false, drops: BlockType.DIRT, stackSize: 64 });
+register({ id: BlockType.WHEAT, name: 'Wheat', color: new THREE.Color(0xc8b432), hardness: 0.0, transparent: true, drops: BlockType.BREAD, stackSize: 64, crossedQuad: true });
 
 // Update ore drops to drop raw materials
 BLOCKS.get(BlockType.COAL_ORE)!.drops = BlockType.COAL;
