@@ -3,7 +3,16 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useNPCStore, ROLE_COLORS, type NPC, type NPCRole } from '../../stores/npcStore';
 import { useWorldStore } from '../../stores/worldStore';
-import { BlockType } from '../../core/voxel/BlockRegistry';
+import { BlockType, isSolid } from '../../core/voxel/BlockRegistry';
+import { CHUNK_HEIGHT } from '../../utils/constants';
+
+const GRAVITY = 20;
+const NPC_HEIGHT = 1.8; // total NPC height in blocks
+const NPC_WIDTH = 0.4;  // half-width for collision
+const GROUND_FRICTION = 0.85;
+const AIR_FRICTION = 0.98;
+const JUMP_VELOCITY = 6;
+const MAX_FALL_SPEED = 30;
 
 /** Build a humanoid geometry for NPC (body + head + 2 arms + 2 legs) */
 function buildNPCGeometry(role: NPCRole): THREE.BufferGeometry {
@@ -94,6 +103,30 @@ function buildNPCGeometry(role: NPCRole): THREE.BufferGeometry {
   return merged;
 }
 
+/** Scan downward to find ground Y at given X,Z */
+function getTerrainHeight(
+  getBlock: (x: number, y: number, z: number) => BlockType,
+  x: number, z: number
+): number {
+  const bx = Math.floor(x);
+  const bz = Math.floor(z);
+  for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
+    const block = getBlock(bx, y, bz);
+    if (isSolid(block)) {
+      return y + 1;
+    }
+  }
+  return 1;
+}
+
+/** Check if a block position is solid (for collision) */
+function isSolidAt(
+  getBlock: (x: number, y: number, z: number) => BlockType,
+  x: number, y: number, z: number
+): boolean {
+  return isSolid(getBlock(Math.floor(x), Math.floor(y), Math.floor(z)));
+}
+
 /** Gather target: find a nearby block of the given type */
 function findNearbyBlock(
   getBlock: (x: number, y: number, z: number) => BlockType,
@@ -137,8 +170,112 @@ function getDropType(role: NPCRole): BlockType {
   }
 }
 
-/** Compute next state for the NPC AI */
-function tickNPC(
+/** Apply physics: gravity, ground collision, wall collision */
+function applyPhysics(
+  npc: NPC,
+  dt: number,
+  getBlock: (x: number, y: number, z: number) => BlockType,
+): Partial<NPC> {
+  const updates: Partial<NPC> = {};
+  let [vx, vy, vz] = npc.velocity;
+  let [px, py, pz] = npc.position;
+
+  // Apply gravity
+  vy -= GRAVITY * dt;
+  vy = Math.max(vy, -MAX_FALL_SPEED);
+
+  // Apply friction
+  const friction = npc.grounded ? GROUND_FRICTION : AIR_FRICTION;
+  vx *= friction;
+  vz *= friction;
+
+  // Integrate position with collision
+  let newX = px + vx * dt;
+  let newY = py + vy * dt;
+  let newZ = pz + vz * dt;
+
+  // Ground collision: check block below feet
+  const groundY = getTerrainHeight(getBlock, newX, newZ);
+  let grounded = false;
+
+  if (newY <= groundY) {
+    newY = groundY;
+    if (vy < 0) {
+      // Bounce if falling fast, otherwise stop
+      if (vy < -8) {
+        vy = -vy * 0.3; // bounce with damping
+      } else {
+        vy = 0;
+      }
+    }
+    grounded = true;
+  }
+
+  // Ceiling collision: check block at head height
+  if (vy > 0 && isSolidAt(getBlock, newX, newY + NPC_HEIGHT, newZ)) {
+    vy = 0;
+  }
+
+  // Wall collision X: check at feet and body level
+  if (vx !== 0) {
+    const checkX = newX + (vx > 0 ? NPC_WIDTH : -NPC_WIDTH);
+    if (isSolidAt(getBlock, checkX, newY + 0.2, pz) ||
+        isSolidAt(getBlock, checkX, newY + 1.0, pz)) {
+      newX = px;
+      vx = -vx * 0.3; // bounce off wall
+    }
+  }
+
+  // Wall collision Z: check at feet and body level
+  if (vz !== 0) {
+    const checkZ = newZ + (vz > 0 ? NPC_WIDTH : -NPC_WIDTH);
+    if (isSolidAt(getBlock, px, newY + 0.2, checkZ) ||
+        isSolidAt(getBlock, px, newY + 1.0, checkZ)) {
+      newZ = pz;
+      vz = -vz * 0.3; // bounce off wall
+    }
+  }
+
+  // Step-up: if grounded and walking into a 1-block step, jump up
+  if (grounded) {
+    const [tx, , tz] = npc.target;
+    const moveX = tx - px;
+    const moveZ = tz - pz;
+    const moveDist = Math.sqrt(moveX * moveX + moveZ * moveZ);
+    if (moveDist > 0.3) {
+      const dirX = moveX / moveDist;
+      const dirZ = moveZ / moveDist;
+      const aheadX = newX + dirX * 0.5;
+      const aheadZ = newZ + dirZ * 0.5;
+      const blockAhead = isSolidAt(getBlock, aheadX, newY + 0.2, aheadZ);
+      const blockAboveAhead = isSolidAt(getBlock, aheadX, newY + 1.2, aheadZ);
+      // Can step up if block ahead but space above it
+      if (blockAhead && !blockAboveAhead) {
+        vy = JUMP_VELOCITY;
+        grounded = false;
+      }
+    }
+  }
+
+  // Clamp tiny velocities
+  if (Math.abs(vx) < 0.01) vx = 0;
+  if (Math.abs(vz) < 0.01) vz = 0;
+
+  // Prevent falling into void
+  if (newY < -5) {
+    newY = 20;
+    vy = 0;
+  }
+
+  updates.position = [newX, newY, newZ];
+  updates.velocity = [vx, vy, vz];
+  updates.grounded = grounded;
+
+  return updates;
+}
+
+/** Compute next AI state for the NPC */
+function tickAI(
   npc: NPC,
   dt: number,
   getBlock: (x: number, y: number, z: number) => BlockType,
@@ -150,23 +287,28 @@ function tickNPC(
   const [px, py, pz] = npc.position;
   const [tx, , tz] = npc.target;
 
+  // Only do movement AI when grounded
+  if (!npc.grounded) return updates;
+
   const dist = Math.sqrt((px - tx) ** 2 + (pz - tz) ** 2);
 
-  // Move toward target
-  if (dist > 0.3) {
+  // Move toward target by applying horizontal velocity
+  if (dist > 0.5) {
     const dx = (tx - px) / dist;
     const dz = (tz - pz) / dist;
-    const step = npc.speed * dt;
-    updates.position = [
-      px + dx * Math.min(step, dist),
-      py,
-      pz + dz * Math.min(step, dist),
+    updates.velocity = [
+      dx * npc.speed,
+      npc.velocity[1],
+      dz * npc.speed,
     ];
     if (npc.state === 'idle') {
       updates.state = 'walking';
     }
     return updates;
   }
+
+  // Arrived at target - stop horizontal movement
+  updates.velocity = [0, npc.velocity[1], 0];
 
   const totalItems = npc.inventory.reduce((s, i) => s + i.count, 0);
 
@@ -200,7 +342,7 @@ function tickNPC(
 
       // If full inventory, return home
       if (totalItems >= npc.inventoryCapacity) {
-        updates.target = [...npc.homePosition] as [number, number, number];
+        updates.target = [npc.homePosition[0], py, npc.homePosition[2]];
         updates.state = 'returning';
         return updates;
       }
@@ -222,10 +364,8 @@ function tickNPC(
         updates.state = 'idle';
         return updates;
       }
-      // Gathering animation timer
       const newTimer = npc.gatherTimer + dt;
       if (newTimer >= 1.5) {
-        // Harvest the block
         const [bx, by, bz] = npc.workTarget;
         const bt = getBlock(bx, by, bz);
         if (bt !== BlockType.AIR) {
@@ -271,7 +411,6 @@ function tickNPC(
     }
 
     case 'returning': {
-      // Drop off items at home
       updates.inventory = [];
       updates.state = 'idle';
       return updates;
@@ -281,7 +420,7 @@ function tickNPC(
   return updates;
 }
 
-// NPC label colors by role
+// NPC label by role
 const ROLE_LABELS: Record<NPCRole, string> = {
   lumberjack: 'Drwal',
   miner: 'Górnik',
@@ -289,7 +428,7 @@ const ROLE_LABELS: Record<NPCRole, string> = {
   farmer: 'Rolnik',
 };
 
-export function VillageNPCs({ center: _center }: { center: [number, number, number] }) {
+export function VillageNPCs() {
   const npcs = useNPCStore((s) => s.npcs);
   const buildProjects = useNPCStore((s) => s.buildProjects);
   const updateNPC = useNPCStore((s) => s.updateNPC);
@@ -327,13 +466,29 @@ export function VillageNPCs({ center: _center }: { center: [number, number, numb
   }, []);
 
   useFrame((state, delta) => {
-    const dt = Math.min(delta, 0.1);
+    const dt = Math.min(delta, 0.05); // cap dt for stability
     const t = state.clock.elapsedTime;
 
     for (const npc of npcs) {
-      const updates = tickNPC(npc, dt, getBlock, setBlock, buildProjects, completeBuildBlock);
-      if (Object.keys(updates).length > 0) {
-        updateNPC(npc.id, updates);
+      // Apply physics first (gravity, collision, ground detection)
+      const physUpdates = applyPhysics(npc, dt, getBlock);
+
+      // Then apply AI logic
+      const mergedNPC = { ...npc, ...physUpdates };
+      const aiUpdates = tickAI(mergedNPC, dt, getBlock, setBlock, buildProjects, completeBuildBlock);
+
+      // Merge AI velocity with physics velocity (AI sets horizontal, physics keeps vertical)
+      if (aiUpdates.velocity && physUpdates.velocity) {
+        aiUpdates.velocity = [
+          aiUpdates.velocity[0],
+          physUpdates.velocity[1],
+          aiUpdates.velocity[2],
+        ];
+      }
+
+      const allUpdates = { ...physUpdates, ...aiUpdates };
+      if (Object.keys(allUpdates).length > 0) {
+        updateNPC(npc.id, allUpdates);
       }
     }
 
@@ -347,12 +502,12 @@ export function VillageNPCs({ center: _center }: { center: [number, number, numb
         const [px, py, pz] = npc.position;
         const [tx, , tz] = npc.target;
 
-        // Walking bounce
-        const isMoving = npc.state === 'walking' || npc.state === 'gathering' || npc.state === 'returning';
-        const bounce = isMoving ? Math.abs(Math.sin(t * 6 + npc.phase)) * 0.08 : 0;
+        // Walking bounce only when grounded and moving
+        const isMoving = npc.grounded && (npc.state === 'walking' || npc.state === 'returning');
+        const bounce = isMoving ? Math.abs(Math.sin(t * 8 + npc.phase)) * 0.06 : 0;
 
-        // Working bob
-        const workBob = (npc.state === 'gathering' || npc.state === 'building')
+        // Working bob when gathering/building
+        const workBob = npc.grounded && (npc.state === 'gathering' || npc.state === 'building')
           ? Math.sin(t * 8 + npc.phase) * 0.05 : 0;
 
         dummy.position.set(px, py + bounce + workBob, pz);

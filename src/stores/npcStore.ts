@@ -9,6 +9,7 @@ export interface NPC {
   role: NPCRole;
   state: NPCState;
   position: [number, number, number];
+  velocity: [number, number, number];
   target: [number, number, number];
   homePosition: [number, number, number];
   inventory: { type: BlockType; count: number }[];
@@ -16,6 +17,7 @@ export interface NPC {
   speed: number;
   gatherTimer: number;
   buildTimer: number;
+  grounded: boolean;
   /** Target block position the NPC is working on */
   workTarget: [number, number, number] | null;
   /** Blueprint block index the builder NPC is currently placing */
@@ -32,6 +34,7 @@ export interface NPCStoreState {
   clearNPCs: () => void;
   addBuildProject: (project: BuildProject) => void;
   completeBuildBlock: (projectId: string) => void;
+  applyKnockback: (id: string, kx: number, ky: number, kz: number) => void;
 }
 
 export interface BuildProject {
@@ -62,6 +65,7 @@ function createNPC(id: string, role: NPCRole, cx: number, cy: number, cz: number
     role,
     state: 'idle',
     position: [x, cy + 1, z],
+    velocity: [0, 0, 0],
     target: [x, cy + 1, z],
     homePosition: [cx, cy + 1, cz],
     inventory: [],
@@ -69,6 +73,7 @@ function createNPC(id: string, role: NPCRole, cx: number, cy: number, cz: number
     speed: 1.2 + Math.random() * 0.4,
     gatherTimer: 0,
     buildTimer: 0,
+    grounded: false,
     workTarget: null,
     buildIndex: 0,
     phase: Math.random() * Math.PI * 2,
@@ -171,6 +176,21 @@ export const useNPCStore = create<NPCStoreState>((set) => ({
         ...p,
         placedCount: newPlaced,
         completed: newPlaced >= p.blocks.length,
+      };
+    }),
+  })),
+
+  applyKnockback: (id, kx, ky, kz) => set((state) => ({
+    npcs: state.npcs.map((npc) => {
+      if (npc.id !== id) return npc;
+      return {
+        ...npc,
+        velocity: [
+          npc.velocity[0] + kx,
+          npc.velocity[1] + ky,
+          npc.velocity[2] + kz,
+        ],
+        grounded: false,
       };
     }),
   })),
