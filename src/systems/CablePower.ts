@@ -12,9 +12,7 @@ export const comparatorModes = new Map<string, 'compare' | 'subtract'>();
 
 // Active repeater timeouts (for cleanup)
 const activeRepeaterTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
-const TNT_RADIUS = 3;
 const TNT_FUSE_TIME = 1500; // ms - fuse duration before explosion
-const TNT_CHAIN_FUSE_TIME = 400; // ms - shorter fuse for chain reactions
 const fusingTNT = new Set<string>(); // track TNT blocks currently fusing
 
 /**

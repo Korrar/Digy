@@ -1,5 +1,5 @@
-import { useRef, useMemo, useCallback, useEffect, useState } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useRef, useMemo, useEffect, useState } from 'react';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { BlockType, getBlock, isSolid, needsSupportFromBelow } from '../../core/voxel/BlockRegistry';
@@ -208,7 +208,6 @@ function explodeTNT(tnt: TNTEntity, store: ReturnType<typeof useWorldStore.getSt
 export function TNTEntities() {
   const tntRef = useRef<TNTEntity[]>([]);
   const [, setVersion] = useState(0);
-  const getBlock = useWorldStore((s) => s.getBlock);
 
   // Keep global ref in sync
   activeTNTEntities.current = tntRef.current;
