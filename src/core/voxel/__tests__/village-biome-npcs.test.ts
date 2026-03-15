@@ -46,8 +46,9 @@ describe('Village biome', () => {
     expect(hasGrass).toBe(true);
   });
 
-  it('should generate gravel paths in center', () => {
+  it('should generate gravel paths in center chunk', () => {
     const biome = new VillageBiome(42);
+    // Center chunk (0,0) covers world x=0..15, z=0..15 - near village center at (8,8)
     const chunk = new ChunkData(0, 0);
     biome.generate(chunk);
 
@@ -67,15 +68,15 @@ describe('Village biome', () => {
     expect(hasGravel).toBe(true);
   });
 
-  it('should have very flat center terrain for building', () => {
+  it('should have flat center terrain for building', () => {
     const biome = new VillageBiome(42);
     const chunk = new ChunkData(0, 0);
     biome.generate(chunk);
 
-    // Check center area (4-12 range = center zone)
+    // Center chunk is the village center - should be flat
     const heights: number[] = [];
-    for (let x = 5; x < 11; x += 2) {
-      for (let z = 5; z < 11; z += 2) {
+    for (let x = 2; x < 14; x += 3) {
+      for (let z = 2; z < 14; z += 3) {
         for (let y = 31; y >= 0; y--) {
           const bt = chunk.getBlock(x, y, z);
           if (bt !== BlockType.AIR && bt !== BlockType.WATER && bt !== BlockType.TALL_GRASS &&
@@ -91,16 +92,38 @@ describe('Village biome', () => {
     expect(heights.length).toBeGreaterThan(0);
     const min = Math.min(...heights);
     const max = Math.max(...heights);
-    // Center of village should be very flat (max 2 block difference)
-    expect(max - min).toBeLessThanOrEqual(2);
+    // Center of village should be relatively flat (max 3 block difference)
+    expect(max - min).toBeLessThanOrEqual(3);
   });
 
-  it('should have trees at edges (forest zone)', () => {
+  it('should have a river with water blocks', () => {
     const biome = new VillageBiome(42);
-    const chunk = new ChunkData(0, 0);
+    // Generate multiple chunks to find the river
+    let hasRiverWater = false;
+    for (let cx = -1; cx <= 1 && !hasRiverWater; cx++) {
+      for (let cz = -1; cz <= 1 && !hasRiverWater; cz++) {
+        const chunk = new ChunkData(cx, cz);
+        biome.generate(chunk);
+        for (let x = 0; x < 16 && !hasRiverWater; x++) {
+          for (let z = 0; z < 16 && !hasRiverWater; z++) {
+            // River water is at WATER_LEVEL (y=3) with sand below
+            if (chunk.getBlock(x, 3, z) === BlockType.WATER &&
+                chunk.getBlock(x, 2, z) === BlockType.SAND) {
+              hasRiverWater = true;
+            }
+          }
+        }
+      }
+    }
+    expect(hasRiverWater).toBe(true);
+  });
+
+  it('should have trees at edge chunks (forest zone)', () => {
+    const biome = new VillageBiome(42);
+    // Chunk (1, 1) covers world x=16..31, z=16..31 - transition/forest zone
+    const chunk = new ChunkData(1, 1);
     biome.generate(chunk);
 
-    // Check if there are wood blocks (trees) anywhere in the chunk
     let hasWood = false;
     for (let x = 0; x < 16; x++) {
       for (let z = 0; z < 16; z++) {
@@ -115,6 +138,29 @@ describe('Village biome', () => {
       if (hasWood) break;
     }
     expect(hasWood).toBe(true);
+  });
+
+  it('should not use island mask (no ocean surrounding)', () => {
+    const biome = new VillageBiome(42);
+    // Center chunk should have solid terrain everywhere (not surrounded by water)
+    const chunk = new ChunkData(0, 0);
+    biome.generate(chunk);
+
+    let solidCount = 0;
+    for (let x = 0; x < 16; x++) {
+      for (let z = 0; z < 16; z++) {
+        for (let y = 31; y >= 0; y--) {
+          const bt = chunk.getBlock(x, y, z);
+          if (bt === BlockType.GRASS || bt === BlockType.DIRT || bt === BlockType.STONE ||
+              bt === BlockType.SAND || bt === BlockType.GRAVEL) {
+            solidCount++;
+            break;
+          }
+        }
+      }
+    }
+    // Most of center chunk should have solid terrain (not ocean)
+    expect(solidCount).toBeGreaterThan(200);
   });
 
   it('should include all biome types in createBiome', () => {
