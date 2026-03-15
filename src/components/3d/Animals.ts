@@ -80,6 +80,13 @@ const BIOME_ANIMALS: Record<string, AnimalConfig> = {
     bodyScale: [0.2, 0.1, 0.3], headScale: [0.12, 0.1, 0.12],
     headOffset: [0, 0.02, 0.18], legLength: 0.05,
   },
+  village: {
+    // Chickens - small, white body, red head crest
+    count: 5, bodyColor: 0xf0e8d8, headColor: 0xcc3333, legColor: 0xcc8833,
+    size: 0.25, speed: 0.35, bounceHeight: 0.1,
+    bodyScale: [0.3, 0.25, 0.4], headScale: [0.18, 0.2, 0.18],
+    headOffset: [0, 0.15, 0.25], legLength: 0.12,
+  },
 };
 
 /**

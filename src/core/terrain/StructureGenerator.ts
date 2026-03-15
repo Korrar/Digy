@@ -185,6 +185,38 @@ function createMineCorridor(): Structure {
   return { name: 'mine_corridor', blocks, width: 3, depth: 5, height: 3 };
 }
 
+// Village well (3x3x3)
+function createWell(): Structure {
+  const blocks: Block[] = [];
+  // Base rim
+  for (let x = 0; x < 3; x++) {
+    for (let z = 0; z < 3; z++) {
+      blocks.push([x, 0, z, BlockType.COBBLESTONE]);
+    }
+  }
+  // Water inside
+  blocks.push([1, 0, 1, BlockType.WATER]);
+  // Walls
+  for (let y = 1; y <= 2; y++) {
+    blocks.push([0, y, 0, BlockType.COBBLESTONE]);
+    blocks.push([2, y, 0, BlockType.COBBLESTONE]);
+    blocks.push([0, y, 2, BlockType.COBBLESTONE]);
+    blocks.push([2, y, 2, BlockType.COBBLESTONE]);
+  }
+  // Roof posts
+  blocks.push([0, 3, 0, BlockType.WOOD]);
+  blocks.push([2, 3, 0, BlockType.WOOD]);
+  blocks.push([0, 3, 2, BlockType.WOOD]);
+  blocks.push([2, 3, 2, BlockType.WOOD]);
+  // Roof
+  for (let x = -1; x <= 3; x++) {
+    blocks.push([x, 4, 0, BlockType.PLANKS]);
+    blocks.push([x, 4, 1, BlockType.PLANKS]);
+    blocks.push([x, 4, 2, BlockType.PLANKS]);
+  }
+  return { name: 'well', blocks, width: 3, depth: 3, height: 5 };
+}
+
 const BIOME_STRUCTURES: Record<string, Structure[]> = {
   forest: [createCabin()],
   desert: [createPyramid()],
@@ -192,6 +224,7 @@ const BIOME_STRUCTURES: Record<string, Structure[]> = {
   swamp: [createBoardwalk()],
   tundra: [createIgloo()],
   cave: [createMineCorridor()],
+  village: [createWell()],
 };
 
 /** Last generated dungeon layout (for enemy spawning) */

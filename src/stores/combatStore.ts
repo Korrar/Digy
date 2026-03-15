@@ -65,6 +65,7 @@ export const BIOME_DIFFICULTY: Record<string, number> = {
   volcanic: 1.4,
   savanna: 1.0,
   cherry: 0.7,
+  village: 0.5,
 };
 
 function xpForLevel(level: number): number {

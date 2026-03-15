@@ -1,7 +1,7 @@
 // Procedural ambient music & sound system using Web Audio API
 // Generates biome-specific ambient sounds and background music
 
-type BiomeAmbience = 'forest' | 'desert' | 'cave' | 'mountains' | 'swamp' | 'tundra' | 'jungle' | 'mushroom' | 'volcanic' | 'savanna' | 'cherry';
+type BiomeAmbience = 'forest' | 'desert' | 'cave' | 'mountains' | 'swamp' | 'tundra' | 'jungle' | 'mushroom' | 'volcanic' | 'savanna' | 'cherry' | 'village';
 
 interface AmbientLayer {
   type: 'tone' | 'noise' | 'chirp';
@@ -161,6 +161,13 @@ class AmbientMusicSystem {
           { type: 'chirp', interval: 8000, lastPlayed: now + 4000, params: { freqBase: 2200, freqRange: 400, duration: 0.08, count: 5 } }, // wind chimes
         ];
         break;
+      case 'village':
+        this.layers = [
+          { type: 'chirp', interval: 4000, lastPlayed: now, params: { freqBase: 1400, freqRange: 600, duration: 0.12, count: 2 } }, // birds
+          { type: 'noise', interval: 7000, lastPlayed: now + 2000, params: { freq: 300, q: 0.2, duration: 2, volume: 0.015 } }, // wind
+          { type: 'tone', interval: 10000, lastPlayed: now + 5000, params: { freq: 440, duration: 0.5, volume: 0.01, type: 'triangle' } }, // bell
+        ];
+        break;
     }
   }
 
@@ -254,6 +261,7 @@ class AmbientMusicSystem {
       volcanic: 110,  // A2
       savanna: 208,   // G#3
       cherry: 262,    // C4
+      village: 233,   // Bb3
     };
 
     let noteIndex = 0;

@@ -40,6 +40,8 @@ import { TNTEntities } from '../components/3d/TNTEntities';
 import { WaterPlane } from '../components/3d/WaterPlane';
 import { Minimap } from '../components/ui/Minimap';
 import { FloatingText } from '../components/ui/FloatingText';
+import { VillageNPCs } from '../components/3d/VillageNPCs';
+import { useNPCStore } from '../stores/npcStore';
 
 /** Water color per biome */
 const BIOME_WATER_COLOR: Record<string, string> = {
@@ -53,6 +55,7 @@ const BIOME_WATER_COLOR: Record<string, string> = {
   volcanic: '#402010',
   savanna: '#4090a0',
   cherry: '#5070a0',
+  village: '#3080a0',
 };
 
 function getTimeIndicator(timeOfDay: number): string {
@@ -107,6 +110,8 @@ export function BiomeScene() {
   const clearTappables = useTappablesStore((s) => s.clearTappables);
   const resetCombat = useCombatStore((s) => s.resetCombat);
   const setDifficulty = useCombatStore((s) => s.setDifficulty);
+  const spawnVillageNPCs = useNPCStore((s) => s.spawnVillageNPCs);
+  const clearNPCs = useNPCStore((s) => s.clearNPCs);
   const isGameOver = useCombatStore((s) => s.isGameOver);
   const respawn = useCombatStore((s) => s.respawn);
   const returnToMenu = useGameStore((s) => s.returnToMenu);
@@ -115,6 +120,10 @@ export function BiomeScene() {
     setDifficulty(BIOME_DIFFICULTY[biomeType] ?? 1.0);
     generateWorld(biomeType, biomeSeed, 1);
     settleWorld();
+    // Spawn village NPCs
+    if (biomeType === 'village') {
+      spawnVillageNPCs(8, 10, 8);
+    }
     // Start ambient music for biome
     ambientMusic.start(biomeType as any);
     // Set shader uniforms for cave (static lighting, no DayNightCycle)
@@ -132,9 +141,10 @@ export function BiomeScene() {
       clearWorld();
       clearTappables();
       resetCombat();
+      clearNPCs();
       ambientMusic.stop();
     };
-  }, [biomeType, biomeSeed, generateWorld, clearWorld, biome, clearTappables, resetCombat]);
+  }, [biomeType, biomeSeed, generateWorld, clearWorld, biome, clearTappables, resetCombat, spawnVillageNPCs, clearNPCs]);
 
   const toggleCrafting = useCraftingStore((s) => s.toggleCrafting);
 
@@ -227,6 +237,7 @@ export function BiomeScene() {
         <WeatherRenderer biomeType={biomeType} center={[8, 8, 8]} />
         <TappablesRenderer biomeType={biomeType} center={[8, 8, 8]} />
         <EnemiesRenderer biomeType={biomeType} center={[8, 8, 8]} />
+        {biomeType === 'village' && <VillageNPCs center={[8, 8, 8]} />}
 
         {biomeType !== 'cave' && (
           <WaterPlane
