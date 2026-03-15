@@ -31,6 +31,12 @@ export interface NPC {
   waypoints: [number, number, number][];
   /** Number of times NPC got stuck on current target - triggers abandon */
   stuckCount: number;
+  /** Timestamp of last jump for cooldown */
+  lastJumpTime: number;
+  /** Cached A* path, recalculated periodically */
+  pathCache: [number, number, number][];
+  /** Time when path was last calculated */
+  pathCacheTime: number;
 }
 
 /** Tracked sapling that will grow into a tree after delay */
@@ -101,6 +107,9 @@ function createNPC(id: string, role: NPCRole, cx: number, cy: number, cz: number
     lastPos: [x, cy + 1, z],
     waypoints: [],
     stuckCount: 0,
+    lastJumpTime: 0,
+    pathCache: [],
+    pathCacheTime: 0,
   };
 }
 
