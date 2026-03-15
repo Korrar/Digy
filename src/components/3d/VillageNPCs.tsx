@@ -447,9 +447,8 @@ function applyPhysics(
     }
   }
 
-  // Step-up: if grounded and walking into a 1-block step, jump up
-  if (grounded && (blockedX || blockedZ)) {
-    // Determine direction NPC wants to go
+  // Step-up / jump: if grounded, check ahead for 1-block obstacles to jump over
+  if (grounded) {
     const activeTarget = npc.waypoints.length > 0 ? npc.waypoints[0] : npc.target;
     const moveX = activeTarget[0] - px;
     const moveZ = activeTarget[2] - pz;
@@ -459,10 +458,18 @@ function applyPhysics(
       const ndirZ = moveZ / moveDist;
       const aheadX = newX + ndirX * 0.6;
       const aheadZ = newZ + ndirZ * 0.6;
-      const blockAhead = isSolidAt(getBlock, aheadX, newY + 0.2, aheadZ);
+
+      // Check if blocked by wall or terrain is 1 block higher ahead
+      const blockAtFeet = isSolidAt(getBlock, aheadX, newY + 0.2, aheadZ);
       const spaceAbove = !isSolidAt(getBlock, aheadX, newY + 1.2, aheadZ) &&
                          !isSolidAt(getBlock, aheadX, newY + 2.0, aheadZ);
-      if (blockAhead && spaceAbove) {
+
+      // Also check terrain height difference ahead
+      const aheadGroundY = getTerrainHeight(getBlock, aheadX, aheadZ);
+      const heightDiff = aheadGroundY - newY;
+
+      // Jump if: wall ahead with space above, OR terrain 1 block higher ahead
+      if ((blockAtFeet && spaceAbove) || (heightDiff > 0.5 && heightDiff <= 1.2 && spaceAbove)) {
         vy = JUMP_VELOCITY;
         grounded = false;
       }
