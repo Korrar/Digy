@@ -424,26 +424,22 @@ function applyPhysics(
   }
 
   // Wall collision X with sliding: stop X motion but keep Z
-  let blockedX = false;
   if (vx !== 0) {
     const checkX = newX + (vx > 0 ? NPC_WIDTH : -NPC_WIDTH);
     if (isSolidAt(getBlock, checkX, newY + 0.2, newZ) ||
         isSolidAt(getBlock, checkX, newY + 1.0, newZ)) {
       newX = px;
-      vx = 0; // slide along wall (stop X, keep Z)
-      blockedX = true;
+      vx = 0;
     }
   }
 
   // Wall collision Z with sliding: stop Z motion but keep X
-  let blockedZ = false;
   if (vz !== 0) {
     const checkZ = newZ + (vz > 0 ? NPC_WIDTH : -NPC_WIDTH);
     if (isSolidAt(getBlock, newX, newY + 0.2, checkZ) ||
         isSolidAt(getBlock, newX, newY + 1.0, checkZ)) {
       newZ = pz;
-      vz = 0; // slide along wall (stop Z, keep X)
-      blockedZ = true;
+      vz = 0;
     }
   }
 
