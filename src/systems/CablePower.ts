@@ -1,7 +1,6 @@
-import { BlockType, getBlock, isSolid, isRepeater, getRepeaterOn, getRepeaterOff, getComparatorOn, getComparatorOff, getDirectionOffsets, needsSupportFromBelow } from '../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid, isRepeater, getRepeaterOn, getRepeaterOff, getComparatorOn, getComparatorOff, getDirectionOffsets } from '../core/voxel/BlockRegistry';
 import { useWorldStore } from '../stores/worldStore';
 import { soundManager } from './SoundManager';
-import { CHUNK_HEIGHT } from '../utils/constants';
 
 const MAX_CABLE_DISTANCE = 16;
 
@@ -217,92 +216,37 @@ export function isPoweredRailActive(wx: number, wy: number, wz: number): boolean
 }
 
 /**
- * Detonate TNT at position, with fuse sparks first then explosion.
+ * Detonate TNT at position: removes the block and spawns a physics-enabled
+ * TNT entity that jumps, bounces, and explodes after its fuse burns out.
  */
 export function detonateTNT(_store: ReturnType<typeof useWorldStore.getState>, tx: number, ty: number, tz: number, fuseTime: number = TNT_FUSE_TIME) {
   const key = `${tx},${ty},${tz}`;
   if (fusingTNT.has(key)) return; // already fusing
   fusingTNT.add(key);
 
-  // Fuse phase: sparks + sizzle sound
+  const s = useWorldStore.getState();
+  const currentBlock = s.getBlock(tx, ty, tz);
+  const currentDef = getBlock(currentBlock);
+  if (!currentDef.isTNT) { fusingTNT.delete(key); return; }
+
+  // Remove block immediately and spawn physics entity
+  s.setBlock(tx, ty, tz, BlockType.AIR);
+  fusingTNT.delete(key);
+
+  // Fuse sound
   const fuseDurationSec = fuseTime / 1000;
   soundManager.playFuseSound(fuseDurationSec);
-  window.dispatchEvent(new CustomEvent('digy:tnt-fuse', {
-    detail: { x: tx + 0.5, y: ty + 1.0, z: tz + 0.5, duration: fuseTime }
+
+  // Spawn TNT entity that jumps and becomes physics-enabled
+  window.dispatchEvent(new CustomEvent('digy:spawnTNTEntity', {
+    detail: {
+      x: tx + 0.5, y: ty + 0.5, z: tz + 0.5,
+      fuseTime: fuseDurationSec,
+      vx: (Math.random() - 0.5) * 2,
+      vy: 5 + Math.random() * 2,
+      vz: (Math.random() - 0.5) * 2,
+    }
   }));
-
-  // After fuse, explode
-  setTimeout(() => {
-    fusingTNT.delete(key);
-    const s = useWorldStore.getState();
-    // Check TNT still there (player might have broken it)
-    const currentBlock = s.getBlock(tx, ty, tz);
-    const currentDef = getBlock(currentBlock);
-    if (!currentDef.isTNT) return;
-
-    // Remove the TNT block
-    s.setBlock(tx, ty, tz, BlockType.AIR);
-
-    // Explosion sound
-    soundManager.playExplosionSound();
-
-    // Destroy blocks in sphere
-    for (let dx = -TNT_RADIUS; dx <= TNT_RADIUS; dx++) {
-      for (let dy = -TNT_RADIUS; dy <= TNT_RADIUS; dy++) {
-        for (let dz = -TNT_RADIUS; dz <= TNT_RADIUS; dz++) {
-          const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-          if (dist > TNT_RADIUS) continue;
-          const bx = tx + dx;
-          const by = ty + dy;
-          const bz = tz + dz;
-          const block = s.getBlock(bx, by, bz);
-          if (block === BlockType.AIR) continue;
-          const def = getBlock(block);
-          // Don't destroy indestructible blocks
-          if (def.hardness === Infinity) continue;
-          // Chain TNT with shorter fuse
-          if (def.isTNT) {
-            const chainStore = useWorldStore.getState();
-            detonateTNT(chainStore, bx, by, bz, TNT_CHAIN_FUSE_TIME);
-            continue;
-          }
-          s.setBlock(bx, by, bz, BlockType.AIR);
-        }
-      }
-    }
-
-    // Destroy unsupported blocks above the explosion area
-    for (let dx = -TNT_RADIUS; dx <= TNT_RADIUS; dx++) {
-      for (let dz = -TNT_RADIUS; dz <= TNT_RADIUS; dz++) {
-        // Check column above each destroyed position
-        for (let dy = -TNT_RADIUS; dy <= TNT_RADIUS; dy++) {
-          const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-          if (dist > TNT_RADIUS) continue;
-          const checkX = tx + dx;
-          const checkZ = tz + dz;
-          let cy = ty + dy + 1;
-          while (cy < CHUNK_HEIGHT) {
-            const above = s.getBlock(checkX, cy, checkZ);
-            if (!needsSupportFromBelow(above)) break;
-            s.setBlock(checkX, cy, checkZ, BlockType.AIR);
-            // Door upper half cleanup
-            const aboveDef = getBlock(above);
-            if (aboveDef.isDoor && !aboveDef.doorUpper) {
-              s.setBlock(checkX, cy + 1, checkZ, BlockType.AIR);
-              cy += 2;
-            } else {
-              cy++;
-            }
-          }
-        }
-      }
-    }
-
-    // Spawn explosion particles
-    window.dispatchEvent(new CustomEvent('digy:explosion', {
-      detail: { x: tx + 0.5, y: ty + 0.5, z: tz + 0.5, radius: TNT_RADIUS }
-    }));
-  }, fuseTime);
 }
 
 /**
