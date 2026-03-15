@@ -1,7 +1,7 @@
 import { useRef, useMemo, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { useNPCStore, ROLE_COLORS, type NPC, type NPCRole, type NPCState } from '../../stores/npcStore';
+import { useNPCStore, ROLE_COLORS, type NPC, type NPCRole } from '../../stores/npcStore';
 import { useWorldStore } from '../../stores/worldStore';
 import { BlockType } from '../../core/voxel/BlockRegistry';
 
@@ -148,7 +148,7 @@ function tickNPC(
 ): Partial<NPC> {
   const updates: Partial<NPC> = {};
   const [px, py, pz] = npc.position;
-  const [tx, ty, tz] = npc.target;
+  const [tx, , tz] = npc.target;
 
   const dist = Math.sqrt((px - tx) ** 2 + (pz - tz) ** 2);
 
@@ -289,7 +289,7 @@ const ROLE_LABELS: Record<NPCRole, string> = {
   farmer: 'Rolnik',
 };
 
-export function VillageNPCs({ center }: { center: [number, number, number] }) {
+export function VillageNPCs({ center: _center }: { center: [number, number, number] }) {
   const npcs = useNPCStore((s) => s.npcs);
   const buildProjects = useNPCStore((s) => s.buildProjects);
   const updateNPC = useNPCStore((s) => s.updateNPC);
