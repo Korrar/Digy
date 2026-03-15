@@ -695,6 +695,9 @@ function applyPhysics(
 
       if (blockAtFeet && spaceAbove) {
         vy = JUMP_VELOCITY;
+        // Give horizontal velocity so NPC clears the obstacle instead of jumping in place
+        vx = ndirX * npc.speed * 0.7;
+        vz = ndirZ * npc.speed * 0.7;
         grounded = false;
         updates.lastJumpTime = elapsedTime;
       }
@@ -932,7 +935,8 @@ function tickAI(
         if (totalItems < npc.inventoryCapacity) {
           const found = findNearbyBlock(getBlock, px, py, pz, [BlockType.WOOD], 12);
           if (found) {
-            updates.target = [found[0] + 0.5, py, found[2] + 0.5];
+            const standPos = findStandPosition(getBlock, found[0], found[1], found[2], px, py, pz);
+            updates.target = standPos;
             updates.state = 'gathering';
             updates.workTarget = found;
             return updates;
@@ -947,7 +951,8 @@ function tickAI(
         if (farmland) {
           const above = getBlock(farmland[0], farmland[1] + 1, farmland[2]);
           if (above === BlockType.AIR) {
-            updates.target = [farmland[0] + 0.5, py, farmland[2] + 0.5];
+            const farmStand = findStandPosition(getBlock, farmland[0], farmland[1], farmland[2], px, py, pz);
+            updates.target = farmStand;
             updates.state = 'farming';
             updates.workTarget = [farmland[0], farmland[1] + 1, farmland[2]];
             return updates;
@@ -956,7 +961,8 @@ function tickAI(
         // Find grass to convert to farmland
         const grassSpot = findFarmSpot(getBlock, px, py, pz, 8);
         if (grassSpot) {
-          updates.target = [grassSpot[0] + 0.5, py, grassSpot[2] + 0.5];
+          const grassStand = findStandPosition(getBlock, grassSpot[0], grassSpot[1], grassSpot[2], px, py, pz);
+          updates.target = grassStand;
           updates.state = 'farming';
           updates.workTarget = grassSpot;
           return updates;
@@ -964,7 +970,8 @@ function tickAI(
         // Harvest mature wheat
         const wheat = findNearbyBlock(getBlock, px, py, pz, [BlockType.WHEAT], 8);
         if (wheat) {
-          updates.target = [wheat[0] + 0.5, py, wheat[2] + 0.5];
+          const wheatStand = findStandPosition(getBlock, wheat[0], wheat[1], wheat[2], px, py, pz);
+          updates.target = wheatStand;
           updates.state = 'gathering';
           updates.workTarget = wheat;
           return updates;
@@ -977,7 +984,8 @@ function tickAI(
           const targets = getGatherTargets(npc.role);
           const found = findNearbyBlock(getBlock, px, py, pz, targets, 8);
           if (found) {
-            updates.target = [found[0] + 0.5, py, found[2] + 0.5];
+            const mineStand = findStandPosition(getBlock, found[0], found[1], found[2], px, py, pz);
+            updates.target = mineStand;
             updates.state = 'gathering';
             updates.workTarget = found;
             return updates;
@@ -1007,6 +1015,16 @@ function tickAI(
     case 'gathering': {
       if (!npc.workTarget) {
         updates.state = 'idle';
+        return updates;
+      }
+      // Check if close enough to work target
+      const [gx, gy, gz] = npc.workTarget;
+      const gatherDist = Math.sqrt((px - (gx + 0.5)) ** 2 + (pz - (gz + 0.5)) ** 2);
+      if (gatherDist > BREAK_REACH) {
+        const gatherStand = findStandPosition(getBlock, gx, gy, gz, px, py, pz);
+        updates.target = gatherStand;
+        updates.waypoints = [];
+        updates.pathCache = [];
         return updates;
       }
       const newTimer = npc.gatherTimer + dt;
@@ -1093,6 +1111,16 @@ function tickAI(
       // Farmer: convert grass to farmland or plant wheat on farmland
       if (!npc.workTarget) {
         updates.state = 'idle';
+        return updates;
+      }
+      // Check if close enough to work target
+      const [farmX, farmY, farmZ] = npc.workTarget;
+      const farmDist = Math.sqrt((px - (farmX + 0.5)) ** 2 + (pz - (farmZ + 0.5)) ** 2);
+      if (farmDist > BREAK_REACH) {
+        const farmStand = findStandPosition(getBlock, farmX, farmY, farmZ, px, py, pz);
+        updates.target = farmStand;
+        updates.waypoints = [];
+        updates.pathCache = [];
         return updates;
       }
       const farmTimer = npc.buildTimer + dt;
