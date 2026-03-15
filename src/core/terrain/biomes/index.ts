@@ -10,6 +10,7 @@ import { MushroomBiome } from './MushroomBiome';
 import { VolcanicBiome } from './VolcanicBiome';
 import { SavannaBiome } from './SavannaBiome';
 import { CherryBiome } from './CherryBiome';
+import { VillageBiome } from './VillageBiome';
 
 export type { BiomeType, BiomeConfig } from './BiomeBase';
 
@@ -26,6 +27,7 @@ export function createBiome(type: BiomeType, seed: number = 42): BiomeBase {
     case 'volcanic': return new VolcanicBiome(seed);
     case 'savanna': return new SavannaBiome(seed);
     case 'cherry': return new CherryBiome(seed);
+    case 'village': return new VillageBiome(seed);
   }
 }
 
@@ -41,4 +43,5 @@ export const BIOME_LIST: { type: BiomeType; name: string; emoji: string }[] = [
   { type: 'volcanic', name: 'Wulkan', emoji: '🌋' },
   { type: 'savanna', name: 'Sawanna', emoji: '🦒' },
   { type: 'cherry', name: 'Wiśniowy Gaj', emoji: '🌸' },
+  { type: 'village', name: 'Wioska', emoji: '🏘️' },
 ];

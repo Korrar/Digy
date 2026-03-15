@@ -300,20 +300,21 @@ describe('New biomes generation', () => {
     expect(hasMoss).toBe(true);
   });
 
-  it('should list all 11 biomes in BIOME_LIST', () => {
+  it('should list all 12 biomes in BIOME_LIST', () => {
     // BIOME_LIST imported at top
-    expect(BIOME_LIST.length).toBe(11);
+    expect(BIOME_LIST.length).toBe(12);
     const types = BIOME_LIST.map((b: any) => b.type);
     expect(types).toContain('jungle');
     expect(types).toContain('mushroom');
     expect(types).toContain('volcanic');
     expect(types).toContain('savanna');
     expect(types).toContain('cherry');
+    expect(types).toContain('village');
   });
 
   it('should create all biome types via createBiome', () => {
     // createBiome imported at top
-    const biomeTypes: BiomeType[] = ['forest', 'desert', 'cave', 'mountains', 'swamp', 'tundra', 'jungle', 'mushroom', 'volcanic', 'savanna', 'cherry'];
+    const biomeTypes: BiomeType[] = ['forest', 'desert', 'cave', 'mountains', 'swamp', 'tundra', 'jungle', 'mushroom', 'volcanic', 'savanna', 'cherry', 'village'];
     for (const type of biomeTypes) {
       const biome = createBiome(type, 42);
       expect(biome).toBeDefined();
