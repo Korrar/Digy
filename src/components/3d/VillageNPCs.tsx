@@ -151,7 +151,8 @@ function findNearbyBlock(
   getBlock: (x: number, y: number, z: number) => BlockType,
   cx: number, cy: number, cz: number,
   targetType: BlockType[],
-  radius: number
+  radius: number,
+  exclude?: Set<string>,
 ): [number, number, number] | null {
   for (let r = 1; r <= radius; r++) {
     for (let dx = -r; dx <= r; dx++) {
@@ -162,6 +163,7 @@ function findNearbyBlock(
           const bz = Math.floor(cz) + dz;
           const bt = getBlock(bx, by, bz);
           if (targetType.includes(bt)) {
+            if (exclude && exclude.has(`${bx},${by},${bz}`)) continue;
             return [bx, by, bz];
           }
         }
@@ -193,7 +195,8 @@ function getDropType(role: NPCRole): BlockType {
 function findFarmSpot(
   getBlock: (x: number, y: number, z: number) => BlockType,
   cx: number, cy: number, cz: number,
-  radius: number
+  radius: number,
+  exclude?: Set<string>,
 ): [number, number, number] | null {
   for (let r = 2; r <= radius; r++) {
     for (let dx = -r; dx <= r; dx++) {
@@ -205,6 +208,7 @@ function findFarmSpot(
           if (getBlock(bx, by, bz) === BlockType.GRASS &&
               getBlock(bx, by + 1, bz) === BlockType.AIR &&
               getBlock(bx, by + 2, bz) === BlockType.AIR) {
+            if (exclude && exclude.has(`${bx},${by},${bz}`)) continue;
             return [bx, by, bz];
           }
         }
@@ -548,22 +552,27 @@ function generateAvoidanceWaypoints(
   return waypoints;
 }
 
-/** Find a position adjacent to a block where NPC can stand to work on it */
+/** Find a position adjacent to a block where NPC can stand to work on it.
+ *  Returns null if no walkable position found. */
 function findStandPosition(
   getBlock: (x: number, y: number, z: number) => BlockType,
   bx: number, _by: number, bz: number,
   npcX: number, npcY: number, npcZ: number,
-): [number, number, number] {
-  // Try 4 adjacent positions, pick the closest walkable one
+): [number, number, number] | null {
   const candidates: [number, number, number, number][] = []; // [x, y, z, dist]
-  const offsets: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  // Cardinal + diagonal + 2-block-away positions
+  const offsets: [number, number][] = [
+    [1, 0], [-1, 0], [0, 1], [0, -1],
+    [1, 1], [1, -1], [-1, 1], [-1, -1],
+    [2, 0], [-2, 0], [0, 2], [0, -2],
+  ];
 
   for (const [ox, oz] of offsets) {
     const cx = bx + ox;
     const cz = bz + oz;
-    // Check if walkable at ground level near the block
     const groundY = getTerrainHeight(getBlock, cx + 0.5, cz + 0.5);
-    if (isWalkable(getBlock, cx + 0.5, groundY, cz + 0.5)) {
+    if (isWalkable(getBlock, cx + 0.5, groundY, cz + 0.5) &&
+        !isDangerous(getBlock, cx + 0.5, cz + 0.5, groundY)) {
       const dx = (cx + 0.5) - npcX;
       const dz = (cz + 0.5) - npcZ;
       candidates.push([cx + 0.5, groundY, cz + 0.5, dx * dx + dz * dz]);
@@ -575,8 +584,7 @@ function findStandPosition(
     return [candidates[0][0], candidates[0][1], candidates[0][2]];
   }
 
-  // Fallback: stand at XZ of block (old behavior)
-  return [bx + 0.5, npcY, bz + 0.5];
+  return null;
 }
 
 /** Try to break a blocking block ahead. Returns true if a block was broken. */
@@ -772,6 +780,18 @@ function tickAI(
     }
 
     if (newStuckCount >= MAX_STUCK_COUNT) {
+      // Remember this target as failed so we don't retry it immediately
+      const newFailed = [...npc.failedTargets];
+      if (npc.workTarget) {
+        const [fx, fy, fz] = npc.workTarget;
+        newFailed.push({ key: `${fx},${fy},${fz}`, time: elapsedTime });
+      }
+      // Also remember the target position area
+      const tx = Math.floor(npc.target[0]);
+      const tz = Math.floor(npc.target[2]);
+      newFailed.push({ key: `${tx},${Math.floor(py)},${tz}`, time: elapsedTime });
+      updates.failedTargets = newFailed;
+
       // Abandon current target, go back home and reset
       updates.target = [npc.homePosition[0], py, npc.homePosition[2]];
       updates.state = 'idle';
@@ -847,7 +867,12 @@ function tickAI(
         if (avoidWaypoints.length > 0) {
           updates.waypoints = [...avoidWaypoints, npc.target];
         } else {
-          // Can't avoid - abandon and go home
+          // Can't avoid - remember failed target and go home
+          if (npc.workTarget) {
+            const [ftx, fty, ftz] = npc.workTarget;
+            const dangerFailed = [...npc.failedTargets, { key: `${ftx},${fty},${ftz}`, time: elapsedTime }];
+            updates.failedTargets = dangerFailed;
+          }
           updates.target = [npc.homePosition[0], py, npc.homePosition[2]];
           updates.state = 'idle';
           updates.workTarget = null;
@@ -886,6 +911,16 @@ function tickAI(
 
   const totalItems = npc.inventory.reduce((s, i) => s + i.count, 0);
 
+  // Prune expired failed targets (older than 60s)
+  const FAILED_TARGET_TIMEOUT = 60;
+  const activeFailedTargets = npc.failedTargets.filter(
+    (ft) => elapsedTime - ft.time < FAILED_TARGET_TIMEOUT
+  );
+  if (activeFailedTargets.length !== npc.failedTargets.length) {
+    updates.failedTargets = activeFailedTargets;
+  }
+  const excludeSet = new Set(activeFailedTargets.map((ft) => ft.key));
+
   switch (npc.state) {
     case 'idle':
     case 'walking': {
@@ -896,13 +931,15 @@ function tickAI(
           const block = project.blocks[project.placedCount];
           // Stand near the block, not on it - find best adjacent position
           const standPos = findStandPosition(getBlock, block.x, block.y, block.z, px, py, pz);
-          updates.target = standPos;
-          updates.state = 'building';
-          updates.workTarget = [block.x, block.y, block.z];
-          updates.buildIndex = project.placedCount;
-          updates.waypoints = [];
-          updates.pathCache = [];
-          return updates;
+          if (standPos) {
+            updates.target = standPos;
+            updates.state = 'building';
+            updates.workTarget = [block.x, block.y, block.z];
+            updates.buildIndex = project.placedCount;
+            updates.waypoints = [];
+            updates.pathCache = [];
+            return updates;
+          }
         }
         // No active project - look for a river to bridge
         const hasBridge = buildProjects.some((p) => p.id.startsWith('bridge_'));
@@ -933,13 +970,15 @@ function tickAI(
         }
         // Chop wood
         if (totalItems < npc.inventoryCapacity) {
-          const found = findNearbyBlock(getBlock, px, py, pz, [BlockType.WOOD], 12);
+          const found = findNearbyBlock(getBlock, px, py, pz, [BlockType.WOOD], 12, excludeSet);
           if (found) {
             const standPos = findStandPosition(getBlock, found[0], found[1], found[2], px, py, pz);
-            updates.target = standPos;
-            updates.state = 'gathering';
-            updates.workTarget = found;
-            return updates;
+            if (standPos) {
+              updates.target = standPos;
+              updates.state = 'gathering';
+              updates.workTarget = found;
+              return updates;
+            }
           }
         }
       }
@@ -947,34 +986,40 @@ function tickAI(
       // === FARMER: create farmland and plant wheat ===
       if (npc.role === 'farmer') {
         // Look for existing farmland to plant wheat on
-        const farmland = findNearbyBlock(getBlock, px, py, pz, [BlockType.FARMLAND], 8);
+        const farmland = findNearbyBlock(getBlock, px, py, pz, [BlockType.FARMLAND], 8, excludeSet);
         if (farmland) {
           const above = getBlock(farmland[0], farmland[1] + 1, farmland[2]);
           if (above === BlockType.AIR) {
             const farmStand = findStandPosition(getBlock, farmland[0], farmland[1], farmland[2], px, py, pz);
-            updates.target = farmStand;
-            updates.state = 'farming';
-            updates.workTarget = [farmland[0], farmland[1] + 1, farmland[2]];
-            return updates;
+            if (farmStand) {
+              updates.target = farmStand;
+              updates.state = 'farming';
+              updates.workTarget = [farmland[0], farmland[1] + 1, farmland[2]];
+              return updates;
+            }
           }
         }
         // Find grass to convert to farmland
-        const grassSpot = findFarmSpot(getBlock, px, py, pz, 8);
+        const grassSpot = findFarmSpot(getBlock, px, py, pz, 8, excludeSet);
         if (grassSpot) {
           const grassStand = findStandPosition(getBlock, grassSpot[0], grassSpot[1], grassSpot[2], px, py, pz);
-          updates.target = grassStand;
-          updates.state = 'farming';
-          updates.workTarget = grassSpot;
-          return updates;
+          if (grassStand) {
+            updates.target = grassStand;
+            updates.state = 'farming';
+            updates.workTarget = grassSpot;
+            return updates;
+          }
         }
         // Harvest mature wheat
-        const wheat = findNearbyBlock(getBlock, px, py, pz, [BlockType.WHEAT], 8);
+        const wheat = findNearbyBlock(getBlock, px, py, pz, [BlockType.WHEAT], 8, excludeSet);
         if (wheat) {
           const wheatStand = findStandPosition(getBlock, wheat[0], wheat[1], wheat[2], px, py, pz);
-          updates.target = wheatStand;
-          updates.state = 'gathering';
-          updates.workTarget = wheat;
-          return updates;
+          if (wheatStand) {
+            updates.target = wheatStand;
+            updates.state = 'gathering';
+            updates.workTarget = wheat;
+            return updates;
+          }
         }
       }
 
@@ -982,13 +1027,15 @@ function tickAI(
       if (npc.role === 'miner') {
         if (totalItems < npc.inventoryCapacity) {
           const targets = getGatherTargets(npc.role);
-          const found = findNearbyBlock(getBlock, px, py, pz, targets, 8);
+          const found = findNearbyBlock(getBlock, px, py, pz, targets, 8, excludeSet);
           if (found) {
             const mineStand = findStandPosition(getBlock, found[0], found[1], found[2], px, py, pz);
-            updates.target = mineStand;
-            updates.state = 'gathering';
-            updates.workTarget = found;
-            return updates;
+            if (mineStand) {
+              updates.target = mineStand;
+              updates.state = 'gathering';
+              updates.workTarget = found;
+              return updates;
+            }
           }
         }
       }
@@ -1022,6 +1069,11 @@ function tickAI(
       const gatherDist = Math.sqrt((px - (gx + 0.5)) ** 2 + (pz - (gz + 0.5)) ** 2);
       if (gatherDist > BREAK_REACH) {
         const gatherStand = findStandPosition(getBlock, gx, gy, gz, px, py, pz);
+        if (!gatherStand) {
+          updates.workTarget = null;
+          updates.state = 'idle';
+          return updates;
+        }
         updates.target = gatherStand;
         updates.waypoints = [];
         updates.pathCache = [];
@@ -1042,6 +1094,8 @@ function tickAI(
             inv.push({ type: drop, count: 1 });
           }
           updates.inventory = inv;
+          // Successful gather - clear failed targets since terrain may have changed
+          updates.failedTargets = [];
         }
         updates.gatherTimer = 0;
         updates.workTarget = null;
@@ -1063,6 +1117,11 @@ function tickAI(
       if (workDist > BREAK_REACH) {
         // Not close enough - recalculate stand position and walk there
         const standPos = findStandPosition(getBlock, wx, wy, wz, px, py, pz);
+        if (!standPos) {
+          updates.workTarget = null;
+          updates.state = 'idle';
+          return updates;
+        }
         updates.target = standPos;
         updates.waypoints = [];
         updates.pathCache = [];
@@ -1118,6 +1177,11 @@ function tickAI(
       const farmDist = Math.sqrt((px - (farmX + 0.5)) ** 2 + (pz - (farmZ + 0.5)) ** 2);
       if (farmDist > BREAK_REACH) {
         const farmStand = findStandPosition(getBlock, farmX, farmY, farmZ, px, py, pz);
+        if (!farmStand) {
+          updates.workTarget = null;
+          updates.state = 'idle';
+          return updates;
+        }
         updates.target = farmStand;
         updates.waypoints = [];
         updates.pathCache = [];
