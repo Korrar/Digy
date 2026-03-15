@@ -551,7 +551,7 @@ function generateAvoidanceWaypoints(
 /** Find a position adjacent to a block where NPC can stand to work on it */
 function findStandPosition(
   getBlock: (x: number, y: number, z: number) => BlockType,
-  bx: number, by: number, bz: number,
+  bx: number, _by: number, bz: number,
   npcX: number, npcY: number, npcZ: number,
 ): [number, number, number] {
   // Try 4 adjacent positions, pick the closest walkable one
