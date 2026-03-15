@@ -10,6 +10,7 @@ import { WorldInteraction } from '../components/3d/WorldInteraction';
 import { ParticleSystem } from '../components/3d/DiggingParticles';
 import { BlockLights } from '../components/3d/BlockLights';
 import { MinecartRenderer } from '../components/3d/Minecarts';
+import { TNTEntities } from '../components/3d/TNTEntities';
 import { DayNightCycle } from '../components/3d/DayNightCycle';
 import { PlateGhost } from '../components/3d/PlateGhost';
 import { ambientMusic } from '../systems/AmbientMusic';
@@ -203,6 +204,7 @@ export function HideoutScene() {
         {!placementMode && <WorldInteraction mode={mode} />}
         <BlockLights />
         <MinecartRenderer center={[16, 3, 16]} />
+        <TNTEntities />
         <ParticleSystem />
         <PlateGhost />
 

@@ -36,6 +36,7 @@ import { StarrySky } from '../components/3d/StarrySky';
 import { ModeToggle, cycleMode } from '../components/ui/ModeToggle';
 import type { GameMode } from '../components/ui/ModeToggle';
 import { AmbientParticles } from '../components/3d/AmbientParticles';
+import { TNTEntities } from '../components/3d/TNTEntities';
 import { WaterPlane } from '../components/3d/WaterPlane';
 import { Minimap } from '../components/ui/Minimap';
 import { FloatingText } from '../components/ui/FloatingText';
@@ -212,6 +213,7 @@ export function BiomeScene() {
 
         <WorldInteraction mode={gameMode} />
         <MinecartRenderer center={[8, 8, 8]} />
+        <TNTEntities />
         <BlockLights />
         {biomeType !== 'cave' && <StarrySky sunIntensity={sunIntensity} />}
         <ParticleSystem />

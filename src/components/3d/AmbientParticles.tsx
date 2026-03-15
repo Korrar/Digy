@@ -14,7 +14,7 @@ interface AmbientParticle {
   vz: number;
   life: number;
   maxLife: number;
-  type: 'smoke' | 'lava_spark' | 'rail_spark' | 'ember' | 'tnt_spark' | 'explosion' | 'explosion_smoke';
+  type: 'smoke' | 'lava_spark' | 'rail_spark' | 'ember' | 'tnt_spark' | 'explosion' | 'explosion_smoke' | 'explosion_flash' | 'shockwave';
 }
 
 const MAX_AMBIENT_PARTICLES = 500;
@@ -98,38 +98,72 @@ export function AmbientParticles({ center }: { center: [number, number, number] 
     const handleExplosion = (e: Event) => {
       const { x, y, z, radius } = (e as CustomEvent).detail;
       const particles = particlesRef.current;
+
+      // Central flash - bright white burst
+      for (let i = 0; i < 8; i++) {
+        if (particles.length >= MAX_AMBIENT_PARTICLES) break;
+        particles.push({
+          x: x + (Math.random() - 0.5) * 0.3,
+          y: y + (Math.random() - 0.5) * 0.3,
+          z: z + (Math.random() - 0.5) * 0.3,
+          vx: (Math.random() - 0.5) * 0.5,
+          vy: (Math.random() - 0.5) * 0.5,
+          vz: (Math.random() - 0.5) * 0.5,
+          life: 0.15 + Math.random() * 0.1,
+          maxLife: 0.25,
+          type: 'explosion_flash',
+        });
+      }
+
+      // Shockwave ring - expands outward horizontally
+      const ringCount = 16;
+      for (let i = 0; i < ringCount; i++) {
+        if (particles.length >= MAX_AMBIENT_PARTICLES) break;
+        const angle = (i / ringCount) * Math.PI * 2;
+        const speed = radius * 4;
+        particles.push({
+          x, y, z,
+          vx: Math.cos(angle) * speed,
+          vy: 0,
+          vz: Math.sin(angle) * speed,
+          life: 0.3 + Math.random() * 0.1,
+          maxLife: 0.4,
+          type: 'shockwave',
+        });
+      }
+
       // Burst of explosion debris particles
-      const debrisCount = 40;
+      const debrisCount = 50;
       for (let i = 0; i < debrisCount; i++) {
         if (particles.length >= MAX_AMBIENT_PARTICLES) break;
         const angle = Math.random() * Math.PI * 2;
         const elevation = (Math.random() - 0.3) * Math.PI;
-        const speed = 3 + Math.random() * radius * 2;
+        const speed = 4 + Math.random() * radius * 3;
         particles.push({
           x: x + (Math.random() - 0.5) * 0.5,
           y: y + (Math.random() - 0.5) * 0.5,
           z: z + (Math.random() - 0.5) * 0.5,
           vx: Math.cos(angle) * Math.cos(elevation) * speed,
-          vy: Math.sin(elevation) * speed + 2,
+          vy: Math.sin(elevation) * speed + 3,
           vz: Math.sin(angle) * Math.cos(elevation) * speed,
-          life: 0.5 + Math.random() * 0.6,
-          maxLife: 1.1,
+          life: 0.5 + Math.random() * 0.8,
+          maxLife: 1.3,
           type: 'explosion',
         });
       }
-      // Smoke cloud particles - slower, longer-lived
-      const smokeCount = 20;
+      // Smoke cloud particles - slower, longer-lived, more of them
+      const smokeCount = 30;
       for (let i = 0; i < smokeCount; i++) {
         if (particles.length >= MAX_AMBIENT_PARTICLES) break;
         particles.push({
           x: x + (Math.random() - 0.5) * radius,
           y: y + (Math.random() - 0.5) * radius * 0.5,
           z: z + (Math.random() - 0.5) * radius,
-          vx: (Math.random() - 0.5) * 2,
-          vy: 0.5 + Math.random() * 1.5,
-          vz: (Math.random() - 0.5) * 2,
-          life: 1.0 + Math.random() * 1.0,
-          maxLife: 2.0,
+          vx: (Math.random() - 0.5) * 3,
+          vy: 0.8 + Math.random() * 2.5,
+          vz: (Math.random() - 0.5) * 3,
+          life: 1.5 + Math.random() * 1.5,
+          maxLife: 3.0,
           type: 'explosion_smoke',
         });
       }
@@ -272,6 +306,15 @@ export function AmbientParticles({ center }: { center: [number, number, number] 
         p.vz += (Math.random() - 0.5) * 0.5 * delta;
         p.vx *= 1.0 + 0.4 * delta; // expand outward
         p.vz *= 1.0 + 0.4 * delta;
+      } else if (p.type === 'explosion_flash') {
+        // Flash stays roughly in place, just fades
+        p.vx *= 0.9;
+        p.vy *= 0.9;
+        p.vz *= 0.9;
+      } else if (p.type === 'shockwave') {
+        // Expands outward, slight deceleration
+        p.vx *= 0.92;
+        p.vz *= 0.92;
       }
 
       p.x += p.vx * delta;
@@ -330,6 +373,19 @@ export function AmbientParticles({ center }: { center: [number, number, number] 
           colAttr.array[i * 3 + 1] = gray * alpha * 0.9;
           colAttr.array[i * 3 + 2] = gray * alpha * 0.8;
           sizeAttr.array[i] = 0.15 + (1 - t) * 0.35; // grows as it dissipates
+        } else if (p.type === 'explosion_flash') {
+          // Bright white-yellow flash that fades quickly
+          colAttr.array[i * 3] = 1.0 * t;
+          colAttr.array[i * 3 + 1] = 0.95 * t;
+          colAttr.array[i * 3 + 2] = 0.7 * t;
+          sizeAttr.array[i] = 0.6 + (1 - t) * 1.5; // starts big, shrinks
+        } else if (p.type === 'shockwave') {
+          // White-gray expanding ring
+          const fade = t * t;
+          colAttr.array[i * 3] = 0.8 * fade;
+          colAttr.array[i * 3 + 1] = 0.75 * fade;
+          colAttr.array[i * 3 + 2] = 0.65 * fade;
+          sizeAttr.array[i] = 0.12 + (1 - t) * 0.2;
         } else {
           colAttr.array[i * 3] = 1.0 * t;
           colAttr.array[i * 3 + 1] = 0.8 * t;
