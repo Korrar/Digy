@@ -1,15 +1,18 @@
 import { BlockType } from './BlockRegistry';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
+import { SubVoxelStore } from './SubVoxelData';
 
 export class ChunkData {
   readonly cx: number;
   readonly cz: number;
   readonly blocks: Uint8Array;
+  readonly subVoxels: SubVoxelStore;
 
   constructor(cx: number, cz: number) {
     this.cx = cx;
     this.cz = cz;
     this.blocks = new Uint8Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
+    this.subVoxels = new SubVoxelStore();
   }
 
   private index(x: number, y: number, z: number): number {
@@ -32,6 +35,11 @@ export class ChunkData {
 
   fill(type: BlockType): void {
     this.blocks.fill(type);
+  }
+
+  /** Check if a block at local coordinates has sub-voxel damage */
+  hasSubVoxelDamage(x: number, y: number, z: number): boolean {
+    return this.subVoxels.hasGrid(x, y, z);
   }
 }
 
