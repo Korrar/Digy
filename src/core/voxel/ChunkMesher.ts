@@ -3,6 +3,8 @@ import { BlockType, getBlock, isTransparent, isCrossedQuad, isFlat, isSlab, isFe
 import { ChunkData } from './ChunkData';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
 import { getAtlasUV, getWhiteUV } from './TextureAtlas';
+import { buildSubVoxelGeometry } from './SubVoxelMesher';
+import { SUB_VOXEL_RES } from './SubVoxelData';
 
 interface Face {
   dir: [number, number, number];
@@ -343,6 +345,48 @@ export function buildChunkMesh(
         const cableVal = block === BlockType.CABLE_POWERED ? 2.0 : (block === BlockType.CABLE ? 1.0 : 0.0);
         const isGlassBlock = block === BlockType.GLASS || block === BlockType.ICE ? 1.0 : 0.0;
         const oreColor = blockDef.oreColor;
+
+        // Sub-voxel rendering for damaged blocks
+        if (chunk.hasSubVoxelDamage(x, y, z)) {
+          const svGeom = buildSubVoxelGeometry(
+            chunk.subVoxels, wx, y, wz, blockDef,
+            getNeighborBlock ?? ((_wx: number, _wy: number, _wz: number) => BlockType.AIR)
+          );
+          // Merge sub-voxel geometry into main arrays
+          const svPos = svGeom.getAttribute('position');
+          const svNorm = svGeom.getAttribute('normal');
+          const svCol = svGeom.getAttribute('color');
+          const svUv = svGeom.getAttribute('uv');
+          const svSparkle = svGeom.getAttribute('aSparkle');
+          const svWater = svGeom.getAttribute('aIsWater');
+          const svLava = svGeom.getAttribute('aIsLava');
+          const svCable = svGeom.getAttribute('aIsCable');
+          const svGlass = svGeom.getAttribute('aIsGlass');
+          const svOre = svGeom.getAttribute('aOreColor');
+          const svIdx = svGeom.getIndex();
+
+          if (svPos && svIdx) {
+            const baseVertex = vertexCount;
+            for (let i = 0; i < svPos.count; i++) {
+              positions.push(svPos.getX(i), svPos.getY(i), svPos.getZ(i));
+              normals.push(svNorm.getX(i), svNorm.getY(i), svNorm.getZ(i));
+              colors.push(svCol.getX(i), svCol.getY(i), svCol.getZ(i));
+              uvs.push(svUv.getX(i), svUv.getY(i));
+              sparkles.push(svSparkle.getX(i));
+              waterFlags.push(svWater.getX(i));
+              lavaFlags.push(svLava.getX(i));
+              cableFlags.push(svCable.getX(i));
+              glassFlags.push(svGlass.getX(i));
+              oreColors.push(svOre.getX(i), svOre.getY(i), svOre.getZ(i));
+            }
+            for (let i = 0; i < svIdx.count; i++) {
+              indices.push(svIdx.getX(i) + baseVertex);
+            }
+            vertexCount += svPos.count;
+          }
+          svGeom.dispose();
+          continue;
+        }
 
         // Crossed quad rendering for vegetation
         if (isCrossedQuad(block)) {
