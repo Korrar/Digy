@@ -7,6 +7,7 @@ import { type BiomeType, createBiome } from '../core/terrain/biomes';
 import { placeStructures } from '../core/terrain/StructureGenerator';
 import { CHUNK_SIZE } from '../utils/constants';
 import { mineSubVoxels } from '../core/voxel/VoxelMining';
+import { removeDisconnectedFragments, checkBlockStability } from '../core/voxel/VoxelPhysics';
 
 interface ChunkEntry {
   data: ChunkData;
@@ -154,6 +155,20 @@ export const useWorldStore = create<WorldState>((set, get) => ({
     if (result.blockDestroyed) {
       // Block fully destroyed - set to AIR
       entry.data.setBlock(lx, wy, lz, BlockType.AIR);
+    } else if (result.removed > 0) {
+      // Remove disconnected sub-voxel fragments (gravity)
+      removeDisconnectedFragments(entry.data.subVoxels, lx, wy, lz);
+
+      // Check structural stability - collapse if too damaged
+      if (!checkBlockStability(entry.data.subVoxels, lx, wy, lz)) {
+        // Remove all remaining sub-voxels for this block
+        for (let sy = 0; sy < 4; sy++)
+          for (let sz = 0; sz < 4; sz++)
+            for (let sx = 0; sx < 4; sx++)
+              entry.data.subVoxels.setSubVoxel(lx, wy, lz, sx, sy, sz, 0);
+        entry.data.setBlock(lx, wy, lz, BlockType.AIR);
+        result.blockDestroyed = true;
+      }
     }
 
     // Rebuild chunk mesh to reflect sub-voxel changes
