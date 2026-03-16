@@ -176,3 +176,49 @@ export function spawnParticles(
   if (!sys) return;
   emitDigParticles(sys.particlesRef, sys.meshRef, position, blockType, isFinalBreak);
 }
+
+// Spawn small sub-voxel sized particles from a specific hit point
+export function spawnSubVoxelParticles(
+  hitPoint: [number, number, number],
+  blockType: BlockType,
+  count: number = 4
+) {
+  const sys = (window as any).__digyParticles;
+  if (!sys) return;
+
+  const def = getBlock(blockType);
+  const color = def.topColor ?? def.color;
+  const particles = sys.particlesRef.current as Particle[];
+
+  for (let i = 0; i < count; i++) {
+    if (particles.length >= MAX_PARTICLES) break;
+
+    particles.push({
+      position: new THREE.Vector3(
+        hitPoint[0] + (Math.random() - 0.5) * 0.25,
+        hitPoint[1] + (Math.random() - 0.5) * 0.25,
+        hitPoint[2] + (Math.random() - 0.5) * 0.25
+      ),
+      velocity: new THREE.Vector3(
+        (Math.random() - 0.5) * 1.5,
+        Math.random() * 2 + 0.5,
+        (Math.random() - 0.5) * 1.5
+      ),
+      life: 0.3 + Math.random() * 0.3,
+      maxLife: 0.6,
+    });
+  }
+
+  // Update colors
+  if (sys.meshRef.current) {
+    const tempColor = new THREE.Color();
+    for (let i = 0; i < particles.length; i++) {
+      tempColor.copy(color);
+      tempColor.offsetHSL(0, 0, (Math.random() - 0.5) * 0.2);
+      sys.meshRef.current.setColorAt(i, tempColor);
+    }
+    if (sys.meshRef.current.instanceColor) {
+      sys.meshRef.current.instanceColor.needsUpdate = true;
+    }
+  }
+}

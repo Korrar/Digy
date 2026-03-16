@@ -10,6 +10,7 @@ attribute float aIsWater;
 attribute float aIsLava;
 attribute float aIsCable;
 attribute float aIsGlass;
+attribute float aDamageLevel;
 
 varying vec3 vColor;
 varying vec3 vNormal;
@@ -22,6 +23,7 @@ varying float vIsWater;
 varying float vIsLava;
 varying float vIsCable;
 varying float vIsGlass;
+varying float vDamageLevel;
 
 uniform float uTime;
 
@@ -35,6 +37,7 @@ void main() {
   vIsLava = aIsLava;
   vIsCable = aIsCable;
   vIsGlass = aIsGlass;
+  vDamageLevel = aDamageLevel;
 
   vec4 worldPos = modelMatrix * vec4(position, 1.0);
 
@@ -119,6 +122,7 @@ varying float vIsWater;
 varying float vIsLava;
 varying float vIsCable;
 varying float vIsGlass;
+varying float vDamageLevel;
 
 // Hash for sparkle
 float hash(vec3 p) {
@@ -187,6 +191,21 @@ void main() {
 
   // Multiply texture color by vertex color (AO/brightness) and lighting
   vec3 baseColor = texColor.rgb * vColor;
+
+  // Sub-voxel damage effect: darken and add crack-like patterns
+  if (vDamageLevel > 0.01) {
+    // Darken damaged areas
+    float darken = 1.0 - vDamageLevel * 0.4;
+    baseColor *= darken;
+    // Add brown/dark tint to exposed interior
+    vec3 interiorTint = vec3(0.3, 0.25, 0.2);
+    baseColor = mix(baseColor, interiorTint * baseColor, vDamageLevel * 0.5);
+    // Crack pattern based on world position
+    float crackNoise = hash(floor(vWorldPosition * 8.0));
+    float crackLine = smoothstep(0.45, 0.5, crackNoise) * vDamageLevel * 0.3;
+    baseColor -= vec3(crackLine);
+  }
+
   vec3 color = baseColor * totalLight + specular;
 
   // Sparkle effect for ores

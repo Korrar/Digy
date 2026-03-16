@@ -7,7 +7,7 @@ import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStai
 import { computeRailBlockType, shouldRailUpdate } from '../../core/voxel/ChunkMesher';
 import { mineSubVoxels, hitPointToSubVoxel } from '../../core/voxel/VoxelMining';
 import { soundManager } from '../../systems/SoundManager';
-import { spawnParticles } from './DiggingParticles';
+import { spawnParticles, spawnSubVoxelParticles } from './DiggingParticles';
 import { processGravity } from '../../systems/SandPhysics';
 import { checkWaterDrain } from '../../systems/WaterFlow';
 import { useDevStore } from '../../stores/devStore';
@@ -158,6 +158,8 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
               const [bx, by, bz] = result.blockPos;
               const [hx, hy, hz] = result.hitPoint;
               const damageResult = damageSubVoxels(bx, by, bz, hx, hy, hz, selected ?? undefined);
+              // Spawn small particles from hit point
+              spawnSubVoxelParticles(result.hitPoint, result.blockType, 3);
               if (damageResult.blockDestroyed) {
                 // Block fully mined via sub-voxels - trigger full destruction
                 miningTimeRef.current = hardness; // force progress to 1

@@ -96,6 +96,7 @@ export function buildSubVoxelGeometry(
   const lavaFlags: number[] = [];
   const cableFlags: number[] = [];
   const glassFlags: number[] = [];
+  const damageLevels: number[] = [];
   const indices: number[] = [];
   let vertexCount = 0;
 
@@ -104,6 +105,9 @@ export function buildSubVoxelGeometry(
   const sparkle = blockDef.sparkle ?? 0;
   const oreColor = blockDef.oreColor;
   const wuv = getWhiteUV();
+
+  // Compute damage level for visual effects
+  const damageRatio = store.getDamageRatio(wx, wy, wz);
 
   for (let sy = 0; sy < SUB_VOXEL_RES; sy++) {
     for (let sz = 0; sz < SUB_VOXEL_RES; sz++) {
@@ -166,6 +170,7 @@ export function buildSubVoxelGeometry(
             lavaFlags.push(0);
             cableFlags.push(0);
             glassFlags.push(0);
+            damageLevels.push(damageRatio);
             oreColors.push(
               oreColor ? oreColor.r : 1.0,
               oreColor ? oreColor.g : 0.95,
@@ -193,6 +198,7 @@ export function buildSubVoxelGeometry(
   geometry.setAttribute('aIsLava', new THREE.Float32BufferAttribute(lavaFlags, 1));
   geometry.setAttribute('aIsCable', new THREE.Float32BufferAttribute(cableFlags, 1));
   geometry.setAttribute('aIsGlass', new THREE.Float32BufferAttribute(glassFlags, 1));
+  geometry.setAttribute('aDamageLevel', new THREE.Float32BufferAttribute(damageLevels, 1));
   geometry.setAttribute('aOreColor', new THREE.Float32BufferAttribute(oreColors, 3));
   geometry.setIndex(indices);
   geometry.computeBoundingSphere();
