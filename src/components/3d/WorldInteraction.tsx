@@ -5,7 +5,7 @@ import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, isLever, isButton, isCable, isPiston, isPistonHead, isPressurePlate, isRepeater, isRepeaterItem, isComparator, isComparatorItem, getOrientedRepeater, getOrientedComparator, needsSupportFromBelow, isSpikeTrap, isArrowTrap } from '../../core/voxel/BlockRegistry';
 import { computeRailBlockType, shouldRailUpdate } from '../../core/voxel/ChunkMesher';
-import { mineSubVoxels, hitPointToSubVoxel } from '../../core/voxel/VoxelMining';
+import { mineSubVoxels, hitPointToSubVoxel, supportsSubVoxels } from '../../core/voxel/VoxelMining';
 import { soundManager } from '../../systems/SoundManager';
 import { spawnParticles, spawnSubVoxelParticles } from './DiggingParticles';
 import { processGravity } from '../../systems/SandPhysics';
@@ -15,21 +15,6 @@ import { propagateCablePower, activatePressurePlate, cycleRepeaterDelay, toggleC
 import { useCombatStore } from '../../stores/combatStore';
 import { useChestStore } from '../../stores/chestStore';
 import { isOnDecorativePlate } from '../../stores/hideoutPlateStore';
-
-/** Check if a block type supports sub-voxel mining (terrain/building blocks only) */
-function supportsSubVoxelMining(blockType: BlockType): boolean {
-  const def = getBlock(blockType);
-  // Special blocks are destroyed in whole, not sub-voxel mined
-  if (def.crossedQuad || def.isFlat || def.isSlab || def.isFence || def.stairDir ||
-      def.isDoor || def.isChest || def.isTorch || def.isLever || def.isButton ||
-      def.isCable || def.isPiston || def.isPistonHead || def.isSign ||
-      def.isPressurePlate || def.isDetectorRail || def.isRepeater || def.isComparator ||
-      def.isSpikeTrap || def.isArrowTrap || def.isSpawner || def.isTNT ||
-      def.isLava || def.transparent) {
-    return false;
-  }
-  return blockType !== BlockType.AIR;
-}
 
 // Tracks cable positions hidden under solid blocks
 // Key format: "x,y,z" — when a block is placed on a cable, the cable is hidden;
@@ -154,7 +139,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
             lastSoundTimeRef.current = now;
 
             // Sub-voxel damage for terrain blocks during mining
-            if (supportsSubVoxelMining(result.blockType)) {
+            if (supportsSubVoxels(result.blockType)) {
               const [bx, by, bz] = result.blockPos;
               const [hx, hy, hz] = result.hitPoint;
               const damageResult = damageSubVoxels(bx, by, bz, hx, hy, hz, selected ?? undefined);

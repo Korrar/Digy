@@ -8,6 +8,25 @@ import { BlockType, getBlock, isToolPickaxe } from './BlockRegistry';
 import { SubVoxelStore, SUB_VOXEL_RES } from './SubVoxelData';
 
 /**
+ * Check if a block type supports sub-voxel mining (terrain/building blocks only).
+ * Special blocks (doors, rails, torches, etc.) are destroyed in whole.
+ */
+export function supportsSubVoxels(blockType: BlockType): boolean {
+  if (blockType === BlockType.AIR) return false;
+  const def = getBlock(blockType);
+  if (def.isItem) return false;
+  if (def.crossedQuad || def.isFlat || def.isSlab || def.isFence || def.stairDir ||
+      def.isDoor || def.isChest || def.isTorch || def.isLever || def.isButton ||
+      def.isCable || def.isPiston || def.isPistonHead || def.isSign ||
+      def.isPressurePlate || def.isDetectorRail || def.isRepeater || def.isComparator ||
+      def.isSpikeTrap || def.isArrowTrap || def.isSpawner || def.isTNT ||
+      def.isLava || def.transparent) {
+    return false;
+  }
+  return true;
+}
+
+/**
  * Convert a world-space hit point to sub-voxel coordinates within a block.
  */
 export function hitPointToSubVoxel(
