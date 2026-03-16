@@ -3,6 +3,9 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { BlockType, getBlock, isSolid, needsSupportFromBelow } from '../../core/voxel/BlockRegistry';
+import { computeExplosionDamage } from '../../core/voxel/VoxelMining';
+import { ChunkData, worldToChunk, chunkKey } from '../../core/voxel/ChunkData';
+import { CHUNK_SIZE } from '../../utils/constants';
 import { soundManager } from '../../systems/SoundManager';
 import { CHUNK_HEIGHT } from '../../utils/constants';
 
@@ -124,12 +127,14 @@ function explodeTNT(tnt: TNTEntity, store: ReturnType<typeof useWorldStore.getSt
   // Explosion sound
   soundManager.playExplosionSound();
 
-  // Destroy blocks in sphere
+  // Destroy blocks in sphere - inner blocks fully destroyed, edge blocks get sub-voxel damage
+  const innerRadius = Math.max(TNT_RADIUS - 1.5, 0);
+  // Inner destruction: fully destroy blocks close to center
   for (let dx = -TNT_RADIUS; dx <= TNT_RADIUS; dx++) {
     for (let dy = -TNT_RADIUS; dy <= TNT_RADIUS; dy++) {
       for (let dz = -TNT_RADIUS; dz <= TNT_RADIUS; dz++) {
         const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        if (dist > TNT_RADIUS) continue;
+        if (dist > innerRadius) continue;
         const bx = tx + dx;
         const by = ty + dy;
         const bz = tz + dz;
@@ -143,7 +148,6 @@ function explodeTNT(tnt: TNTEntity, store: ReturnType<typeof useWorldStore.getSt
             detail: {
               x: bx + 0.5, y: by + 0.5, z: bz + 0.5,
               fuseTime: 0.3 + Math.random() * 0.4,
-              // Push away from explosion center
               vx: (bx + 0.5 - cx) * 3,
               vy: 4 + Math.random() * 3,
               vz: (bz + 0.5 - cz) * 3,
@@ -153,6 +157,52 @@ function explodeTNT(tnt: TNTEntity, store: ReturnType<typeof useWorldStore.getSt
           continue;
         }
         store.setBlock(bx, by, bz, BlockType.AIR);
+      }
+    }
+  }
+
+  // Edge sub-voxel damage: create irregular crater edges
+  for (let dx = -TNT_RADIUS - 1; dx <= TNT_RADIUS + 1; dx++) {
+    for (let dy = -TNT_RADIUS - 1; dy <= TNT_RADIUS + 1; dy++) {
+      for (let dz = -TNT_RADIUS - 1; dz <= TNT_RADIUS + 1; dz++) {
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (dist <= innerRadius || dist > TNT_RADIUS + 0.5) continue;
+        const bx = tx + dx;
+        const by = ty + dy;
+        const bz = tz + dz;
+        const block = store.getBlock(bx, by, bz);
+        if (block === BlockType.AIR) continue;
+        const def = getBlock(block);
+        if (def.hardness === Infinity || def.isTNT) continue;
+
+        // Get chunk and apply sub-voxel damage
+        const chunkCx = Math.floor(bx / CHUNK_SIZE);
+        const chunkCz = Math.floor(bz / CHUNK_SIZE);
+        const entry = store.chunks.get(chunkKey(chunkCx, chunkCz));
+        if (!entry) continue;
+
+        const lx = ((bx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+        const lz = ((bz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+
+        // Damage radius decreases with distance from explosion center
+        const damageRadius = Math.max(0.5, (TNT_RADIUS + 0.5 - dist) * 2);
+        entry.data.subVoxels.initializeBlock(lx, by, lz);
+        // Calculate sub-voxel center closest to explosion
+        const localCx = (cx - bx) * 4;
+        const localCy = (cy - by) * 4;
+        const localCz = (cz - bz) * 4;
+        const svCx = Math.max(0, Math.min(3, Math.floor(localCx)));
+        const svCy = Math.max(0, Math.min(3, Math.floor(localCy)));
+        const svCz = Math.max(0, Math.min(3, Math.floor(localCz)));
+        const removed = entry.data.subVoxels.removeRadius(lx, by, lz, svCx, svCy, svCz, damageRadius);
+
+        // If all sub-voxels removed, convert to AIR
+        if (removed > 0 && !entry.data.subVoxels.hasGrid(lx, by, lz)) {
+          entry.data.setBlock(lx, by, lz, BlockType.AIR);
+        }
+
+        entry.dirty = true;
+        store.rebuildChunkMesh(chunkCx, chunkCz);
       }
     }
   }
