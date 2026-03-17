@@ -43,5 +43,5 @@ export const BIOME_LIST: { type: BiomeType; name: string; emoji: string }[] = [
   { type: 'volcanic', name: 'Wulkan', emoji: '🌋' },
   { type: 'savanna', name: 'Sawanna', emoji: '🦒' },
   { type: 'cherry', name: 'Wiśniowy Gaj', emoji: '🌸' },
-  { type: 'village', name: 'Wioska', emoji: '🏘️' },
+  { type: 'village', name: 'Grecka Polis', emoji: '🏛️' },
 ];

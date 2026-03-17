@@ -175,19 +175,23 @@ function findNearbyBlock(
 
 function getGatherTargets(role: NPCRole): BlockType[] {
   switch (role) {
-    case 'lumberjack': return [BlockType.WOOD];
-    case 'miner': return [BlockType.STONE, BlockType.COBBLESTONE, BlockType.COAL_ORE];
-    case 'farmer': return [BlockType.WHEAT];
-    case 'builder': return [BlockType.WOOD, BlockType.PLANKS];
+    case 'farmer': return [BlockType.WHEAT, BlockType.OLIVE_LEAVES];
+    case 'blacksmith': return [BlockType.STONE, BlockType.COBBLESTONE, BlockType.COAL_ORE, BlockType.IRON_ORE];
+    case 'potter': return [BlockType.CLAY, BlockType.SAND];
+    case 'merchant': return [BlockType.AMPHORA];
+    case 'philosopher': return [];
+    case 'priestess': return [];
   }
 }
 
 function getDropType(role: NPCRole): BlockType {
   switch (role) {
-    case 'lumberjack': return BlockType.PLANKS;
-    case 'miner': return BlockType.COBBLESTONE;
     case 'farmer': return BlockType.BREAD;
-    case 'builder': return BlockType.PLANKS;
+    case 'blacksmith': return BlockType.COBBLESTONE;
+    case 'potter': return BlockType.TERRACOTTA;
+    case 'merchant': return BlockType.AMPHORA;
+    case 'philosopher': return BlockType.TORCH;
+    case 'priestess': return BlockType.TORCH;
   }
 }
 
@@ -218,31 +222,6 @@ function findFarmSpot(
   return null;
 }
 
-/** Find a spot where lumberjack just chopped wood to plant a sapling */
-function findSaplingSpot(
-  getBlock: (x: number, y: number, z: number) => BlockType,
-  cx: number, cy: number, cz: number,
-  radius: number
-): [number, number, number] | null {
-  for (let r = 1; r <= radius; r++) {
-    for (let dx = -r; dx <= r; dx++) {
-      for (let dz = -r; dz <= r; dz++) {
-        const bx = Math.floor(cx) + dx;
-        const bz = Math.floor(cz) + dz;
-        for (let dy = -2; dy <= 2; dy++) {
-          const by = Math.floor(cy) + dy;
-          if ((getBlock(bx, by, bz) === BlockType.GRASS || getBlock(bx, by, bz) === BlockType.DIRT) &&
-              getBlock(bx, by + 1, bz) === BlockType.AIR &&
-              getBlock(bx, by + 2, bz) === BlockType.AIR &&
-              getBlock(bx, by + 3, bz) === BlockType.AIR) {
-            return [bx, by + 1, bz];
-          }
-        }
-      }
-    }
-  }
-  return null;
-}
 
 /** Scan for water gap to build a bridge */
 function findBridgeLocation(
@@ -763,7 +742,8 @@ function tickAI(
   // If stuck for too long, try solutions in order: break block > A* > avoidance > abandon
   const isMovingState = npc.state === 'walking' || npc.state === 'idle' ||
     npc.state === 'building' || npc.state === 'gathering' ||
-    npc.state === 'planting' || npc.state === 'farming';
+    npc.state === 'planting' || npc.state === 'farming' ||
+    npc.state === 'trading' || npc.state === 'crafting';
   if (newStuckTimer >= STUCK_THRESHOLD && isMovingState) {
     const newStuckCount = npc.stuckCount + 1;
     updates.stuckCount = newStuckCount;
@@ -921,11 +901,49 @@ function tickAI(
   }
   const excludeSet = new Set(activeFailedTargets.map((ft) => ft.key));
 
+  // --- Fear/fleeing behavior (magic terrorizing) ---
+  if (npc.state === 'fleeing' || npc.fear > 0.5) {
+    // Run away from center (the player is usually near center)
+    const fleeAngle = Math.atan2(pz - npc.homePosition[2], px - npc.homePosition[0]) + (Math.random() - 0.5) * 0.5;
+    const fleeDist = 5 + Math.random() * 5;
+    updates.target = [px + Math.cos(fleeAngle) * fleeDist, py, pz + Math.sin(fleeAngle) * fleeDist];
+    updates.state = 'fleeing';
+    updates.velocity = [Math.cos(fleeAngle) * npc.speed * 1.5, npc.velocity[1], Math.sin(fleeAngle) * npc.speed * 1.5];
+    // Slowly reduce fear over time
+    updates.fear = Math.max(0, npc.fear - dt * 0.05);
+    if (npc.fear < 0.2) {
+      updates.state = 'idle';
+    }
+    return updates;
+  }
+
+  // --- Petrification (cannot move) ---
+  if (npc.petrified) {
+    updates.velocity = [0, npc.velocity[1], 0];
+    const newPetrifyTimer = npc.petrifyTimer - dt;
+    if (newPetrifyTimer <= 0) {
+      updates.petrified = false;
+      updates.petrifyTimer = 0;
+      updates.state = 'idle';
+    } else {
+      updates.petrifyTimer = newPetrifyTimer;
+    }
+    return updates;
+  }
+
+  // Slowly recover fear and mood
+  if (npc.fear > 0) {
+    updates.fear = Math.max(0, npc.fear - dt * 0.02);
+  }
+  if (npc.mood < 0.7) {
+    updates.mood = Math.min(1, npc.mood + dt * 0.01);
+  }
+
   switch (npc.state) {
     case 'idle':
     case 'walking': {
-      // === BUILDER: build houses or bridges ===
-      if (npc.role === 'builder') {
+      // === BLACKSMITH: build houses or bridges ===
+      if (npc.role === 'blacksmith') {
         const project = buildProjects.find((p) => !p.completed);
         if (project && project.placedCount < project.blocks.length) {
           const block = project.blocks[project.placedCount];
@@ -956,21 +974,57 @@ function tickAI(
         }
       }
 
-      // === LUMBERJACK: chop wood, then plant sapling ===
-      if (npc.role === 'lumberjack') {
-        // After chopping (has items), try to plant a sapling
-        if (totalItems > 0 && totalItems % 3 === 0) {
-          const spot = findSaplingSpot(getBlock, px, py, pz, 6);
-          if (spot) {
-            updates.target = [spot[0] + 0.5, py, spot[2] + 0.5];
-            updates.state = 'planting';
-            updates.workTarget = spot;
-            return updates;
-          }
+      // === PHILOSOPHER: wander, socialize, contemplate ===
+      if (npc.role === 'philosopher') {
+        // Philosophers wander the agora and talk to other NPCs
+        const socialChance = Math.random();
+        if (socialChance > 0.7 && !npc.socialTarget) {
+          // Find another NPC nearby to talk to
+          const angle = Math.random() * Math.PI * 2;
+          const wanderDist = 3 + Math.random() * 5;
+          updates.target = [
+            npc.homePosition[0] + Math.cos(angle) * wanderDist,
+            py,
+            npc.homePosition[2] + Math.sin(angle) * wanderDist,
+          ];
+          updates.state = 'walking';
+          return updates;
         }
-        // Chop wood
+        // Idle contemplation near columns/temple
+        const angle = Math.random() * Math.PI * 2;
+        const wanderDist = 2 + Math.random() * 6;
+        updates.target = [
+          npc.homePosition[0] + Math.cos(angle) * wanderDist,
+          py,
+          npc.homePosition[2] + Math.sin(angle) * wanderDist,
+        ];
+        updates.state = 'walking';
+        return updates;
+      }
+
+      // === PRIESTESS: pray at temple, bless fields ===
+      if (npc.role === 'priestess') {
+        // Walk toward temple area (north of center)
+        const templeZ = npc.homePosition[2] - 7;
+        const distToTemple = Math.abs(pz - templeZ);
+        if (distToTemple > 3) {
+          updates.target = [npc.homePosition[0] + (Math.random() - 0.5) * 4, py, templeZ + Math.random() * 2];
+          updates.state = 'walking';
+        } else {
+          // Praying at temple - stay still briefly
+          updates.state = 'idle';
+          const angle = Math.random() * Math.PI * 2;
+          const wanderDist = 1 + Math.random() * 3;
+          updates.target = [px + Math.cos(angle) * wanderDist, py, pz + Math.sin(angle) * wanderDist];
+        }
+        return updates;
+      }
+
+      // === POTTER: gather clay, craft amphorae ===
+      if (npc.role === 'potter') {
         if (totalItems < npc.inventoryCapacity) {
-          const found = findNearbyBlock(getBlock, px, py, pz, [BlockType.WOOD], 12, excludeSet);
+          const targets = getGatherTargets(npc.role);
+          const found = findNearbyBlock(getBlock, px, py, pz, targets, 10, excludeSet);
           if (found) {
             const standPos = findStandPosition(getBlock, found[0], found[1], found[2], px, py, pz);
             if (standPos) {
@@ -981,6 +1035,20 @@ function tickAI(
             }
           }
         }
+      }
+
+      // === MERCHANT: wander agora, trade ===
+      if (npc.role === 'merchant') {
+        // Wander the marketplace/agora
+        const angle = Math.random() * Math.PI * 2;
+        const wanderDist = 2 + Math.random() * 4;
+        updates.target = [
+          npc.homePosition[0] + Math.cos(angle) * wanderDist,
+          py,
+          npc.homePosition[2] + Math.sin(angle) * wanderDist,
+        ];
+        updates.state = 'walking';
+        return updates;
       }
 
       // === FARMER: create farmland and plant wheat ===
@@ -1023,19 +1091,17 @@ function tickAI(
         }
       }
 
-      // === MINER: gather stone/ores ===
-      if (npc.role === 'miner') {
-        if (totalItems < npc.inventoryCapacity) {
-          const targets = getGatherTargets(npc.role);
-          const found = findNearbyBlock(getBlock, px, py, pz, targets, 8, excludeSet);
-          if (found) {
-            const mineStand = findStandPosition(getBlock, found[0], found[1], found[2], px, py, pz);
-            if (mineStand) {
-              updates.target = mineStand;
-              updates.state = 'gathering';
-              updates.workTarget = found;
-              return updates;
-            }
+      // Blacksmith also gathers stone/ore when no build projects
+      if (npc.role === 'blacksmith' && totalItems < npc.inventoryCapacity) {
+        const targets = getGatherTargets(npc.role);
+        const found = findNearbyBlock(getBlock, px, py, pz, targets, 8, excludeSet);
+        if (found) {
+          const mineStand = findStandPosition(getBlock, found[0], found[1], found[2], px, py, pz);
+          if (mineStand) {
+            updates.target = mineStand;
+            updates.state = 'gathering';
+            updates.workTarget = found;
+            return updates;
           }
         }
       }
@@ -1222,10 +1288,12 @@ function tickAI(
 
 // NPC label by role
 const ROLE_LABELS: Record<NPCRole, string> = {
-  lumberjack: 'Drwal',
-  miner: 'Górnik',
-  builder: 'Budowniczy',
+  philosopher: 'Filozof',
+  blacksmith: 'Kowal',
   farmer: 'Rolnik',
+  merchant: 'Kupiec',
+  potter: 'Garncarz',
+  priestess: 'Kapłanka',
 };
 
 export function VillageNPCs() {
@@ -1245,7 +1313,7 @@ export function VillageNPCs() {
 
   const geometries = useMemo(() => {
     const map = new Map<NPCRole, THREE.BufferGeometry>();
-    const roles: NPCRole[] = ['lumberjack', 'miner', 'builder', 'farmer'];
+    const roles: NPCRole[] = ['philosopher', 'blacksmith', 'farmer', 'merchant', 'potter', 'priestess'];
     for (const role of roles) {
       map.set(role, buildNPCGeometry(role));
     }
@@ -1321,11 +1389,11 @@ export function VillageNPCs() {
         const [tx, , tz] = npc.target;
 
         // Walking bounce only when grounded and moving
-        const isMoving = npc.grounded && (npc.state === 'walking' || npc.state === 'returning');
-        const bounce = isMoving ? Math.abs(Math.sin(t * 8 + npc.phase)) * 0.06 : 0;
+        const isMoving = npc.grounded && (npc.state === 'walking' || npc.state === 'returning' || npc.state === 'fleeing');
+        const bounce = isMoving ? Math.abs(Math.sin(t * (npc.state === 'fleeing' ? 12 : 8) + npc.phase)) * 0.06 : 0;
 
         // Working bob when gathering/building/planting/farming
-        const workBob = npc.grounded && (npc.state === 'gathering' || npc.state === 'building' || npc.state === 'planting' || npc.state === 'farming')
+        const workBob = npc.grounded && (npc.state === 'gathering' || npc.state === 'building' || npc.state === 'planting' || npc.state === 'farming' || npc.state === 'crafting')
           ? Math.sin(t * 8 + npc.phase) * 0.05 : 0;
 
         dummy.position.set(px, py + bounce + workBob, pz);
@@ -1337,7 +1405,8 @@ export function VillageNPCs() {
           dummy.rotation.y = Math.atan2(dx, dz);
         }
 
-        dummy.scale.setScalar(1);
+        // Petrified NPCs get slightly larger (stone effect)
+        dummy.scale.setScalar(npc.petrified ? 1.05 : 1);
         dummy.updateMatrix();
         mesh.setMatrixAt(i, dummy.matrix);
       }
@@ -1375,19 +1444,25 @@ function NPCLabel({ npc }: { npc: NPC }) {
   const ref = useRef<THREE.Sprite>(null);
   const canvas = useMemo(() => {
     const c = document.createElement('canvas');
-    c.width = 128;
-    c.height = 32;
+    c.width = 192;
+    c.height = 40;
     const ctx = c.getContext('2d')!;
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.roundRect(0, 0, 128, 32, 6);
+    // Background with mood color
+    const bgAlpha = npc.petrified ? 0.7 : 0.5;
+    const bgColor = npc.petrified ? 'rgba(128,128,128,' + bgAlpha + ')'
+      : npc.fear > 0.3 ? 'rgba(180,40,40,' + bgAlpha + ')'
+      : 'rgba(0,0,0,' + bgAlpha + ')';
+    ctx.fillStyle = bgColor;
+    ctx.roundRect(0, 0, 192, 40, 6);
     ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 14px monospace';
+    ctx.fillStyle = npc.petrified ? '#999999' : '#ffffff';
+    ctx.font = 'bold 13px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(ROLE_LABELS[npc.role], 64, 16);
+    const label = `${npc.name} (${ROLE_LABELS[npc.role]})`;
+    ctx.fillText(label, 96, 20);
     return c;
-  }, [npc.role]);
+  }, [npc.role, npc.name, npc.petrified, npc.fear > 0.3]);
 
   const texture = useMemo(() => {
     const tex = new THREE.CanvasTexture(canvas);
@@ -1402,7 +1477,7 @@ function NPCLabel({ npc }: { npc: NPC }) {
   });
 
   return (
-    <sprite ref={ref} scale={[1.2, 0.3, 1]}>
+    <sprite ref={ref} scale={[1.8, 0.4, 1]}>
       <spriteMaterial map={texture} transparent opacity={0.8} depthTest={false} />
     </sprite>
   );

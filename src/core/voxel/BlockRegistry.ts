@@ -191,6 +191,33 @@ export enum BlockType {
   SAPLING = 147,
   FARMLAND = 148,
   WHEAT = 149,
+
+  // Ancient Greece blocks
+  MARBLE = 150,
+  MARBLE_COLUMN = 151,
+  MARBLE_SLAB = 152,
+  TERRACOTTA = 153,
+  LIMESTONE = 154,
+  OLIVE_WOOD = 155,
+  OLIVE_LEAVES = 156,
+  AMPHORA = 157,
+  GRAPE_VINE = 158,
+  MARBLE_STAIRS_N = 159,
+  MARBLE_STAIRS_S = 160,
+  MARBLE_STAIRS_E = 161,
+  MARBLE_STAIRS_W = 162,
+  MARBLE_STAIRS = 163, // inventory item
+  COPPER_ROOF = 164,
+  MOSAIC_FLOOR = 165,
+  COLUMN_BASE = 166,
+
+  // Magic spell items (non-placeable)
+  ZEUS_LIGHTNING = 170,
+  POSEIDON_TRIDENT = 171,
+  HADES_STAFF = 172,
+  MEDUSA_GAZE = 173,
+  PANDORA_BOX = 174,
+  AEOLUS_WIND = 175,
 }
 
 export interface BlockDefinition {
@@ -505,6 +532,33 @@ register({ id: BlockType.SAPLING, name: 'Sapling', color: new THREE.Color(0x2d5a
 register({ id: BlockType.FARMLAND, name: 'Farmland', color: new THREE.Color(0x6b4423), topColor: new THREE.Color(0x5a3a1a), hardness: 0.5, transparent: false, drops: BlockType.DIRT, stackSize: 64 });
 register({ id: BlockType.WHEAT, name: 'Wheat', color: new THREE.Color(0xc8b432), hardness: 0.0, transparent: true, drops: BlockType.BREAD, stackSize: 64, crossedQuad: true });
 
+// Ancient Greece blocks
+register({ id: BlockType.MARBLE, name: 'Marble', color: new THREE.Color(0xe8e0d8), topColor: new THREE.Color(0xf0eae4), hardness: 2.0, transparent: false, drops: BlockType.MARBLE, stackSize: 64 });
+register({ id: BlockType.MARBLE_COLUMN, name: 'Marble Column', color: new THREE.Color(0xebe5dd), hardness: 2.0, transparent: true, drops: BlockType.MARBLE, stackSize: 64, isFence: true });
+register({ id: BlockType.MARBLE_SLAB, name: 'Marble Slab', color: new THREE.Color(0xe8e0d8), hardness: 2.0, transparent: true, drops: BlockType.MARBLE_SLAB, stackSize: 64, isSlab: true });
+register({ id: BlockType.TERRACOTTA, name: 'Terracotta', color: new THREE.Color(0xc67040), topColor: new THREE.Color(0xd08050), hardness: 1.5, transparent: false, drops: BlockType.TERRACOTTA, stackSize: 64 });
+register({ id: BlockType.LIMESTONE, name: 'Limestone', color: new THREE.Color(0xd4c8a0), hardness: 1.0, transparent: false, drops: BlockType.LIMESTONE, stackSize: 64 });
+register({ id: BlockType.OLIVE_WOOD, name: 'Olive Wood', color: new THREE.Color(0x7a6b45), topColor: new THREE.Color(0x6b5c38), hardness: 2.0, transparent: false, drops: BlockType.OLIVE_WOOD, stackSize: 64 });
+register({ id: BlockType.OLIVE_LEAVES, name: 'Olive Leaves', color: new THREE.Color(0x6b8a50), hardness: 0.2, transparent: true, drops: BlockType.OLIVE_LEAVES, stackSize: 64 });
+register({ id: BlockType.AMPHORA, name: 'Amphora', color: new THREE.Color(0xb06030), hardness: 0.5, transparent: true, drops: BlockType.AMPHORA, stackSize: 16, crossedQuad: true });
+register({ id: BlockType.GRAPE_VINE, name: 'Grape Vine', color: new THREE.Color(0x5a3a6a), hardness: 0.0, transparent: true, drops: BlockType.GRAPE_VINE, stackSize: 64, crossedQuad: true });
+register({ id: BlockType.MARBLE_STAIRS, name: 'Marble Stairs', color: new THREE.Color(0xe8e0d8), hardness: 0, transparent: true, drops: BlockType.MARBLE_STAIRS, stackSize: 64, isItem: true, icon: 'stairs' });
+register({ id: BlockType.MARBLE_STAIRS_N, name: 'Marble Stairs', color: new THREE.Color(0xe8e0d8), hardness: 2.0, transparent: true, drops: BlockType.MARBLE_STAIRS, stackSize: 0, stairDir: 'n' });
+register({ id: BlockType.MARBLE_STAIRS_S, name: 'Marble Stairs', color: new THREE.Color(0xe8e0d8), hardness: 2.0, transparent: true, drops: BlockType.MARBLE_STAIRS, stackSize: 0, stairDir: 's' });
+register({ id: BlockType.MARBLE_STAIRS_E, name: 'Marble Stairs', color: new THREE.Color(0xe8e0d8), hardness: 2.0, transparent: true, drops: BlockType.MARBLE_STAIRS, stackSize: 0, stairDir: 'e' });
+register({ id: BlockType.MARBLE_STAIRS_W, name: 'Marble Stairs', color: new THREE.Color(0xe8e0d8), hardness: 2.0, transparent: true, drops: BlockType.MARBLE_STAIRS, stackSize: 0, stairDir: 'w' });
+register({ id: BlockType.COPPER_ROOF, name: 'Copper Roof', color: new THREE.Color(0x4a9070), topColor: new THREE.Color(0x5aa080), hardness: 1.5, transparent: false, drops: BlockType.COPPER_ROOF, stackSize: 64 });
+register({ id: BlockType.MOSAIC_FLOOR, name: 'Mosaic Floor', color: new THREE.Color(0xc0a878), topColor: new THREE.Color(0xd4b888), hardness: 1.5, transparent: false, drops: BlockType.MOSAIC_FLOOR, stackSize: 64 });
+register({ id: BlockType.COLUMN_BASE, name: 'Column Base', color: new THREE.Color(0xddd5cc), hardness: 2.0, transparent: false, drops: BlockType.COLUMN_BASE, stackSize: 64 });
+
+// Magic spell items (non-placeable, used for terrorizing)
+register({ id: BlockType.ZEUS_LIGHTNING, name: 'Zeus Lightning Bolt', color: new THREE.Color(0xffee44), hardness: 0, transparent: true, drops: BlockType.ZEUS_LIGHTNING, stackSize: 1, isItem: true, icon: 'sword', damage: 20, durability: 10 });
+register({ id: BlockType.POSEIDON_TRIDENT, name: 'Poseidon Trident', color: new THREE.Color(0x2288cc), hardness: 0, transparent: true, drops: BlockType.POSEIDON_TRIDENT, stackSize: 1, isItem: true, icon: 'sword', damage: 15, durability: 15 });
+register({ id: BlockType.HADES_STAFF, name: 'Hades Staff', color: new THREE.Color(0x440044), hardness: 0, transparent: true, drops: BlockType.HADES_STAFF, stackSize: 1, isItem: true, icon: 'sword', damage: 12, durability: 20 });
+register({ id: BlockType.MEDUSA_GAZE, name: 'Medusa Gaze', color: new THREE.Color(0x44aa44), hardness: 0, transparent: true, drops: BlockType.MEDUSA_GAZE, stackSize: 1, isItem: true, icon: 'sword', damage: 8, durability: 30 });
+register({ id: BlockType.PANDORA_BOX, name: 'Pandora\'s Box', color: new THREE.Color(0x886633), hardness: 0, transparent: true, drops: BlockType.PANDORA_BOX, stackSize: 1, isItem: true, icon: 'chest', damage: 25, durability: 3 });
+register({ id: BlockType.AEOLUS_WIND, name: 'Aeolus Wind', color: new THREE.Color(0xaaddff), hardness: 0, transparent: true, drops: BlockType.AEOLUS_WIND, stackSize: 1, isItem: true, icon: 'sword', damage: 5, durability: 25 });
+
 // Update ore drops to drop raw materials
 BLOCKS.get(BlockType.COAL_ORE)!.drops = BlockType.COAL;
 BLOCKS.get(BlockType.DIAMOND_ORE)!.drops = BlockType.DIAMOND;
@@ -583,7 +637,11 @@ export function isStairs(type: BlockType): boolean {
 }
 
 export function isStairsItem(type: BlockType): boolean {
-  return type === BlockType.OAK_STAIRS || type === BlockType.COBBLE_STAIRS;
+  return type === BlockType.OAK_STAIRS || type === BlockType.COBBLE_STAIRS || type === BlockType.MARBLE_STAIRS;
+}
+
+export function isMagicItem(type: BlockType): boolean {
+  return [BlockType.ZEUS_LIGHTNING, BlockType.POSEIDON_TRIDENT, BlockType.HADES_STAFF, BlockType.MEDUSA_GAZE, BlockType.PANDORA_BOX, BlockType.AEOLUS_WIND].includes(type);
 }
 
 export function isDoor(type: BlockType): boolean {

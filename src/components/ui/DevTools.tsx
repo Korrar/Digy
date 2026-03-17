@@ -160,10 +160,37 @@ function buildCategories(): ItemCategory[] {
   redstone.push(makeEntry(BlockType.SPIKE_TRAP, 16));
   redstone.push(makeEntry(BlockType.ARROW_TRAP, 16));
 
+  // Ancient Greece blocks
+  const greece: ItemEntry[] = [];
+  greece.push(makeEntry(BlockType.MARBLE, 64));
+  greece.push(makeEntry(BlockType.MARBLE_COLUMN, 64));
+  greece.push(makeEntry(BlockType.MARBLE_SLAB, 64));
+  greece.push(makeEntry(BlockType.MARBLE_STAIRS, 16));
+  greece.push(makeEntry(BlockType.TERRACOTTA, 64));
+  greece.push(makeEntry(BlockType.LIMESTONE, 64));
+  greece.push(makeEntry(BlockType.OLIVE_WOOD, 64));
+  greece.push(makeEntry(BlockType.OLIVE_LEAVES, 64));
+  greece.push(makeEntry(BlockType.AMPHORA, 16));
+  greece.push(makeEntry(BlockType.GRAPE_VINE, 16));
+  greece.push(makeEntry(BlockType.COPPER_ROOF, 64));
+  greece.push(makeEntry(BlockType.MOSAIC_FLOOR, 64));
+  greece.push(makeEntry(BlockType.COLUMN_BASE, 64));
+
+  // Magic spell items
+  const magic: ItemEntry[] = [];
+  magic.push(makeEntry(BlockType.ZEUS_LIGHTNING, 1));
+  magic.push(makeEntry(BlockType.POSEIDON_TRIDENT, 1));
+  magic.push(makeEntry(BlockType.HADES_STAFF, 1));
+  magic.push(makeEntry(BlockType.MEDUSA_GAZE, 1));
+  magic.push(makeEntry(BlockType.PANDORA_BOX, 1));
+  magic.push(makeEntry(BlockType.AEOLUS_WIND, 1));
+
   return [
     { label: 'Teren', items: terrain },
     { label: 'Roślinność', items: vegetation },
     { label: 'Budowanie', items: building },
+    { label: 'Antyczna Grecja', items: greece },
+    { label: 'Czaro-Przedmioty', items: magic },
     { label: 'Płyty/Schody/Ogrodzenia', items: slabsFencesStairs },
     { label: 'Drzwi', items: doors },
     { label: 'Tory & Transport', items: rails },
