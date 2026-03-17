@@ -1,10 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import * as THREE from 'three';
 import { SubVoxelStore } from '../SubVoxelData';
 import { BlockType } from '../BlockRegistry';
 import { ChunkData } from '../ChunkData';
 import { buildChunkMesh } from '../ChunkMesher';
-import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../../utils/constants';
+import { CHUNK_SIZE } from '../../../utils/constants';
 
 describe('VoxelSystemOptimizations', () => {
   describe('SubVoxelStore integer keys', () => {

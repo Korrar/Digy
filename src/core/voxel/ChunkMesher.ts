@@ -343,12 +343,7 @@ export function buildChunkMesh(
         const wx = ox + x;
         const wz = oz + z;
         const blockDef = getBlock(block);
-        const sparkle = blockDef.sparkle ?? 0;
-        const isWater = block === BlockType.WATER ? 1.0 : 0.0;
-        const isLavaBlock = block === BlockType.LAVA ? 1.0 : 0.0;
         const cableVal = block === BlockType.CABLE_POWERED ? 2.0 : (block === BlockType.CABLE ? 1.0 : 0.0);
-        const isGlassBlock = block === BlockType.GLASS || block === BlockType.ICE ? 1.0 : 0.0;
-        const oreColor = blockDef.oreColor;
 
         // Sub-voxel rendering for damaged blocks
         if (chunk.hasSubVoxelDamage(x, y, z)) {
@@ -1757,23 +1752,21 @@ export function buildChunkMesh(
     // Determine the sweep axis and the two axes of the face plane
     // For each "slice" along the normal direction, we build a 2D mask and greedily merge
     let sliceAxis: 'x' | 'y' | 'z';
-    let uAxis: 'x' | 'y' | 'z';
-    let vAxis: 'x' | 'y' | 'z';
     let sliceSize: number;
     let uSize: number;
     let vSize: number;
 
     if (dy !== 0) {
       // Top/bottom face: slice along Y, face plane is X-Z
-      sliceAxis = 'y'; uAxis = 'x'; vAxis = 'z';
+      sliceAxis = 'y';
       sliceSize = CHUNK_HEIGHT; uSize = CHUNK_SIZE; vSize = CHUNK_SIZE;
     } else if (dx !== 0) {
       // Left/right face: slice along X, face plane is Z-Y
-      sliceAxis = 'x'; uAxis = 'z'; vAxis = 'y';
+      sliceAxis = 'x';
       sliceSize = CHUNK_SIZE; uSize = CHUNK_SIZE; vSize = CHUNK_HEIGHT;
     } else {
       // Front/back face: slice along Z, face plane is X-Y
-      sliceAxis = 'z'; uAxis = 'x'; vAxis = 'y';
+      sliceAxis = 'z';
       sliceSize = CHUNK_SIZE; uSize = CHUNK_SIZE; vSize = CHUNK_HEIGHT;
     }
 

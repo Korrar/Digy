@@ -26,7 +26,6 @@ describe('VoxelMining bug fixes', () => {
       // First radius hit
       const first = mineSubVoxels(store, 5, 10, 3, 5.1, 10.1, 3.1, BlockType.WOODEN_PICKAXE);
       expect(first.removed).toBeGreaterThan(0);
-      const firstRemoved = first.removed;
 
       // Second hit at same spot - most sub-voxels in radius already empty
       const second = mineSubVoxels(store, 5, 10, 3, 5.1, 10.1, 3.1, BlockType.WOODEN_PICKAXE);
