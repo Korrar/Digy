@@ -4,22 +4,14 @@ import * as THREE from 'three';
 import { useNPCStore, ROLE_COLORS, generateBridgeBlueprint, type NPC, type NPCRole } from '../../stores/npcStore';
 import { useWorldStore } from '../../stores/worldStore';
 import { BlockType, isSolid } from '../../core/voxel/BlockRegistry';
-import { CHUNK_HEIGHT } from '../../utils/constants';
+import { applyPhysics, getTerrainHeight } from '../../core/npc/npcPhysics';
 
 const SAPLING_GROW_TIME = 30; // seconds until sapling becomes a tree
 
-const GRAVITY = 20;
-const NPC_HEIGHT = 1.8; // total NPC height in blocks
-const NPC_WIDTH = 0.4;  // half-width for collision
-const GROUND_FRICTION = 0.85;
-const AIR_FRICTION = 0.98;
-const JUMP_VELOCITY = 6;
-const MAX_FALL_SPEED = 30;
 const STUCK_THRESHOLD = 1.5; // seconds before NPC is considered stuck
 const STUCK_DISTANCE = 0.3; // minimum distance to count as "made progress"
 const MAX_STUCK_COUNT = 3;   // abandon target after this many stuck events
 const WAYPOINT_REACH_DIST = 0.8; // distance to consider waypoint reached
-const JUMP_COOLDOWN = 0.6; // seconds between jumps
 const PATH_RECALC_INTERVAL = 3.0; // seconds between A* path recalculations
 const ASTAR_MAX_NODES = 200; // max nodes to explore in A*
 const ASTAR_MAX_RANGE = 16; // max Manhattan distance for A*
@@ -120,30 +112,6 @@ function buildNPCGeometry(role: NPCRole): THREE.BufferGeometry {
   merged.setIndex(allIndices);
   merged.computeBoundingSphere();
   return merged;
-}
-
-/** Scan downward to find ground Y at given X,Z */
-function getTerrainHeight(
-  getBlock: (x: number, y: number, z: number) => BlockType,
-  x: number, z: number
-): number {
-  const bx = Math.floor(x);
-  const bz = Math.floor(z);
-  for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
-    const block = getBlock(bx, y, bz);
-    if (isSolid(block)) {
-      return y + 1;
-    }
-  }
-  return 1;
-}
-
-/** Check if a block position is solid (for collision) */
-function isSolidAt(
-  getBlock: (x: number, y: number, z: number) => BlockType,
-  x: number, y: number, z: number
-): boolean {
-  return isSolid(getBlock(Math.floor(x), Math.floor(y), Math.floor(z)));
 }
 
 /** Gather target: find a nearby block of the given type */
@@ -595,117 +563,6 @@ function tryBreakBlockingBlock(
     }
   }
   return false;
-}
-
-/** Apply physics: gravity, ground collision, wall sliding */
-function applyPhysics(
-  npc: NPC,
-  dt: number,
-  getBlock: (x: number, y: number, z: number) => BlockType,
-  elapsedTime: number,
-): Partial<NPC> {
-  const updates: Partial<NPC> = {};
-  let [vx, vy, vz] = npc.velocity;
-  const [px, py, pz] = npc.position;
-
-  // Apply gravity
-  vy -= GRAVITY * dt;
-  vy = Math.max(vy, -MAX_FALL_SPEED);
-
-  // Apply friction
-  const friction = npc.grounded ? GROUND_FRICTION : AIR_FRICTION;
-  vx *= friction;
-  vz *= friction;
-
-  // Integrate position with collision
-  let newX = px + vx * dt;
-  let newY = py + vy * dt;
-  let newZ = pz + vz * dt;
-
-  // Ground collision: check block below feet
-  const groundY = getTerrainHeight(getBlock, newX, newZ);
-  let grounded = false;
-
-  if (newY <= groundY) {
-    newY = groundY;
-    if (vy < 0) {
-      if (vy < -8) {
-        vy = -vy * 0.3;
-      } else {
-        vy = 0;
-      }
-    }
-    grounded = true;
-  }
-
-  // Ceiling collision
-  if (vy > 0 && isSolidAt(getBlock, newX, newY + NPC_HEIGHT, newZ)) {
-    vy = 0;
-  }
-
-  // Wall collision X with sliding: stop X motion but keep Z
-  if (vx !== 0) {
-    const checkX = newX + (vx > 0 ? NPC_WIDTH : -NPC_WIDTH);
-    if (isSolidAt(getBlock, checkX, newY + 0.2, newZ) ||
-        isSolidAt(getBlock, checkX, newY + 1.0, newZ)) {
-      newX = px;
-      vx = 0;
-    }
-  }
-
-  // Wall collision Z with sliding: stop Z motion but keep X
-  if (vz !== 0) {
-    const checkZ = newZ + (vz > 0 ? NPC_WIDTH : -NPC_WIDTH);
-    if (isSolidAt(getBlock, newX, newY + 0.2, checkZ) ||
-        isSolidAt(getBlock, newX, newY + 1.0, checkZ)) {
-      newZ = pz;
-      vz = 0;
-    }
-  }
-
-  // Step-up / jump: only when grounded, path requires it, and cooldown elapsed
-  if (grounded && (elapsedTime - npc.lastJumpTime) >= JUMP_COOLDOWN) {
-    const activeTarget = npc.waypoints.length > 0 ? npc.waypoints[0] : npc.target;
-    const moveX = activeTarget[0] - px;
-    const moveZ = activeTarget[2] - pz;
-    const moveDist = Math.sqrt(moveX * moveX + moveZ * moveZ);
-    if (moveDist > 0.3) {
-      const ndirX = moveX / moveDist;
-      const ndirZ = moveZ / moveDist;
-      const aheadX = newX + ndirX * 0.6;
-      const aheadZ = newZ + ndirZ * 0.6;
-
-      // Only jump when there's an actual solid block at feet level ahead
-      const blockAtFeet = isSolidAt(getBlock, aheadX, newY + 0.2, aheadZ);
-      const spaceAbove = !isSolidAt(getBlock, aheadX, newY + 1.2, aheadZ) &&
-                         !isSolidAt(getBlock, aheadX, newY + 2.0, aheadZ);
-
-      if (blockAtFeet && spaceAbove) {
-        vy = JUMP_VELOCITY;
-        // Give horizontal velocity so NPC clears the obstacle instead of jumping in place
-        vx = ndirX * npc.speed * 0.7;
-        vz = ndirZ * npc.speed * 0.7;
-        grounded = false;
-        updates.lastJumpTime = elapsedTime;
-      }
-    }
-  }
-
-  // Clamp tiny velocities
-  if (Math.abs(vx) < 0.01) vx = 0;
-  if (Math.abs(vz) < 0.01) vz = 0;
-
-  // Prevent falling into void
-  if (newY < -5) {
-    newY = 20;
-    vy = 0;
-  }
-
-  updates.position = [newX, newY, newZ];
-  updates.velocity = [vx, vy, vz];
-  updates.grounded = grounded;
-
-  return updates;
 }
 
 /** Compute next AI state for the NPC */
