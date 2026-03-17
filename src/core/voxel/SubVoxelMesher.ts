@@ -5,7 +5,7 @@
  */
 
 import * as THREE from 'three';
-import { BlockType, getBlock, isTransparent } from './BlockRegistry';
+import { BlockType, isTransparent } from './BlockRegistry';
 import { SubVoxelStore, SUB_VOXEL_RES } from './SubVoxelData';
 import { getWhiteUV } from './TextureAtlas';
 import type { BlockDefinition } from './BlockRegistry';

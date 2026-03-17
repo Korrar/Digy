@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { SubVoxelStore, SUB_VOXEL_RES } from '../SubVoxelData';
-import { BlockType, getBlock } from '../BlockRegistry';
+import { BlockType } from '../BlockRegistry';
 import { hitPointToSubVoxel, getMiningRadius, computeExplosionDamage } from '../VoxelMining';
 
 describe('VoxelMining', () => {

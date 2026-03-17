@@ -1,12 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import * as THREE from 'three';
 import { SubVoxelStore, SUB_VOXEL_RES } from '../SubVoxelData';
-import { buildSubVoxelGeometry } from '../SubVoxelMesher';
-import { BlockType, getBlock } from '../BlockRegistry';
+import { BlockType } from '../BlockRegistry';
 import { ChunkData } from '../ChunkData';
 import { buildChunkMesh } from '../ChunkMesher';
-import { mineSubVoxels, supportsSubVoxels, hitPointToSubVoxel, computeExplosionDamage } from '../VoxelMining';
-import { findDisconnectedFragments, checkBlockStability, removeDisconnectedFragments } from '../VoxelPhysics';
+import { mineSubVoxels, supportsSubVoxels, computeExplosionDamage } from '../VoxelMining';
+import { checkBlockStability, removeDisconnectedFragments } from '../VoxelPhysics';
 
 describe('Voxel System Integration', () => {
   describe('full mining workflow', () => {
