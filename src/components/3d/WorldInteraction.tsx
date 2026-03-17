@@ -5,8 +5,9 @@ import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, isLever, isButton, isCable, isPiston, isPistonHead, isPressurePlate, isRepeater, isRepeaterItem, isComparator, isComparatorItem, getOrientedRepeater, getOrientedComparator, needsSupportFromBelow, isSpikeTrap, isArrowTrap } from '../../core/voxel/BlockRegistry';
 import { computeRailBlockType, shouldRailUpdate } from '../../core/voxel/ChunkMesher';
+import { mineSubVoxels, hitPointToSubVoxel, supportsSubVoxels } from '../../core/voxel/VoxelMining';
 import { soundManager } from '../../systems/SoundManager';
-import { spawnParticles } from './DiggingParticles';
+import { spawnParticles, spawnSubVoxelParticles } from './DiggingParticles';
 import { processGravity } from '../../systems/SandPhysics';
 import { checkWaterDrain } from '../../systems/WaterFlow';
 import { useDevStore } from '../../stores/devStore';
@@ -40,6 +41,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
   const { raycaster, pointer, camera, scene } = useThree();
   const getBlockW = useWorldStore((s) => s.getBlock);
   const setBlockW = useWorldStore((s) => s.setBlock);
+  const damageSubVoxels = useWorldStore((s) => s.damageSubVoxels);
   const addBlock = useInventoryStore((s) => s.addBlock);
   const getSelectedBlock = useInventoryStore((s) => s.getSelectedBlock);
   const removeBlock = useInventoryStore((s) => s.removeBlock);
@@ -49,6 +51,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
     blockPos: [number, number, number];
     normal: [number, number, number];
     blockType: BlockType;
+    hitPoint: [number, number, number];
   } | null => {
     raycaster.setFromCamera(pointer, camera);
     const meshes: THREE.Mesh[] = [];
@@ -80,6 +83,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
       blockPos: [bx, by, bz],
       normal: [Math.round(normal.x), Math.round(normal.y), Math.round(normal.z)] as [number, number, number],
       blockType,
+      hitPoint: [point.x, point.y, point.z] as [number, number, number],
     };
   }, [raycaster, pointer, camera, scene, getBlockW]);
 
@@ -128,11 +132,24 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
           const progress = Math.min(miningTimeRef.current / Math.max(hardness, 0.05), 1);
           setMiningProgress(progress);
 
-          // Play dig sound periodically while mining
+          // Play dig sound and damage sub-voxels periodically while mining
           if (now - lastSoundTimeRef.current > 0.25) {
             soundManager.playDigSound(result.blockType);
             spawnParticles(result.blockPos, result.blockType, false);
             lastSoundTimeRef.current = now;
+
+            // Sub-voxel damage for terrain blocks during mining
+            if (supportsSubVoxels(result.blockType)) {
+              const [bx, by, bz] = result.blockPos;
+              const [hx, hy, hz] = result.hitPoint;
+              const damageResult = damageSubVoxels(bx, by, bz, hx, hy, hz, selected ?? undefined);
+              // Spawn small particles from hit point
+              spawnSubVoxelParticles(result.hitPoint, result.blockType, 3);
+              if (damageResult.blockDestroyed) {
+                // Block fully mined via sub-voxels - trigger full destruction
+                miningTimeRef.current = hardness; // force progress to 1
+              }
+            }
           }
 
           if (progress >= 1) {

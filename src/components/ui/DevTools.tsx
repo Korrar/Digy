@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useDevStore } from '../../stores/devStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
+import { useWorldStore } from '../../stores/worldStore';
 import { BlockType, getBlock } from '../../core/voxel/BlockRegistry';
 
 const TIME_PRESETS = [
@@ -177,6 +178,26 @@ function buildCategories(): ItemCategory[] {
 
 const CATEGORIES = buildCategories();
 
+function SubVoxelStats() {
+  const chunks = useWorldStore((s) => s.chunks);
+
+  let totalGrids = 0;
+  chunks.forEach((entry) => {
+    totalGrids += entry.data.subVoxels.activeGridCount;
+  });
+
+  if (totalGrids === 0) return null;
+
+  return (
+    <div style={sectionStyle}>
+      <div style={labelStyle}>Sub-voxele</div>
+      <div style={{ fontSize: 11, color: '#ccc' }}>
+        Aktywne siatki: {totalGrids} ({(totalGrids * 64)} bajtow)
+      </div>
+    </div>
+  );
+}
+
 export function DevTools() {
   const open = useDevStore((s) => s.devToolsOpen);
   const fixedTime = useDevStore((s) => s.fixedTimeOfDay);
@@ -246,6 +267,9 @@ export function DevTools() {
           {fastMining ? '⚡ Szybkie kopanie: ON' : '⛏ Szybkie kopanie: OFF'}
         </button>
       </div>
+
+      {/* Sub-voxel stats */}
+      <SubVoxelStats />
 
       {/* Item categories */}
       <div style={{ ...sectionStyle, borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: 8 }}>

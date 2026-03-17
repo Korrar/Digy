@@ -6,6 +6,8 @@ import { BlockType, isFlat } from '../core/voxel/BlockRegistry';
 import { type BiomeType, createBiome } from '../core/terrain/biomes';
 import { placeStructures } from '../core/terrain/StructureGenerator';
 import { CHUNK_SIZE } from '../utils/constants';
+import { mineSubVoxels } from '../core/voxel/VoxelMining';
+import { removeDisconnectedFragments, checkBlockStability } from '../core/voxel/VoxelPhysics';
 
 interface ChunkEntry {
   data: ChunkData;
@@ -21,6 +23,7 @@ interface WorldState {
   generateWorld: (biome: BiomeType, seed: number, radius: number) => void;
   getBlock: (wx: number, wy: number, wz: number) => BlockType;
   setBlock: (wx: number, wy: number, wz: number, type: BlockType) => void;
+  damageSubVoxels: (wx: number, wy: number, wz: number, hitX: number, hitY: number, hitZ: number, tool: BlockType | undefined) => { removed: number; blockDestroyed: boolean };
   rebuildChunkMesh: (cx: number, cz: number) => void;
   clearWorld: () => void;
   getChunkEntries: () => [string, ChunkEntry][];
@@ -130,6 +133,55 @@ export const useWorldStore = create<WorldState>((set, get) => ({
 
     // Force re-render
     set({ chunks: new Map(get().chunks) });
+  },
+
+  damageSubVoxels: (wx, wy, wz, hitX, hitY, hitZ, tool) => {
+    const cx = Math.floor(wx / CHUNK_SIZE);
+    const cz = Math.floor(wz / CHUNK_SIZE);
+    const entry = get().chunks.get(chunkKey(cx, cz));
+    if (!entry) return { removed: 0, blockDestroyed: false };
+
+    const lx = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+    const lz = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+
+    // Use local chunk coordinates for sub-voxel storage
+    const result = mineSubVoxels(
+      entry.data.subVoxels,
+      lx, wy, lz,
+      hitX - (wx - lx), hitY, hitZ - (wz - lz),
+      tool
+    );
+
+    if (result.blockDestroyed) {
+      // Block fully destroyed - set to AIR
+      entry.data.setBlock(lx, wy, lz, BlockType.AIR);
+    } else if (result.removed > 0) {
+      // Remove disconnected sub-voxel fragments (gravity)
+      removeDisconnectedFragments(entry.data.subVoxels, lx, wy, lz);
+
+      // Check structural stability - collapse if too damaged
+      if (!checkBlockStability(entry.data.subVoxels, lx, wy, lz)) {
+        // Remove all remaining sub-voxels for this block
+        for (let sy = 0; sy < 4; sy++)
+          for (let sz = 0; sz < 4; sz++)
+            for (let sx = 0; sx < 4; sx++)
+              entry.data.subVoxels.setSubVoxel(lx, wy, lz, sx, sy, sz, 0);
+        entry.data.setBlock(lx, wy, lz, BlockType.AIR);
+        result.blockDestroyed = true;
+      }
+    }
+
+    // Rebuild chunk mesh to reflect sub-voxel changes
+    entry.dirty = true;
+    get().rebuildChunkMesh(cx, cz);
+    if (lx === 0) get().rebuildChunkMesh(cx - 1, cz);
+    if (lx === CHUNK_SIZE - 1) get().rebuildChunkMesh(cx + 1, cz);
+    if (lz === 0) get().rebuildChunkMesh(cx, cz - 1);
+    if (lz === CHUNK_SIZE - 1) get().rebuildChunkMesh(cx, cz + 1);
+
+    set({ chunks: new Map(get().chunks) });
+
+    return result;
   },
 
   rebuildChunkMesh: (cx, cz) => {
