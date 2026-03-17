@@ -189,7 +189,6 @@ describe('VoxelSystemOptimizations', () => {
 
       const geometry = buildChunkMesh(chunk);
       const normAttr = geometry.getAttribute('normal');
-      const posAttr = geometry.getAttribute('position');
 
       // Should have faces facing -Z (back face at z=0)
       let hasBackFace = false;
