@@ -903,6 +903,10 @@ function buildAtlas(): { texture: THREE.Texture; map: Map<FaceKey, AtlasEntry> }
 
   const map = new Map<FaceKey, AtlasEntry>();
 
+  // Half-pixel inset to prevent texture bleeding at tile boundaries
+  const halfPixelU = 0.5 / atlasWidth;
+  const halfPixelV = 0.5 / atlasHeight;
+
   // Slot 0: white fallback tile (for vegetation, rails, etc. that use vertex colors)
   for (let py = 0; py < TEX_SIZE; py++) {
     for (let px = 0; px < TEX_SIZE; px++) {
@@ -914,10 +918,10 @@ function buildAtlas(): { texture: THREE.Texture; map: Map<FaceKey, AtlasEntry> }
     }
   }
   const whiteEntry: AtlasEntry = {
-    u0: 0,
-    v0: 1 - TEX_SIZE / atlasHeight,
-    u1: TEX_SIZE / atlasWidth,
-    v1: 1,
+    u0: 0 + halfPixelU,
+    v0: 1 - TEX_SIZE / atlasHeight + halfPixelV,
+    u1: TEX_SIZE / atlasWidth - halfPixelU,
+    v1: 1 - halfPixelV,
   };
   map.set('white', whiteEntry);
 
@@ -943,11 +947,12 @@ function buildAtlas(): { texture: THREE.Texture; map: Map<FaceKey, AtlasEntry> }
     }
 
     const key: FaceKey = `${block}_${face}`;
+    // Half-pixel inset prevents GPU from sampling neighboring tile pixels
     map.set(key, {
-      u0: startX / atlasWidth,
-      v0: 1 - (startY + TEX_SIZE) / atlasHeight, // flip Y for WebGL
-      u1: (startX + TEX_SIZE) / atlasWidth,
-      v1: 1 - startY / atlasHeight,
+      u0: startX / atlasWidth + halfPixelU,
+      v0: 1 - (startY + TEX_SIZE) / atlasHeight + halfPixelV,
+      u1: (startX + TEX_SIZE) / atlasWidth - halfPixelU,
+      v1: 1 - startY / atlasHeight - halfPixelV,
     });
   }
 
@@ -956,6 +961,8 @@ function buildAtlas(): { texture: THREE.Texture; map: Map<FaceKey, AtlasEntry> }
   const texture = new THREE.CanvasTexture(canvas);
   texture.magFilter = THREE.NearestFilter;
   texture.minFilter = THREE.NearestFilter;
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.needsUpdate = true;
 
