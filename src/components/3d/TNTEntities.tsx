@@ -1,7 +1,7 @@
 import { useRef, useMemo, useEffect, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { useWorldStore } from '../../stores/worldStore';
+import { useWorldStore, batchChunksToRebuild } from '../../stores/worldStore';
 import { BlockType, getBlock, isSolid, needsSupportFromBelow } from '../../core/voxel/BlockRegistry';
 import { supportsSubVoxels } from '../../core/voxel/VoxelMining';
 import { chunkKey } from '../../core/voxel/ChunkData';
@@ -126,6 +126,9 @@ function explodeTNT(tnt: TNTEntity, store: ReturnType<typeof useWorldStore.getSt
   // Explosion sound
   soundManager.playExplosionSound();
 
+  // Batch all block changes to rebuild meshes only once at the end
+  store.beginBatch();
+
   // Destroy blocks in sphere - inner blocks fully destroyed, edge blocks get sub-voxel damage
   const innerRadius = Math.max(TNT_RADIUS - 1.5, 0);
   // Inner destruction: fully destroy blocks close to center
@@ -152,10 +155,10 @@ function explodeTNT(tnt: TNTEntity, store: ReturnType<typeof useWorldStore.getSt
               vz: (bz + 0.5 - cz) * 3,
             }
           }));
-          store.setBlock(bx, by, bz, BlockType.AIR);
+          store.setBlockBatched(bx, by, bz, BlockType.AIR);
           continue;
         }
-        store.setBlock(bx, by, bz, BlockType.AIR);
+        store.setBlockBatched(bx, by, bz, BlockType.AIR);
       }
     }
   }
@@ -177,7 +180,7 @@ function explodeTNT(tnt: TNTEntity, store: ReturnType<typeof useWorldStore.getSt
         // Special blocks (rails, torches, doors, etc.) don't support sub-voxels
         // — destroy them entirely instead of partial damage
         if (!supportsSubVoxels(block)) {
-          store.setBlock(bx, by, bz, BlockType.AIR);
+          store.setBlockBatched(bx, by, bz, BlockType.AIR);
           continue;
         }
 
@@ -208,7 +211,12 @@ function explodeTNT(tnt: TNTEntity, store: ReturnType<typeof useWorldStore.getSt
         }
 
         entry.dirty = true;
-        store.rebuildChunkMesh(chunkCx, chunkCz);
+        // Add chunk + neighbors to batch rebuild set
+        batchChunksToRebuild.add(chunkKey(chunkCx, chunkCz));
+        if (lx === 0) batchChunksToRebuild.add(chunkKey(chunkCx - 1, chunkCz));
+        if (lx === CHUNK_SIZE - 1) batchChunksToRebuild.add(chunkKey(chunkCx + 1, chunkCz));
+        if (lz === 0) batchChunksToRebuild.add(chunkKey(chunkCx, chunkCz - 1));
+        if (lz === CHUNK_SIZE - 1) batchChunksToRebuild.add(chunkKey(chunkCx, chunkCz + 1));
       }
     }
   }
@@ -225,10 +233,10 @@ function explodeTNT(tnt: TNTEntity, store: ReturnType<typeof useWorldStore.getSt
         while (curY < CHUNK_HEIGHT) {
           const above = store.getBlock(checkX, curY, checkZ);
           if (!needsSupportFromBelow(above)) break;
-          store.setBlock(checkX, curY, checkZ, BlockType.AIR);
+          store.setBlockBatched(checkX, curY, checkZ, BlockType.AIR);
           const aboveDef = getBlock(above);
           if (aboveDef.isDoor && !aboveDef.doorUpper) {
-            store.setBlock(checkX, curY + 1, checkZ, BlockType.AIR);
+            store.setBlockBatched(checkX, curY + 1, checkZ, BlockType.AIR);
             curY += 2;
           } else {
             curY++;
@@ -237,6 +245,9 @@ function explodeTNT(tnt: TNTEntity, store: ReturnType<typeof useWorldStore.getSt
       }
     }
   }
+
+  // Flush all batched changes: rebuild affected chunks once
+  store.endBatch();
 
   // Push other TNT entities away
   for (const other of activeTNTEntities.current) {

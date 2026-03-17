@@ -41,35 +41,45 @@ function hash3(x: number, y: number, z: number): number {
 /**
  * Check if a sub-voxel neighbor is solid.
  * If the neighbor is outside the block, check neighbor blocks via getNeighborBlock.
+ *
+ * @param store - SubVoxelStore using local chunk coordinates
+ * @param lx,ly,lz - Local chunk coordinates of the current block
+ * @param wx,wy,wz - World coordinates of the current block (for getNeighborBlock)
+ * @param sx,sy,sz - Sub-voxel coords of the neighbor (may be outside 0..RES-1)
+ * @param getNeighborBlock - Uses WORLD coordinates
  */
 function isNeighborSolid(
   store: SubVoxelStore,
+  lx: number, ly: number, lz: number,
   wx: number, wy: number, wz: number,
   sx: number, sy: number, sz: number,
   getNeighborBlock: (wx: number, wy: number, wz: number) => BlockType
 ): boolean {
   // Neighbor sub-voxel is within the same block
   if (sx >= 0 && sx < SUB_VOXEL_RES && sy >= 0 && sy < SUB_VOXEL_RES && sz >= 0 && sz < SUB_VOXEL_RES) {
-    return store.getSubVoxel(wx, wy, wz, sx, sy, sz) !== 0;
+    return store.getSubVoxel(lx, ly, lz, sx, sy, sz) !== 0;
   }
 
   // Neighbor is in an adjacent block
+  // Compute local coord delta and world coord delta
+  let nlx = lx, nly = ly, nlz = lz;
   let nwx = wx, nwy = wy, nwz = wz;
   let nsx = sx, nsy = sy, nsz = sz;
 
-  if (sx < 0) { nwx--; nsx = SUB_VOXEL_RES - 1; }
-  else if (sx >= SUB_VOXEL_RES) { nwx++; nsx = 0; }
-  if (sy < 0) { nwy--; nsy = SUB_VOXEL_RES - 1; }
-  else if (sy >= SUB_VOXEL_RES) { nwy++; nsy = 0; }
-  if (sz < 0) { nwz--; nsz = SUB_VOXEL_RES - 1; }
-  else if (sz >= SUB_VOXEL_RES) { nwz++; nsz = 0; }
+  if (sx < 0) { nlx--; nwx--; nsx = SUB_VOXEL_RES - 1; }
+  else if (sx >= SUB_VOXEL_RES) { nlx++; nwx++; nsx = 0; }
+  if (sy < 0) { nly--; nwy--; nsy = SUB_VOXEL_RES - 1; }
+  else if (sy >= SUB_VOXEL_RES) { nly++; nwy++; nsy = 0; }
+  if (sz < 0) { nlz--; nwz--; nsz = SUB_VOXEL_RES - 1; }
+  else if (sz >= SUB_VOXEL_RES) { nlz++; nwz++; nsz = 0; }
 
-  // Check if neighbor block has a sub-voxel grid
-  if (store.hasGrid(nwx, nwy, nwz)) {
-    return store.getSubVoxel(nwx, nwy, nwz, nsx, nsy, nsz) !== 0;
+  // Check if neighbor block has a sub-voxel grid (using local coords)
+  // Only valid if still within the same chunk
+  if (nlx >= 0 && nlx < 16 && nlz >= 0 && nlz < 16 && store.hasGrid(nlx, nly, nlz)) {
+    return store.getSubVoxel(nlx, nly, nlz, nsx, nsy, nsz) !== 0;
   }
 
-  // No grid = check if neighbor block type is solid
+  // No grid or cross-chunk: check if neighbor block type is solid (using world coords)
   const neighborType = getNeighborBlock(nwx, nwy, nwz);
   if (neighborType === BlockType.AIR) return false;
   if (isTransparent(neighborType)) return false;
@@ -79,9 +89,16 @@ function isNeighborSolid(
 /**
  * Build geometry for a single block with sub-voxel data.
  * Produces a BufferGeometry compatible with the main voxel shader.
+ *
+ * @param store - SubVoxelStore using LOCAL chunk coordinates
+ * @param lx, ly, lz - LOCAL chunk coordinates (for grid lookup)
+ * @param wx, wy, wz - WORLD coordinates (for vertex positions)
+ * @param blockDef - Block definition for colors/properties
+ * @param getNeighborBlock - Function to get neighbor block types (world coords)
  */
 export function buildSubVoxelGeometry(
   store: SubVoxelStore,
+  lx: number, ly: number, lz: number,
   wx: number, wy: number, wz: number,
   blockDef: BlockDefinition,
   getNeighborBlock: (wx: number, wy: number, wz: number) => BlockType
@@ -106,14 +123,14 @@ export function buildSubVoxelGeometry(
   const oreColor = blockDef.oreColor;
   const wuv = getWhiteUV();
 
-  // Compute damage level for visual effects
-  const damageRatio = store.getDamageRatio(wx, wy, wz);
+  // Compute damage level for visual effects (using local coords for grid lookup)
+  const damageRatio = store.getDamageRatio(lx, ly, lz);
 
   for (let sy = 0; sy < SUB_VOXEL_RES; sy++) {
     for (let sz = 0; sz < SUB_VOXEL_RES; sz++) {
       for (let sx = 0; sx < SUB_VOXEL_RES; sx++) {
-        // Skip empty sub-voxels
-        const val = store.getSubVoxel(wx, wy, wz, sx, sy, sz);
+        // Skip empty sub-voxels (use local coords for grid lookup)
+        const val = store.getSubVoxel(lx, ly, lz, sx, sy, sz);
         if (val === 0) continue;
 
         for (const face of SV_FACES) {
@@ -122,7 +139,7 @@ export function buildSubVoxelGeometry(
           const nsy = sy + face.dir[1];
           const nsz = sz + face.dir[2];
 
-          if (isNeighborSolid(store, wx, wy, wz, nsx, nsy, nsz, getNeighborBlock)) {
+          if (isNeighborSolid(store, lx, ly, lz, wx, wy, wz, nsx, nsy, nsz, getNeighborBlock)) {
             continue; // neighbor is solid, skip face
           }
 
@@ -135,7 +152,7 @@ export function buildSubVoxelGeometry(
 
           for (let ci = 0; ci < 4; ci++) {
             const corner = face.corners[ci];
-            // Position: block offset + sub-voxel offset + corner within sub-voxel
+            // Position: WORLD offset + sub-voxel offset + corner within sub-voxel
             const vx = wx + (sx + corner[0]) * SV_SIZE;
             const vy = wy + (sy + corner[1]) * SV_SIZE;
             const vz = wz + (sz + corner[2]) * SV_SIZE;

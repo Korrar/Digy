@@ -52,7 +52,7 @@ describe('VoxelOptimization', () => {
 
       const blockDef = getBlock(BlockType.STONE);
       const geometry = buildSubVoxelGeometry(
-        store, 0, 0, 0, blockDef,
+        store, 0, 0, 0, 0, 0, 0, blockDef,
         () => BlockType.AIR
       );
 
@@ -71,7 +71,7 @@ describe('VoxelOptimization', () => {
 
       const blockDef = getBlock(BlockType.STONE);
       const geomFull = buildSubVoxelGeometry(
-        store, 0, 0, 0, blockDef,
+        store, 0, 0, 0, 0, 0, 0, blockDef,
         () => BlockType.AIR
       );
 
@@ -82,7 +82,7 @@ describe('VoxelOptimization', () => {
       store.removeSubVoxel(0, 0, 0, 2, 2, 1);
 
       const geomDamaged = buildSubVoxelGeometry(
-        store, 0, 0, 0, blockDef,
+        store, 0, 0, 0, 0, 0, 0, blockDef,
         () => BlockType.AIR
       );
 

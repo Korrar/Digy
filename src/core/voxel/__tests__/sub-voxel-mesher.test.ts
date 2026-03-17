@@ -13,7 +13,7 @@ describe('SubVoxelMesher', () => {
 
       const blockDef = getBlock(BlockType.STONE);
       const geometry = buildSubVoxelGeometry(
-        store, 0, 0, 0, blockDef,
+        store, 0, 0, 0, 0, 0, 0, blockDef,
         (_wx, _wy, _wz) => BlockType.AIR
       );
 
@@ -28,7 +28,7 @@ describe('SubVoxelMesher', () => {
       // but if called, should produce full cube equivalent
       const blockDef = getBlock(BlockType.STONE);
       const geometry = buildSubVoxelGeometry(
-        store, 0, 0, 0, blockDef,
+        store, 0, 0, 0, 0, 0, 0, blockDef,
         (_wx, _wy, _wz) => BlockType.AIR
       );
 
@@ -45,7 +45,7 @@ describe('SubVoxelMesher', () => {
 
       const blockDef = getBlock(BlockType.STONE);
       const geometry = buildSubVoxelGeometry(
-        store, 0, 0, 0, blockDef,
+        store, 0, 0, 0, 0, 0, 0, blockDef,
         (_wx, _wy, _wz) => BlockType.AIR
       );
 
@@ -61,14 +61,14 @@ describe('SubVoxelMesher', () => {
 
       const blockDef = getBlock(BlockType.STONE);
       const geomFull = buildSubVoxelGeometry(
-        store, 0, 0, 0, blockDef,
+        store, 0, 0, 0, 0, 0, 0, blockDef,
         (_wx, _wy, _wz) => BlockType.AIR
       );
 
       // Now remove one sub-voxel
       store.removeSubVoxel(0, 0, 0, 1, 1, 1);
       const geomDamaged = buildSubVoxelGeometry(
-        store, 0, 0, 0, blockDef,
+        store, 0, 0, 0, 0, 0, 0, blockDef,
         (_wx, _wy, _wz) => BlockType.AIR
       );
 
@@ -89,13 +89,13 @@ describe('SubVoxelMesher', () => {
 
       // With air neighbor
       const geomAir = buildSubVoxelGeometry(
-        store, 0, 0, 0, blockDef,
+        store, 0, 0, 0, 0, 0, 0, blockDef,
         (_wx, _wy, _wz) => BlockType.AIR
       );
 
       // With solid neighbor on +X side
       const geomSolid = buildSubVoxelGeometry(
-        store, 0, 0, 0, blockDef,
+        store, 0, 0, 0, 0, 0, 0, blockDef,
         (wx, _wy, _wz) => wx >= 1 ? BlockType.STONE : BlockType.AIR
       );
 
@@ -115,7 +115,7 @@ describe('SubVoxelMesher', () => {
 
       const blockDef = getBlock(BlockType.DIRT);
       const geometry = buildSubVoxelGeometry(
-        store, 0, 0, 0, blockDef,
+        store, 0, 0, 0, 0, 0, 0, blockDef,
         (_wx, _wy, _wz) => BlockType.AIR
       );
 
@@ -136,7 +136,7 @@ describe('SubVoxelMesher', () => {
 
       const blockDef = getBlock(BlockType.STONE);
       const geometry = buildSubVoxelGeometry(
-        store, 0, 0, 0, blockDef,
+        store, 0, 0, 0, 0, 0, 0, blockDef,
         (_wx, _wy, _wz) => BlockType.AIR
       );
 
@@ -162,7 +162,7 @@ describe('SubVoxelMesher', () => {
 
       const blockDef = getBlock(BlockType.STONE);
       const geometry = buildSubVoxelGeometry(
-        store, 0, 0, 0, blockDef,
+        store, 0, 0, 0, 0, 0, 0, blockDef,
         (_wx, _wy, _wz) => BlockType.AIR
       );
 
@@ -188,7 +188,7 @@ describe('SubVoxelMesher', () => {
 
       const blockDef = getBlock(BlockType.STONE);
       const geometry = buildSubVoxelGeometry(
-        store, 5, 10, 3, blockDef,
+        store, 5, 10, 3, 5, 10, 3, blockDef,
         (_wx, _wy, _wz) => BlockType.AIR
       );
 
