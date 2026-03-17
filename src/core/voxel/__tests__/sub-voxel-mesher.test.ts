@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { SubVoxelStore, SUB_VOXEL_RES } from '../SubVoxelData';
+import { SubVoxelStore } from '../SubVoxelData';
 import { buildSubVoxelGeometry } from '../SubVoxelMesher';
 import { BlockType, getBlock } from '../BlockRegistry';
-import { ChunkData } from '../ChunkData';
 
 describe('SubVoxelMesher', () => {
   describe('buildSubVoxelGeometry for single damaged block', () => {
@@ -124,11 +123,8 @@ describe('SubVoxelMesher', () => {
       expect(colorAttr).toBeDefined();
       expect(colorAttr.count).toBeGreaterThan(0);
 
-      // First vertex color should be close to dirt color
+      // First vertex color should be reasonable (not zero, not over 1)
       const r = colorAttr.getX(0);
-      const g = colorAttr.getY(0);
-      const b = colorAttr.getZ(0);
-      // Colors should be reasonable (not zero, not over 1)
       expect(r).toBeGreaterThan(0);
       expect(r).toBeLessThanOrEqual(1);
     });

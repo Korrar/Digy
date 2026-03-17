@@ -5,7 +5,7 @@ import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, isLever, isButton, isCable, isPiston, isPistonHead, isPressurePlate, isRepeater, isRepeaterItem, isComparator, isComparatorItem, getOrientedRepeater, getOrientedComparator, needsSupportFromBelow, isSpikeTrap, isArrowTrap } from '../../core/voxel/BlockRegistry';
 import { computeRailBlockType, shouldRailUpdate } from '../../core/voxel/ChunkMesher';
-import { mineSubVoxels, hitPointToSubVoxel, supportsSubVoxels } from '../../core/voxel/VoxelMining';
+import { supportsSubVoxels } from '../../core/voxel/VoxelMining';
 import { soundManager } from '../../systems/SoundManager';
 import { spawnParticles, spawnSubVoxelParticles } from './DiggingParticles';
 import { processGravity } from '../../systems/SandPhysics';

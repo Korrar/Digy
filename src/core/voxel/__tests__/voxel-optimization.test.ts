@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SubVoxelStore, SUB_VOXEL_RES } from '../SubVoxelData';
+import { SubVoxelStore } from '../SubVoxelData';
 import { BlockType, getBlock } from '../BlockRegistry';
 import { buildSubVoxelGeometry } from '../SubVoxelMesher';
 import { supportsSubVoxels } from '../VoxelMining';

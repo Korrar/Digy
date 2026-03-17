@@ -4,7 +4,6 @@ import { ChunkData } from './ChunkData';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
 import { getAtlasUV, getWhiteUV } from './TextureAtlas';
 import { buildSubVoxelGeometry } from './SubVoxelMesher';
-import { SUB_VOXEL_RES } from './SubVoxelData';
 
 interface Face {
   dir: [number, number, number];

@@ -3,11 +3,9 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { BlockType, getBlock, isSolid, needsSupportFromBelow } from '../../core/voxel/BlockRegistry';
-import { computeExplosionDamage } from '../../core/voxel/VoxelMining';
-import { ChunkData, worldToChunk, chunkKey } from '../../core/voxel/ChunkData';
-import { CHUNK_SIZE } from '../../utils/constants';
+import { chunkKey } from '../../core/voxel/ChunkData';
+import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
 import { soundManager } from '../../systems/SoundManager';
-import { CHUNK_HEIGHT } from '../../utils/constants';
 
 interface TNTEntity {
   id: number;
