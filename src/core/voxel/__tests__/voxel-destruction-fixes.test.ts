@@ -67,7 +67,7 @@ describe('Voxel destruction fixes', () => {
       // The damage should be visible (more faces than a full block)
       const fullStore = new SubVoxelStore();
       fullStore.initializeBlock(0, 0, 0);
-      const _fullGeom = buildSubVoxelGeometry(
+      buildSubVoxelGeometry(
         fullStore, 0, 0, 0, 0, 0, 0, blockDef,
         () => BlockType.AIR
       );

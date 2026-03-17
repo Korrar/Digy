@@ -45,7 +45,6 @@ function makeNeighborBlockFn(chunks: Map<string, ChunkEntry>) {
 }
 
 // Batch mode: collect chunk keys to rebuild, defer mesh rebuilds
-let _batchMode = false;
 export const batchChunksToRebuild = new Set<string>();
 
 export const useWorldStore = create<WorldState>((set, get) => ({
@@ -156,12 +155,10 @@ export const useWorldStore = create<WorldState>((set, get) => ({
   },
 
   beginBatch: () => {
-    _batchMode = true;
     batchChunksToRebuild.clear();
   },
 
   endBatch: () => {
-    _batchMode = false;
     for (const key of batchChunksToRebuild) {
       const [rcx, rcz] = key.split(',').map(Number);
       get().rebuildChunkMesh(rcx, rcz);
