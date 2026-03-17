@@ -45,13 +45,14 @@ Stosujemy TDD przy implementacji nowych funkcji i naprawie bugów:
 
 ## Przed commitem - obowiązkowe sprawdzenia
 
-**ZAWSZE** przed każdym commitem uruchom:
-1. `npx tsc --noEmit` - sprawdzenie TypeScript (zero błędów wymagane)
+**ZAWSZE** przed każdym commitem uruchom (identycznie jak CI/CD build na GitHub):
+1. `npx tsc -b` - sprawdzenie TypeScript (zero błędów wymagane, identyczne z `npm run build`)
 2. `npx vitest run` - uruchomienie testów (wszystkie muszą przechodzić)
 
 Jeśli którekolwiek z powyższych failuje, **nie commituj** - napraw błędy najpierw.
 
 ### Typowe błędy TS do unikania
+- **Nieużywane zmienne lokalne** - `noUnusedLocals: true` w tsconfig, prefiks `_` NIE pomaga. Usuń zmienną lub wywołaj funkcję bez przypisania wyniku (`TS6133`)
 - **Redeklarkacja zmiennych** w tym samym bloku (`const result` użyte wielokrotnie w jednym `if` - użyj różnych nazw: `hit`, `doorCheck`, itp.)
 - **Nieużywane importy** - usuwaj importy których nie używasz (`TS6133`)
 - **Brakujące typy** - w plikach testowych importuj `* as THREE from 'three'` jeśli używasz `THREE.BufferGeometry`
