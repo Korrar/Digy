@@ -129,8 +129,12 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
           }
           miningTimeRef.current += delta * toolMultiplier;
           const hardness = useDevStore.getState().fastMining ? 0.05 : def.hardness;
-          let progress = Math.min(miningTimeRef.current / Math.max(hardness, 0.05), 1);
-          setMiningProgress(progress);
+          const useSubVoxelOnly = supportsSubVoxels(result.blockType);
+          // For sub-voxel blocks, progress is driven by sub-voxel destruction, not timer
+          let progress = useSubVoxelOnly
+            ? 0
+            : Math.min(miningTimeRef.current / Math.max(hardness, 0.05), 1);
+          if (!useSubVoxelOnly) setMiningProgress(progress);
 
           // Play dig sound and damage sub-voxels periodically while mining
           if (now - lastSoundTimeRef.current > 0.25) {
@@ -139,18 +143,24 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
             lastSoundTimeRef.current = now;
 
             // Sub-voxel damage for terrain blocks during mining
-            if (supportsSubVoxels(result.blockType)) {
+            // This is the ONLY way to break these blocks - chipping away at impact point
+            if (useSubVoxelOnly) {
               const [bx, by, bz] = result.blockPos;
               const [hx, hy, hz] = result.hitPoint;
               const damageResult = damageSubVoxels(bx, by, bz, hx, hy, hz, selected ?? undefined);
               // Spawn small particles from hit point
               spawnSubVoxelParticles(result.hitPoint, result.blockType, 3);
+              // Show damage progress based on sub-voxel destruction ratio
+              const cx = Math.floor(bx / 16);
+              const cz = Math.floor(bz / 16);
+              const chunkEntry = useWorldStore.getState().chunks.get(`${cx},${cz}`);
+              if (chunkEntry) {
+                const localX = ((bx % 16) + 16) % 16;
+                const localZ = ((bz % 16) + 16) % 16;
+                const damageRatio = chunkEntry.data.subVoxels.getDamageRatio(localX, by, localZ);
+                setMiningProgress(damageRatio);
+              }
               if (damageResult.blockDestroyed) {
-                // Block fully mined via sub-voxels - force progress to 1 immediately
-                // so the destruction cleanup runs THIS frame (not next)
-                miningTimeRef.current = hardness;
-                setMiningProgress(1);
-                // Skip to destruction handling below by updating progress locally
                 progress = 1;
               }
             }

@@ -23,6 +23,9 @@ interface WorldState {
   generateWorld: (biome: BiomeType, seed: number, radius: number) => void;
   getBlock: (wx: number, wy: number, wz: number) => BlockType;
   setBlock: (wx: number, wy: number, wz: number, type: BlockType) => void;
+  setBlockBatched: (wx: number, wy: number, wz: number, type: BlockType) => void;
+  beginBatch: () => void;
+  endBatch: () => void;
   damageSubVoxels: (wx: number, wy: number, wz: number, hitX: number, hitY: number, hitZ: number, tool: BlockType | undefined) => { removed: number; blockDestroyed: boolean };
   rebuildChunkMesh: (cx: number, cz: number) => void;
   clearWorld: () => void;
@@ -40,6 +43,10 @@ function makeNeighborBlockFn(chunks: Map<string, ChunkEntry>) {
     return neighbor.data.getBlock(lx, wy, lz);
   };
 }
+
+// Batch mode: collect chunk keys to rebuild, defer mesh rebuilds
+let batchMode = false;
+export const batchChunksToRebuild = new Set<string>();
 
 export const useWorldStore = create<WorldState>((set, get) => ({
   chunks: new Map(),
@@ -126,6 +133,40 @@ export const useWorldStore = create<WorldState>((set, get) => ({
     }
 
     // Force re-render
+    set({ chunks: new Map(get().chunks) });
+  },
+
+  setBlockBatched: (wx, wy, wz, type) => {
+    const cx = Math.floor(wx / CHUNK_SIZE);
+    const cz = Math.floor(wz / CHUNK_SIZE);
+    const state = get();
+    const entry = state.chunks.get(chunkKey(cx, cz));
+    if (!entry) return;
+    const lx = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+    const lz = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+    entry.data.setBlock(lx, wy, lz, type);
+    entry.dirty = true;
+
+    // Collect chunks to rebuild (deferred until endBatch)
+    batchChunksToRebuild.add(chunkKey(cx, cz));
+    if (lx === 0) batchChunksToRebuild.add(chunkKey(cx - 1, cz));
+    if (lx === CHUNK_SIZE - 1) batchChunksToRebuild.add(chunkKey(cx + 1, cz));
+    if (lz === 0) batchChunksToRebuild.add(chunkKey(cx, cz - 1));
+    if (lz === CHUNK_SIZE - 1) batchChunksToRebuild.add(chunkKey(cx, cz + 1));
+  },
+
+  beginBatch: () => {
+    batchMode = true;
+    batchChunksToRebuild.clear();
+  },
+
+  endBatch: () => {
+    batchMode = false;
+    for (const key of batchChunksToRebuild) {
+      const [rcx, rcz] = key.split(',').map(Number);
+      get().rebuildChunkMesh(rcx, rcz);
+    }
+    batchChunksToRebuild.clear();
     set({ chunks: new Map(get().chunks) });
   },
 

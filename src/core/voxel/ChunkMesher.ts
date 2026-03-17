@@ -348,7 +348,7 @@ export function buildChunkMesh(
         // Sub-voxel rendering for damaged blocks
         if (chunk.hasSubVoxelDamage(x, y, z)) {
           const svGeom = buildSubVoxelGeometry(
-            chunk.subVoxels, wx, y, wz, blockDef,
+            chunk.subVoxels, x, y, z, wx, y, wz, blockDef,
             getNeighborBlock ?? ((_wx: number, _wy: number, _wz: number) => BlockType.AIR)
           );
           // Merge sub-voxel geometry into main arrays
