@@ -9,8 +9,8 @@ describe('Village biome', () => {
   it('should have correct config', () => {
     const biome = new VillageBiome(42);
     expect(biome.config.type).toBe('village');
-    expect(biome.config.name).toBe('Wioska');
-    expect(biome.config.skyColor).toBe('#90c8f0');
+    expect(biome.config.name).toBe('Grecka Polis');
+    expect(biome.config.skyColor).toBe('#a0d8f8');
   });
 
   it('should be creatable via createBiome factory', () => {
@@ -22,7 +22,7 @@ describe('Village biome', () => {
   it('should be listed in BIOME_LIST', () => {
     const village = BIOME_LIST.find((b) => b.type === 'village');
     expect(village).toBeDefined();
-    expect(village!.name).toBe('Wioska');
+    expect(village!.name).toBe('Grecka Polis');
   });
 
   it('should generate terrain with grass blocks', () => {
@@ -82,7 +82,11 @@ describe('Village biome', () => {
           if (bt !== BlockType.AIR && bt !== BlockType.WATER && bt !== BlockType.TALL_GRASS &&
               bt !== BlockType.FLOWER_RED && bt !== BlockType.FLOWER_YELLOW &&
               bt !== BlockType.FERN && bt !== BlockType.MUSHROOM &&
-              bt !== BlockType.WOOD && bt !== BlockType.LEAVES) {
+              bt !== BlockType.WOOD && bt !== BlockType.LEAVES &&
+              bt !== BlockType.GRAPE_VINE && bt !== BlockType.AMPHORA &&
+              bt !== BlockType.MARBLE_COLUMN && bt !== BlockType.COLUMN_BASE &&
+              bt !== BlockType.COPPER_ROOF && bt !== BlockType.TORCH &&
+              bt !== BlockType.OLIVE_WOOD && bt !== BlockType.OLIVE_LEAVES) {
             heights.push(y);
             break;
           }
@@ -92,8 +96,8 @@ describe('Village biome', () => {
     expect(heights.length).toBeGreaterThan(0);
     const min = Math.min(...heights);
     const max = Math.max(...heights);
-    // Center of village should be relatively flat (max 3 block difference)
-    expect(max - min).toBeLessThanOrEqual(3);
+    // Center of village should be relatively flat (max 6 block difference, includes amphitheater steps)
+    expect(max - min).toBeLessThanOrEqual(6);
   });
 
   it('should have a river with water blocks', () => {
@@ -182,12 +186,14 @@ describe('NPC Store', () => {
     store.spawnVillageNPCs(8, 10, 8);
     const state = useNPCStore.getState();
 
-    expect(state.npcs.length).toBe(6);
+    expect(state.npcs.length).toBe(10);
     const roles = state.npcs.map((n) => n.role);
-    expect(roles).toContain('lumberjack');
-    expect(roles).toContain('miner');
-    expect(roles).toContain('builder');
+    expect(roles).toContain('philosopher');
+    expect(roles).toContain('blacksmith');
     expect(roles).toContain('farmer');
+    expect(roles).toContain('merchant');
+    expect(roles).toContain('potter');
+    expect(roles).toContain('priestess');
 
     // Check physics fields exist
     for (const npc of state.npcs) {
@@ -203,7 +209,7 @@ describe('NPC Store', () => {
     store.spawnVillageNPCs(8, 10, 8);
     const state = useNPCStore.getState();
 
-    expect(state.buildProjects.length).toBe(4);
+    expect(state.buildProjects.length).toBe(6);
     expect(state.buildProjects[0].completed).toBe(false);
     expect(state.buildProjects[0].placedCount).toBe(0);
     expect(state.buildProjects[0].blocks.length).toBeGreaterThan(0);
@@ -286,9 +292,9 @@ describe('House Blueprint', () => {
     expect(project.placedCount).toBe(0);
 
     const types = new Set(project.blocks.map((b) => b.type));
-    expect(types.has(BlockType.PLANKS)).toBe(true);
+    expect(types.has(BlockType.MOSAIC_FLOOR)).toBe(true);
     expect(types.has(BlockType.GLASS)).toBe(true);
-    expect(types.has(BlockType.WOOD)).toBe(true);
+    expect(types.has(BlockType.COPPER_ROOF)).toBe(true);
     expect(types.has(BlockType.TORCH)).toBe(true);
   });
 
@@ -301,7 +307,7 @@ describe('House Blueprint', () => {
 });
 
 describe('Bridge Blueprint', () => {
-  it('should generate bridge with planks deck and wood railings', () => {
+  it('should generate bridge with marble deck and column railings', () => {
     const bridge = generateBridgeBlueprint(5, 10, 4, 8, 0);
 
     expect(bridge.blocks.length).toBeGreaterThan(0);
@@ -310,8 +316,8 @@ describe('Bridge Blueprint', () => {
     expect(bridge.id).toContain('bridge_');
 
     const types = new Set(bridge.blocks.map((b) => b.type));
-    expect(types.has(BlockType.PLANKS)).toBe(true);
-    expect(types.has(BlockType.WOOD)).toBe(true);
+    expect(types.has(BlockType.MARBLE)).toBe(true);
+    expect(types.has(BlockType.MARBLE_COLUMN)).toBe(true);
   });
 
   it('should span the correct X range', () => {

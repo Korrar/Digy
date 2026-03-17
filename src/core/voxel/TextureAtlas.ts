@@ -717,6 +717,129 @@ function acaciaLeavesTexture(seed: number): PixelFunc {
   return (px, py) => pixels[py * TEX_SIZE + px];
 }
 
+// === Ancient Greece textures ===
+
+function marbleTexture(seed: number): PixelFunc {
+  const rng = seededRandom(seed);
+  const pixels: [number, number, number][] = [];
+  // Marble has veins of gray through white
+  const veinPhase = rng() * 20;
+  for (let i = 0; i < TEX_SIZE * TEX_SIZE; i++) {
+    const px = i % TEX_SIZE;
+    const py = Math.floor(i / TEX_SIZE);
+    const base = 228 + rng() * 14;
+    // Sine-based veins
+    const vein = Math.sin(px * 0.8 + py * 1.2 + veinPhase) * Math.sin(px * 0.3 - py * 0.5 + veinPhase * 0.5);
+    const veinStr = Math.max(0, vein * 0.4) * 40;
+    const r = Math.min(255, base - veinStr * 0.3);
+    const g = Math.min(255, base - veinStr * 0.4);
+    const b = Math.min(255, base - veinStr * 0.2);
+    pixels.push([r, g, b]);
+  }
+  return (px, py) => pixels[py * TEX_SIZE + px];
+}
+
+function terracottaTexture(seed: number): PixelFunc {
+  const rng = seededRandom(seed);
+  const pixels: [number, number, number][] = [];
+  for (let i = 0; i < TEX_SIZE * TEX_SIZE; i++) {
+    const noise = rng() * 20 - 10;
+    pixels.push([198 + noise, 112 + noise * 0.6, 64 + noise * 0.4]);
+  }
+  return (px, py) => pixels[py * TEX_SIZE + px];
+}
+
+function limestoneTexture(seed: number): PixelFunc {
+  const rng = seededRandom(seed);
+  const pixels: [number, number, number][] = [];
+  for (let i = 0; i < TEX_SIZE * TEX_SIZE; i++) {
+    const noise = rng() * 15 - 7;
+    pixels.push([212 + noise, 200 + noise, 160 + noise * 0.8]);
+  }
+  return (px, py) => pixels[py * TEX_SIZE + px];
+}
+
+function oliveWoodSide(seed: number): PixelFunc {
+  const rng = seededRandom(seed);
+  const pixels: [number, number, number][] = [];
+  // Gnarled olive bark: dark brown-green tones with irregular grain
+  for (let i = 0; i < TEX_SIZE * TEX_SIZE; i++) {
+    const px = i % TEX_SIZE;
+    const py = Math.floor(i / TEX_SIZE);
+    const grain = Math.sin(py * 1.2 + Math.sin(px * 0.5) * 2) * 0.5 + 0.5;
+    const noise = rng() * 18 - 9;
+    const r = 100 + grain * 22 + noise;
+    const g = 90 + grain * 17 + noise * 0.7;
+    const b = 55 + grain * 12 + noise * 0.5;
+    pixels.push([r, g, b]);
+  }
+  return (px, py) => pixels[py * TEX_SIZE + px];
+}
+
+function oliveLeavesTexture(seed: number): PixelFunc {
+  const rng = seededRandom(seed);
+  const pixels: [number, number, number][] = [];
+  // Silver-green olive leaves
+  for (let i = 0; i < TEX_SIZE * TEX_SIZE; i++) {
+    const noise = rng() * 25 - 12;
+    const isSilver = rng() > 0.6;
+    if (isSilver) {
+      pixels.push([140 + noise, 155 + noise, 120 + noise]);
+    } else {
+      pixels.push([107 + noise, 138 + noise, 80 + noise]);
+    }
+  }
+  return (px, py) => pixels[py * TEX_SIZE + px];
+}
+
+function copperRoofTexture(seed: number): PixelFunc {
+  const rng = seededRandom(seed);
+  const pixels: [number, number, number][] = [];
+  // Patina green copper
+  for (let i = 0; i < TEX_SIZE * TEX_SIZE; i++) {
+    const noise = rng() * 20 - 10;
+    pixels.push([74 + noise * 0.4, 144 + noise, 112 + noise * 0.8]);
+  }
+  return (px, py) => pixels[py * TEX_SIZE + px];
+}
+
+function mosaicFloorTexture(seed: number): PixelFunc {
+  const rng = seededRandom(seed);
+  const pixels: [number, number, number][] = [];
+  // Geometric mosaic pattern
+  const colors: [number, number, number][] = [
+    [192, 168, 120], // tan
+    [170, 140, 100], // brown
+    [200, 180, 140], // light
+    [140, 100, 70],  // dark accent
+  ];
+  for (let i = 0; i < TEX_SIZE * TEX_SIZE; i++) {
+    const px = i % TEX_SIZE;
+    const py = Math.floor(i / TEX_SIZE);
+    // Diamond pattern
+    const pattern = ((px + py) % 4 + (Math.abs(px - py)) % 3) % 4;
+    const base = colors[pattern];
+    const noise = rng() * 10 - 5;
+    pixels.push([base[0] + noise, base[1] + noise, base[2] + noise]);
+  }
+  return (px, py) => pixels[py * TEX_SIZE + px];
+}
+
+function columnBaseTexture(seed: number): PixelFunc {
+  const rng = seededRandom(seed);
+  const pixels: [number, number, number][] = [];
+  // Wider marble with carved grooves
+  for (let i = 0; i < TEX_SIZE * TEX_SIZE; i++) {
+    const py = Math.floor(i / TEX_SIZE);
+    const noise = rng() * 10 - 5;
+    // Horizontal grooves
+    const groove = py === 2 || py === 13 ? -25 : py === 3 || py === 12 ? -12 : 0;
+    const base = 220 + noise + groove;
+    pixels.push([base, base - 4, base - 8]);
+  }
+  return (px, py) => pixels[py * TEX_SIZE + px];
+}
+
 // Block face key: "blockType_face"
 type FaceKey = string;
 
@@ -848,6 +971,31 @@ function getTextureFunc(block: BlockType, face: 'top' | 'side' | 'bottom'): Pixe
       return acaciaWoodSide(seed);
     case BlockType.ACACIA_LEAVES:
       return acaciaLeavesTexture(seed);
+    // Ancient Greece
+    case BlockType.MARBLE:
+    case BlockType.MARBLE_SLAB:
+    case BlockType.MARBLE_COLUMN:
+    case BlockType.MARBLE_STAIRS:
+    case BlockType.MARBLE_STAIRS_N:
+    case BlockType.MARBLE_STAIRS_S:
+    case BlockType.MARBLE_STAIRS_E:
+    case BlockType.MARBLE_STAIRS_W:
+      return marbleTexture(seed);
+    case BlockType.TERRACOTTA:
+      return terracottaTexture(seed);
+    case BlockType.LIMESTONE:
+      return limestoneTexture(seed);
+    case BlockType.OLIVE_WOOD:
+      if (face === 'top' || face === 'bottom') return woodTop(seed);
+      return oliveWoodSide(seed);
+    case BlockType.OLIVE_LEAVES:
+      return oliveLeavesTexture(seed);
+    case BlockType.COPPER_ROOF:
+      return copperRoofTexture(seed);
+    case BlockType.MOSAIC_FLOOR:
+      return mosaicFloorTexture(seed);
+    case BlockType.COLUMN_BASE:
+      return columnBaseTexture(seed);
     default:
       // Fallback: solid color from block definition
       return solidWithNoise(128, 128, 128, 0.06, seed);
@@ -879,6 +1027,11 @@ function buildAtlas(): { texture: THREE.Texture; map: Map<FaceKey, AtlasEntry> }
     BlockType.BASALT, BlockType.OBSIDIAN, BlockType.MAGMA,
     BlockType.CHERRY_WOOD, BlockType.CHERRY_LEAVES,
     BlockType.ACACIA_WOOD, BlockType.ACACIA_LEAVES,
+    // Ancient Greece
+    BlockType.MARBLE, BlockType.MARBLE_COLUMN, BlockType.MARBLE_SLAB,
+    BlockType.TERRACOTTA, BlockType.LIMESTONE, BlockType.OLIVE_WOOD, BlockType.OLIVE_LEAVES,
+    BlockType.MARBLE_STAIRS_N, BlockType.MARBLE_STAIRS_S, BlockType.MARBLE_STAIRS_E, BlockType.MARBLE_STAIRS_W,
+    BlockType.COPPER_ROOF, BlockType.MOSAIC_FLOOR, BlockType.COLUMN_BASE,
   ];
 
   const faces: ('top' | 'side' | 'bottom')[] = ['top', 'side', 'bottom'];

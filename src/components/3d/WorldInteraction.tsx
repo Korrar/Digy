@@ -3,7 +3,9 @@ import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
-import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, isLever, isButton, isCable, isPiston, isPistonHead, isPressurePlate, isRepeater, isRepeaterItem, isComparator, isComparatorItem, getOrientedRepeater, getOrientedComparator, needsSupportFromBelow, isSpikeTrap, isArrowTrap } from '../../core/voxel/BlockRegistry';
+import { BlockType, getBlock, isSolid, isToolPickaxe, isFood, isItemType, isStairsItem, getOrientedStairs, isDoorItem, isDoor, isFlat, isChest, isLever, isButton, isCable, isPiston, isPistonHead, isPressurePlate, isRepeater, isRepeaterItem, isComparator, isComparatorItem, getOrientedRepeater, getOrientedComparator, needsSupportFromBelow, isSpikeTrap, isArrowTrap, isMagicItem } from '../../core/voxel/BlockRegistry';
+import { useNPCStore } from '../../stores/npcStore';
+import { useDestructionStore } from '../../stores/destructionStore';
 import { computeRailBlockType, shouldRailUpdate } from '../../core/voxel/ChunkMesher';
 import { supportsSubVoxels } from '../../core/voxel/VoxelMining';
 import { soundManager } from '../../systems/SoundManager';
@@ -229,6 +231,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
             }
             // XP for mining
             useCombatStore.getState().addXp(1);
+            useDestructionStore.getState().recordBlockDestroyed();
             // Play break sound and emit burst particles
             soundManager.playBreakSound(result.blockType);
             spawnParticles(result.blockPos, result.blockType, true);
@@ -548,6 +551,134 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
           removeBlock(selectedIdx, 1);
           soundManager.playPlaceSound();
         }
+        return;
+      }
+
+      // === MAGIC ITEM USAGE ===
+      if (isMagicItem(selectedBlock)) {
+        const hit = raycast();
+        const hitPos: [number, number, number] = hit ? hit.blockPos : [
+          Math.floor(camera.position.x + camera.getWorldDirection(new THREE.Vector3()).x * 5),
+          Math.floor(camera.position.y),
+          Math.floor(camera.position.z + camera.getWorldDirection(new THREE.Vector3()).z * 5),
+        ];
+        const [tx, ty, tz] = hitPos;
+        const npcStore = useNPCStore.getState();
+        const destruction = useDestructionStore.getState();
+
+        switch (selectedBlock) {
+          case BlockType.ZEUS_LIGHTNING: {
+            // Lightning strike: destroy blocks in radius 2, terrify NPCs
+            for (let dx = -2; dx <= 2; dx++) {
+              for (let dz = -2; dz <= 2; dz++) {
+                for (let dy = 0; dy <= 3; dy++) {
+                  if (dx * dx + dz * dz <= 4) {
+                    const bt = getBlockW(tx + dx, ty + dy, tz + dz);
+                    if (bt !== BlockType.AIR && bt !== BlockType.WATER) {
+                      setBlockW(tx + dx, ty + dy, tz + dz, BlockType.AIR);
+                      destruction.recordBlockDestroyed();
+                    }
+                  }
+                }
+              }
+            }
+            npcStore.applyFearNearby(tx, ty, tz, 15, 0.8);
+            destruction.recordLightningStrike();
+            soundManager.playExplosionSound();
+            break;
+          }
+          case BlockType.POSEIDON_TRIDENT: {
+            // Flood: fill area with water in radius 3
+            for (let dx = -3; dx <= 3; dx++) {
+              for (let dz = -3; dz <= 3; dz++) {
+                if (dx * dx + dz * dz <= 9) {
+                  const bt = getBlockW(tx + dx, ty, tz + dz);
+                  if (bt === BlockType.AIR) {
+                    setBlockW(tx + dx, ty, tz + dz, BlockType.WATER);
+                  }
+                }
+              }
+            }
+            npcStore.applyFearNearby(tx, ty, tz, 12, 0.6);
+            destruction.recordFlood();
+            soundManager.playPlaceSound();
+            break;
+          }
+          case BlockType.HADES_STAFF: {
+            // Death wave: destroy blocks in a line forward
+            const dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+            for (let i = 1; i <= 8; i++) {
+              const bx = Math.floor(tx + dir.x * i);
+              const bz = Math.floor(tz + dir.z * i);
+              for (let dy = -1; dy <= 1; dy++) {
+                const bt = getBlockW(bx, ty + dy, bz);
+                if (bt !== BlockType.AIR && bt !== BlockType.WATER) {
+                  setBlockW(bx, ty + dy, bz, BlockType.AIR);
+                  destruction.recordBlockDestroyed();
+                }
+              }
+            }
+            npcStore.applyFearNearby(tx, ty, tz, 10, 0.7);
+            soundManager.playExplosionSound();
+            break;
+          }
+          case BlockType.MEDUSA_GAZE: {
+            // Petrify: freeze all NPCs in radius 8
+            const npcs = npcStore.npcs;
+            for (const npc of npcs) {
+              const dx = npc.position[0] - tx;
+              const dz = npc.position[2] - tz;
+              if (dx * dx + dz * dz < 64) {
+                npcStore.petrifyNPC(npc.id, 10);
+                destruction.recordPetrification();
+              }
+            }
+            soundManager.playPlaceSound();
+            break;
+          }
+          case BlockType.PANDORA_BOX: {
+            // Chaos: random explosions in radius 5
+            for (let i = 0; i < 6; i++) {
+              const ex = tx + Math.floor(Math.random() * 10 - 5);
+              const ez = tz + Math.floor(Math.random() * 10 - 5);
+              for (let dx = -1; dx <= 1; dx++) {
+                for (let dz = -1; dz <= 1; dz++) {
+                  for (let dy = -1; dy <= 2; dy++) {
+                    const bt = getBlockW(ex + dx, ty + dy, ez + dz);
+                    if (bt !== BlockType.AIR && bt !== BlockType.WATER) {
+                      setBlockW(ex + dx, ty + dy, ez + dz, BlockType.AIR);
+                      destruction.recordBlockDestroyed();
+                    }
+                  }
+                }
+              }
+            }
+            npcStore.applyFearNearby(tx, ty, tz, 20, 1.0);
+            destruction.recordExplosion();
+            soundManager.playExplosionSound();
+            break;
+          }
+          case BlockType.AEOLUS_WIND: {
+            // Wind blast: push all NPCs away
+            const npcs = npcStore.npcs;
+            for (const npc of npcs) {
+              const dx = npc.position[0] - tx;
+              const dz = npc.position[2] - tz;
+              const dist = Math.sqrt(dx * dx + dz * dz);
+              if (dist < 12 && dist > 0.1) {
+                const force = 8 * (1 - dist / 12);
+                npcStore.applyKnockback(npc.id, (dx / dist) * force, 4, (dz / dist) * force);
+                destruction.recordNPCTerrorized();
+              }
+            }
+            destruction.recordWindBlast();
+            soundManager.playPlaceSound();
+            break;
+          }
+        }
+        // Consume durability (reduce stack by 1)
+        removeBlock(selectedIdx, 1);
         return;
       }
 

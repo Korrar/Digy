@@ -42,6 +42,17 @@ const blockSoundMap: Partial<Record<BlockType, SoundCategory>> = {
   [BlockType.GOLD_ORE]: 'metal',
   [BlockType.DIAMOND_ORE]: 'stone',
   [BlockType.STONE_BRICKS]: 'stone',
+  // Ancient Greece blocks
+  [BlockType.MARBLE]: 'stone',
+  [BlockType.MARBLE_COLUMN]: 'stone',
+  [BlockType.MARBLE_SLAB]: 'stone',
+  [BlockType.TERRACOTTA]: 'stone',
+  [BlockType.LIMESTONE]: 'stone',
+  [BlockType.OLIVE_WOOD]: 'wood',
+  [BlockType.OLIVE_LEAVES]: 'grass' as SoundCategory,
+  [BlockType.COPPER_ROOF]: 'metal',
+  [BlockType.MOSAIC_FLOOR]: 'stone',
+  [BlockType.COLUMN_BASE]: 'stone',
 };
 
 // Procedural sound generation using Web Audio API

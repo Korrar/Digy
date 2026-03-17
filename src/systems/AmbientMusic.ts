@@ -162,10 +162,13 @@ class AmbientMusicSystem {
         ];
         break;
       case 'village':
+        // Greek village: Mediterranean ambience with lyre-like tones, cicadas, temple bells
         this.layers = [
-          { type: 'chirp', interval: 4000, lastPlayed: now, params: { freqBase: 1400, freqRange: 600, duration: 0.12, count: 2 } }, // birds
-          { type: 'noise', interval: 7000, lastPlayed: now + 2000, params: { freq: 300, q: 0.2, duration: 2, volume: 0.015 } }, // wind
-          { type: 'tone', interval: 10000, lastPlayed: now + 5000, params: { freq: 440, duration: 0.5, volume: 0.01, type: 'triangle' } }, // bell
+          { type: 'chirp', interval: 5000, lastPlayed: now, params: { freqBase: 1800, freqRange: 400, duration: 0.08, count: 3 } }, // cicadas
+          { type: 'noise', interval: 8000, lastPlayed: now + 2000, params: { freq: 200, q: 0.15, duration: 3, volume: 0.012 } }, // warm Mediterranean breeze
+          { type: 'tone', interval: 12000, lastPlayed: now + 4000, params: { freq: 523, duration: 0.8, volume: 0.008, type: 'triangle' } }, // temple bell (C5)
+          { type: 'chirp', interval: 6000, lastPlayed: now + 3000, params: { freqBase: 900, freqRange: 200, duration: 0.15, count: 4 } }, // lyre-like plucks
+          { type: 'tone', interval: 15000, lastPlayed: now + 7000, params: { freq: 392, duration: 1.2, volume: 0.006, type: 'sine' } }, // distant chant (G4)
         ];
         break;
     }

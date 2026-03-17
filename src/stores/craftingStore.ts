@@ -93,6 +93,23 @@ const ALL_RECIPES: CraftingRecipe[] = [
   { id: 'comparator', name: 'Comparator', ingredients: [{ type: BlockType.STONE, count: 3 }, { type: BlockType.CABLE, count: 2 }, { type: BlockType.TORCH, count: 2 }], result: { type: BlockType.COMPARATOR, count: 1 }, craftTime: 5, category: 'blocks' },
   // Detector Rail
   { id: 'detector_rail', name: 'Detector Rail', ingredients: [{ type: BlockType.IRON_INGOT, count: 3 }, { type: BlockType.COBBLESTONE, count: 1 }], result: { type: BlockType.DETECTOR_RAIL, count: 4 }, craftTime: 8, category: 'blocks' },
+  // Ancient Greece blocks
+  { id: 'marble', name: 'Marble', ingredients: [{ type: BlockType.STONE, count: 4 }, { type: BlockType.SAND, count: 1 }], result: { type: BlockType.MARBLE, count: 4 }, craftTime: 8, category: 'blocks' },
+  { id: 'marble_column', name: 'Marble Column', ingredients: [{ type: BlockType.MARBLE, count: 4 }], result: { type: BlockType.MARBLE_COLUMN, count: 4 }, craftTime: 6, category: 'blocks' },
+  { id: 'marble_slab', name: 'Marble Slab', ingredients: [{ type: BlockType.MARBLE, count: 3 }], result: { type: BlockType.MARBLE_SLAB, count: 6 }, craftTime: 3, category: 'blocks' },
+  { id: 'marble_stairs', name: 'Marble Stairs', ingredients: [{ type: BlockType.MARBLE, count: 6 }], result: { type: BlockType.MARBLE_STAIRS, count: 4 }, craftTime: 5, category: 'blocks' },
+  { id: 'terracotta', name: 'Terracotta', ingredients: [{ type: BlockType.CLAY, count: 4 }, { type: BlockType.COAL, count: 1 }], result: { type: BlockType.TERRACOTTA, count: 4 }, craftTime: 8, category: 'smelting' },
+  { id: 'copper_roof', name: 'Copper Roof', ingredients: [{ type: BlockType.IRON_INGOT, count: 2 }, { type: BlockType.GOLD_INGOT, count: 1 }], result: { type: BlockType.COPPER_ROOF, count: 4 }, craftTime: 10, category: 'blocks' },
+  { id: 'mosaic_floor', name: 'Mosaic Floor', ingredients: [{ type: BlockType.STONE, count: 2 }, { type: BlockType.SAND, count: 2 }], result: { type: BlockType.MOSAIC_FLOOR, count: 4 }, craftTime: 6, category: 'blocks' },
+  { id: 'column_base', name: 'Column Base', ingredients: [{ type: BlockType.MARBLE, count: 3 }], result: { type: BlockType.COLUMN_BASE, count: 2 }, craftTime: 5, category: 'blocks' },
+  { id: 'amphora', name: 'Amphora', ingredients: [{ type: BlockType.CLAY, count: 3 }, { type: BlockType.COAL, count: 1 }], result: { type: BlockType.AMPHORA, count: 2 }, craftTime: 8, category: 'blocks' },
+  // Magic spell items (rare, expensive)
+  { id: 'zeus_lightning', name: 'Zeus Lightning Bolt', ingredients: [{ type: BlockType.GOLD_INGOT, count: 5 }, { type: BlockType.DIAMOND, count: 3 }], result: { type: BlockType.ZEUS_LIGHTNING, count: 1 }, craftTime: 30, category: 'weapons' },
+  { id: 'poseidon_trident', name: 'Poseidon Trident', ingredients: [{ type: BlockType.DIAMOND, count: 3 }, { type: BlockType.IRON_INGOT, count: 5 }], result: { type: BlockType.POSEIDON_TRIDENT, count: 1 }, craftTime: 30, category: 'weapons' },
+  { id: 'hades_staff', name: 'Hades Staff', ingredients: [{ type: BlockType.DIAMOND, count: 2 }, { type: BlockType.COAL, count: 10 }, { type: BlockType.GOLD_INGOT, count: 3 }], result: { type: BlockType.HADES_STAFF, count: 1 }, craftTime: 30, category: 'weapons' },
+  { id: 'medusa_gaze', name: 'Medusa Gaze', ingredients: [{ type: BlockType.DIAMOND, count: 2 }, { type: BlockType.GOLD_INGOT, count: 2 }, { type: BlockType.STONE, count: 5 }], result: { type: BlockType.MEDUSA_GAZE, count: 1 }, craftTime: 25, category: 'weapons' },
+  { id: 'pandora_box', name: 'Pandora\'s Box', ingredients: [{ type: BlockType.DIAMOND, count: 5 }, { type: BlockType.GOLD_INGOT, count: 5 }, { type: BlockType.IRON_INGOT, count: 5 }], result: { type: BlockType.PANDORA_BOX, count: 1 }, craftTime: 45, category: 'weapons' },
+  { id: 'aeolus_wind', name: 'Aeolus Wind', ingredients: [{ type: BlockType.DIAMOND, count: 1 }, { type: BlockType.GOLD_INGOT, count: 3 }], result: { type: BlockType.AEOLUS_WIND, count: 1 }, craftTime: 20, category: 'weapons' },
 ];
 
 export const useCraftingStore = create<CraftingState>((set, get) => ({
