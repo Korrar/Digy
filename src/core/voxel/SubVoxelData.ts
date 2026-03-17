@@ -16,7 +16,7 @@ export type SubVoxelGrid = Uint8Array;
  * Supports coordinates in range [-512, 511] for x/z and [0, 1023] for y.
  */
 function svKey(wx: number, wy: number, wz: number): number {
-  return ((wx + 512) << 20) | ((wy & 0x3FF) << 10) | ((wz + 512) & 0x3FF);
+  return (((wx + 512) & 0x3FF) << 20) | ((wy & 0x3FF) << 10) | ((wz + 512) & 0x3FF);
 }
 
 function svIndex(sx: number, sy: number, sz: number): number {

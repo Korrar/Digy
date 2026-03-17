@@ -1891,7 +1891,7 @@ export function buildChunkMesh(
 
             // Scale UVs to match the merged quad size for tiling
             const su = face.uvs[ci][0] * w;
-            const sv = face.uvs[ci][1] * (sliceAxis === 'y' ? h : (dy !== 0 ? h : h));
+            const sv = face.uvs[ci][1] * h;
             uvs.push(
               atlas.u0 + su * (atlas.u1 - atlas.u0),
               atlas.v0 + sv * (atlas.v1 - atlas.v0)

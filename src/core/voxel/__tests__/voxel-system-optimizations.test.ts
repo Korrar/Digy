@@ -143,6 +143,137 @@ describe('VoxelSystemOptimizations', () => {
     });
   });
 
+  describe('Greedy meshing geometry correctness', () => {
+    it('should produce a single merged quad for a flat uniform layer (top face)', () => {
+      const chunk = new ChunkData(0, 0);
+      // Fill a 4x4 layer of stone at y=0
+      for (let x = 0; x < 4; x++) {
+        for (let z = 0; z < 4; z++) {
+          chunk.setBlock(x, 0, z, BlockType.STONE);
+        }
+      }
+
+      const geometry = buildChunkMesh(chunk);
+      const posAttr = geometry.getAttribute('position');
+      const normAttr = geometry.getAttribute('normal');
+
+      // Collect top-face vertices (normal = [0, 1, 0])
+      const topVerts: [number, number, number][] = [];
+      for (let i = 0; i < posAttr.count; i++) {
+        if (normAttr.getY(i) === 1) {
+          topVerts.push([posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i)]);
+        }
+      }
+
+      // Greedy meshing should merge all 16 top faces into 1 quad = 4 vertices
+      expect(topVerts.length).toBe(4);
+
+      // The quad should span (0,1,0) to (4,1,4)
+      const xs = topVerts.map(v => v[0]).sort((a, b) => a - b);
+      const zs = topVerts.map(v => v[2]).sort((a, b) => a - b);
+      expect(xs[0]).toBe(0);
+      expect(xs[3]).toBe(4);
+      expect(zs[0]).toBe(0);
+      expect(zs[3]).toBe(4);
+      // All Y should be 1 (top of y=0 blocks)
+      for (const v of topVerts) {
+        expect(v[1]).toBe(1);
+      }
+    });
+
+    it('should produce correct side faces at chunk boundaries', () => {
+      const chunk = new ChunkData(0, 0);
+      // Place a single row along the edge
+      for (let x = 0; x < CHUNK_SIZE; x++) {
+        chunk.setBlock(x, 0, 0, BlockType.STONE);
+      }
+
+      const geometry = buildChunkMesh(chunk);
+      const normAttr = geometry.getAttribute('normal');
+      const posAttr = geometry.getAttribute('position');
+
+      // Should have faces facing -Z (back face at z=0)
+      let hasBackFace = false;
+      for (let i = 0; i < normAttr.count; i++) {
+        if (normAttr.getZ(i) === -1) {
+          hasBackFace = true;
+          break;
+        }
+      }
+      expect(hasBackFace).toBe(true);
+
+      // Should have faces facing +Z (front face at z=1)
+      let hasFrontFace = false;
+      for (let i = 0; i < normAttr.count; i++) {
+        if (normAttr.getZ(i) === 1) {
+          hasFrontFace = true;
+          break;
+        }
+      }
+      expect(hasFrontFace).toBe(true);
+    });
+
+    it('should produce correct geometry for a vertical wall', () => {
+      const chunk = new ChunkData(0, 0);
+      // 4-wide, 4-tall wall
+      for (let x = 0; x < 4; x++) {
+        for (let y = 0; y < 4; y++) {
+          chunk.setBlock(x, y, 5, BlockType.STONE);
+        }
+      }
+
+      const geometry = buildChunkMesh(chunk);
+      const normAttr = geometry.getAttribute('normal');
+      const posAttr = geometry.getAttribute('position');
+
+      // Collect +Z face vertices
+      const frontVerts: [number, number, number][] = [];
+      for (let i = 0; i < posAttr.count; i++) {
+        if (normAttr.getZ(i) === 1) {
+          frontVerts.push([posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i)]);
+        }
+      }
+
+      // Should be merged into 1 quad = 4 vertices
+      expect(frontVerts.length).toBe(4);
+
+      // The quad should span X: 0-4, Y: 0-4, Z: 6
+      const xs = frontVerts.map(v => v[0]).sort((a, b) => a - b);
+      const ys = frontVerts.map(v => v[1]).sort((a, b) => a - b);
+      expect(xs[0]).toBe(0);
+      expect(xs[3]).toBe(4);
+      expect(ys[0]).toBe(0);
+      expect(ys[3]).toBe(4);
+      // All Z should be 6 (front of z=5 blocks)
+      for (const v of frontVerts) {
+        expect(v[2]).toBe(6);
+      }
+    });
+  });
+
+  describe('svKey overflow protection', () => {
+    it('should handle coordinates near range limits without collision', () => {
+      const store = new SubVoxelStore();
+      store.initializeBlock(0, 0, 0);
+      store.initializeBlock(0, 31, 0);
+      store.initializeBlock(15, 0, 15);
+      store.initializeBlock(15, 31, 15);
+
+      store.removeSubVoxel(0, 0, 0, 0, 0, 0);
+      expect(store.countSolid(0, 0, 0)).toBe(63);
+      expect(store.countSolid(0, 31, 0)).toBe(64);
+      expect(store.countSolid(15, 0, 15)).toBe(64);
+      expect(store.countSolid(15, 31, 15)).toBe(64);
+    });
+
+    it('should mask wx to prevent overflow with large coordinates', () => {
+      const store = new SubVoxelStore();
+      // These coords are outside documented range but should not crash
+      store.initializeBlock(600, 0, 0);
+      expect(store.hasGrid(600, 0, 0)).toBe(true);
+    });
+  });
+
   describe('Chunk rebuild deduplication', () => {
     it('should rebuild chunk mesh correctly after block change', () => {
       const chunk = new ChunkData(0, 0);
