@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useWorldStore } from '../../stores/worldStore';
 import { BlockType, getBlock, isSolid, needsSupportFromBelow } from '../../core/voxel/BlockRegistry';
+import { supportsSubVoxels } from '../../core/voxel/VoxelMining';
 import { chunkKey } from '../../core/voxel/ChunkData';
 import { CHUNK_SIZE, CHUNK_HEIGHT } from '../../utils/constants';
 import { soundManager } from '../../systems/SoundManager';
@@ -172,6 +173,13 @@ function explodeTNT(tnt: TNTEntity, store: ReturnType<typeof useWorldStore.getSt
         if (block === BlockType.AIR) continue;
         const def = getBlock(block);
         if (def.hardness === Infinity || def.isTNT) continue;
+
+        // Special blocks (rails, torches, doors, etc.) don't support sub-voxels
+        // — destroy them entirely instead of partial damage
+        if (!supportsSubVoxels(block)) {
+          store.setBlock(bx, by, bz, BlockType.AIR);
+          continue;
+        }
 
         // Get chunk and apply sub-voxel damage
         const chunkCx = Math.floor(bx / CHUNK_SIZE);

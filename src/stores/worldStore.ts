@@ -161,11 +161,8 @@ export const useWorldStore = create<WorldState>((set, get) => ({
 
       // Check structural stability - collapse if too damaged
       if (!checkBlockStability(entry.data.subVoxels, lx, wy, lz)) {
-        // Remove all remaining sub-voxels for this block
-        for (let sy = 0; sy < 4; sy++)
-          for (let sz = 0; sz < 4; sz++)
-            for (let sx = 0; sx < 4; sx++)
-              entry.data.subVoxels.setSubVoxel(lx, wy, lz, sx, sy, sz, 0);
+        // Efficiently clear the sub-voxel grid for this block
+        entry.data.subVoxels.clearBlock(lx, wy, lz);
         entry.data.setBlock(lx, wy, lz, BlockType.AIR);
         result.blockDestroyed = true;
       }

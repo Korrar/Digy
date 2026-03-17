@@ -228,6 +228,11 @@ export class SubVoxelStore {
     return 1 - solid / GRID_SIZE;
   }
 
+  /** Remove the sub-voxel grid for a single block (used when collapsing unstable blocks). */
+  clearBlock(wx: number, wy: number, wz: number): void {
+    this.grids.delete(svKey(wx, wy, wz));
+  }
+
   /** Clear all grids. */
   clear(): void {
     this.grids.clear();

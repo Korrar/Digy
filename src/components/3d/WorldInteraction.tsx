@@ -129,7 +129,7 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
           }
           miningTimeRef.current += delta * toolMultiplier;
           const hardness = useDevStore.getState().fastMining ? 0.05 : def.hardness;
-          const progress = Math.min(miningTimeRef.current / Math.max(hardness, 0.05), 1);
+          let progress = Math.min(miningTimeRef.current / Math.max(hardness, 0.05), 1);
           setMiningProgress(progress);
 
           // Play dig sound and damage sub-voxels periodically while mining
@@ -146,8 +146,12 @@ export function WorldInteraction({ mode }: WorldInteractionProps) {
               // Spawn small particles from hit point
               spawnSubVoxelParticles(result.hitPoint, result.blockType, 3);
               if (damageResult.blockDestroyed) {
-                // Block fully mined via sub-voxels - trigger full destruction
-                miningTimeRef.current = hardness; // force progress to 1
+                // Block fully mined via sub-voxels - force progress to 1 immediately
+                // so the destruction cleanup runs THIS frame (not next)
+                miningTimeRef.current = hardness;
+                setMiningProgress(1);
+                // Skip to destruction handling below by updating progress locally
+                progress = 1;
               }
             }
           }

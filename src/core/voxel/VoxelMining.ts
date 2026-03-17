@@ -92,6 +92,11 @@ export function mineSubVoxels(
 
   if (radius === 0) {
     // Single sub-voxel removal (bare hand or non-tool)
+    // Check if sub-voxel is already empty before attempting removal
+    const wasSolid = store.getSubVoxel(blockX, blockY, blockZ, sx, sy, sz) !== 0;
+    if (!wasSolid) {
+      return { removed: 0, blockDestroyed: false };
+    }
     const destroyed = store.removeSubVoxel(blockX, blockY, blockZ, sx, sy, sz);
     return { removed: 1, blockDestroyed: destroyed };
   }
