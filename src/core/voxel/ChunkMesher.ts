@@ -1889,9 +1889,10 @@ export function buildChunkMesh(
             const brightness = faceBrightness * ao;
             colors.push(brightness, brightness, brightness);
 
-            // Scale UVs to match the merged quad size for tiling
-            const su = face.uvs[ci][0] * w;
-            const sv = face.uvs[ci][1] * h;
+            // UVs stay within atlas sub-rectangle (no scaling by w/h —
+            // atlas uses ClampToEdge, so scaling would stretch instead of tile)
+            const su = face.uvs[ci][0];
+            const sv = face.uvs[ci][1];
             uvs.push(
               atlas.u0 + su * (atlas.u1 - atlas.u0),
               atlas.v0 + sv * (atlas.v1 - atlas.v0)
