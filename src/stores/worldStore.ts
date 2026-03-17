@@ -29,6 +29,18 @@ interface WorldState {
   getChunkEntries: () => [string, ChunkEntry][];
 }
 
+function makeNeighborBlockFn(chunks: Map<string, ChunkEntry>) {
+  return (wx: number, wy: number, wz: number): BlockType => {
+    const ncx = Math.floor(wx / CHUNK_SIZE);
+    const ncz = Math.floor(wz / CHUNK_SIZE);
+    const neighbor = chunks.get(chunkKey(ncx, ncz));
+    if (!neighbor) return BlockType.AIR;
+    const lx = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+    const lz = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+    return neighbor.data.getBlock(lx, wy, lz);
+  };
+}
+
 export const useWorldStore = create<WorldState>((set, get) => ({
   chunks: new Map(),
   biomeType: null,
@@ -48,34 +60,15 @@ export const useWorldStore = create<WorldState>((set, get) => ({
         biome.generate(chunk);
         placeStructures(chunk, biomeType, biome.noiseGen);
 
-        const getNeighborBlock = (wx: number, wy: number, wz: number): BlockType => {
-          const ncx = Math.floor(wx / CHUNK_SIZE);
-          const ncz = Math.floor(wz / CHUNK_SIZE);
-          const key = chunkKey(ncx, ncz);
-          const neighbor = chunks.get(key);
-          if (!neighbor) return BlockType.AIR;
-          const lx = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-          const lz = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-          return neighbor.data.getBlock(lx, wy, lz);
-        };
-
+        const getNeighborBlock = makeNeighborBlockFn(chunks);
         const geometry = buildChunkMesh(chunk, getNeighborBlock);
         chunks.set(chunkKey(cx, cz), { data: chunk, geometry, dirty: false });
       }
     }
 
     // Rebuild border meshes with neighbor info
+    const getNeighborBlock = makeNeighborBlockFn(chunks);
     for (const [key, entry] of chunks) {
-      const getNeighborBlock = (wx: number, wy: number, wz: number): BlockType => {
-        const ncx = Math.floor(wx / CHUNK_SIZE);
-        const ncz = Math.floor(wz / CHUNK_SIZE);
-        const nkey = chunkKey(ncx, ncz);
-        const neighbor = chunks.get(nkey);
-        if (!neighbor) return BlockType.AIR;
-        const lx = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-        const lz = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-        return neighbor.data.getBlock(lx, wy, lz);
-      };
       entry.geometry.dispose();
       entry.geometry = buildChunkMesh(entry.data, getNeighborBlock);
       chunks.set(key, entry);
@@ -105,30 +98,31 @@ export const useWorldStore = create<WorldState>((set, get) => ({
     entry.data.setBlock(lx, wy, lz, type);
     entry.dirty = true;
 
-    // Rebuild this chunk and neighbors if on edge
-    get().rebuildChunkMesh(cx, cz);
-    if (lx === 0) get().rebuildChunkMesh(cx - 1, cz);
-    if (lx === CHUNK_SIZE - 1) get().rebuildChunkMesh(cx + 1, cz);
-    if (lz === 0) get().rebuildChunkMesh(cx, cz - 1);
-    if (lz === CHUNK_SIZE - 1) get().rebuildChunkMesh(cx, cz + 1);
+    // Collect chunks to rebuild (deduplicated via Set)
+    const toRebuild = new Set<string>();
+    toRebuild.add(chunkKey(cx, cz));
+    if (lx === 0) toRebuild.add(chunkKey(cx - 1, cz));
+    if (lx === CHUNK_SIZE - 1) toRebuild.add(chunkKey(cx + 1, cz));
+    if (lz === 0) toRebuild.add(chunkKey(cx, cz - 1));
+    if (lz === CHUNK_SIZE - 1) toRebuild.add(chunkKey(cx, cz + 1));
 
     // When placing or breaking rails, also rebuild chunks containing adjacent rails
-    // so they can update their shape (curves, T-junctions)
     const getBlock = get().getBlock;
     const hasAdjacentRail = isFlat(getBlock(wx+1, wy, wz)) || isFlat(getBlock(wx-1, wy, wz)) ||
       isFlat(getBlock(wx, wy, wz+1)) || isFlat(getBlock(wx, wy, wz-1));
     if (isFlat(type) || hasAdjacentRail) {
       const neighbors = [[wx-1, wz], [wx+1, wz], [wx, wz-1], [wx, wz+1]];
-      const rebuilt = new Set([chunkKey(cx, cz)]);
       for (const [nx, nz] of neighbors) {
         const ncx = Math.floor(nx / CHUNK_SIZE);
         const ncz = Math.floor(nz / CHUNK_SIZE);
-        const key = chunkKey(ncx, ncz);
-        if (!rebuilt.has(key)) {
-          rebuilt.add(key);
-          get().rebuildChunkMesh(ncx, ncz);
-        }
+        toRebuild.add(chunkKey(ncx, ncz));
       }
+    }
+
+    // Rebuild all collected chunks (deduplicated)
+    for (const key of toRebuild) {
+      const [rcx, rcz] = key.split(',').map(Number);
+      get().rebuildChunkMesh(rcx, rcz);
     }
 
     // Force re-render
@@ -161,23 +155,26 @@ export const useWorldStore = create<WorldState>((set, get) => ({
 
       // Check structural stability - collapse if too damaged
       if (!checkBlockStability(entry.data.subVoxels, lx, wy, lz)) {
-        // Remove all remaining sub-voxels for this block
-        for (let sy = 0; sy < 4; sy++)
-          for (let sz = 0; sz < 4; sz++)
-            for (let sx = 0; sx < 4; sx++)
-              entry.data.subVoxels.setSubVoxel(lx, wy, lz, sx, sy, sz, 0);
+        // Efficiently clear the sub-voxel grid for this block
+        entry.data.subVoxels.clearBlock(lx, wy, lz);
         entry.data.setBlock(lx, wy, lz, BlockType.AIR);
         result.blockDestroyed = true;
       }
     }
 
-    // Rebuild chunk mesh to reflect sub-voxel changes
+    // Rebuild chunk mesh - collect and deduplicate
     entry.dirty = true;
-    get().rebuildChunkMesh(cx, cz);
-    if (lx === 0) get().rebuildChunkMesh(cx - 1, cz);
-    if (lx === CHUNK_SIZE - 1) get().rebuildChunkMesh(cx + 1, cz);
-    if (lz === 0) get().rebuildChunkMesh(cx, cz - 1);
-    if (lz === CHUNK_SIZE - 1) get().rebuildChunkMesh(cx, cz + 1);
+    const toRebuild = new Set<string>();
+    toRebuild.add(chunkKey(cx, cz));
+    if (lx === 0) toRebuild.add(chunkKey(cx - 1, cz));
+    if (lx === CHUNK_SIZE - 1) toRebuild.add(chunkKey(cx + 1, cz));
+    if (lz === 0) toRebuild.add(chunkKey(cx, cz - 1));
+    if (lz === CHUNK_SIZE - 1) toRebuild.add(chunkKey(cx, cz + 1));
+
+    for (const key of toRebuild) {
+      const [rcx, rcz] = key.split(',').map(Number);
+      get().rebuildChunkMesh(rcx, rcz);
+    }
 
     set({ chunks: new Map(get().chunks) });
 
@@ -189,15 +186,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
     const entry = state.chunks.get(chunkKey(cx, cz));
     if (!entry) return;
 
-    const getNeighborBlock = (wx: number, wy: number, wz: number): BlockType => {
-      const ncx = Math.floor(wx / CHUNK_SIZE);
-      const ncz = Math.floor(wz / CHUNK_SIZE);
-      const neighbor = state.chunks.get(chunkKey(ncx, ncz));
-      if (!neighbor) return BlockType.AIR;
-      const lx = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-      const lz = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-      return neighbor.data.getBlock(lx, wy, lz);
-    };
+    const getNeighborBlock = makeNeighborBlockFn(state.chunks);
 
     entry.geometry.dispose();
     entry.geometry = buildChunkMesh(entry.data, getNeighborBlock);

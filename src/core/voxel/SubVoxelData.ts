@@ -11,16 +11,41 @@ const GRID_SIZE = SUB_VOXEL_RES * SUB_VOXEL_RES * SUB_VOXEL_RES; // 64
 
 export type SubVoxelGrid = Uint8Array;
 
-function svKey(wx: number, wy: number, wz: number): string {
-  return `${wx},${wy},${wz}`;
+/**
+ * Integer hash key for block coordinates. Uses bit packing for fast, allocation-free lookups.
+ * Supports coordinates in range [-512, 511] for x/z and [0, 1023] for y.
+ */
+function svKey(wx: number, wy: number, wz: number): number {
+  return (((wx + 512) & 0x3FF) << 20) | ((wy & 0x3FF) << 10) | ((wz + 512) & 0x3FF);
 }
 
 function svIndex(sx: number, sy: number, sz: number): number {
   return sy * SUB_VOXEL_RES * SUB_VOXEL_RES + sz * SUB_VOXEL_RES + sx;
 }
 
+/** Object pool for SubVoxelGrid arrays to reduce GC pressure */
+const gridPool: SubVoxelGrid[] = [];
+const MAX_POOL_SIZE = 64;
+
+function allocGrid(): SubVoxelGrid {
+  const grid = gridPool.pop();
+  if (grid) {
+    grid.fill(1);
+    return grid;
+  }
+  const newGrid = new Uint8Array(GRID_SIZE);
+  newGrid.fill(1);
+  return newGrid;
+}
+
+function releaseGrid(grid: SubVoxelGrid): void {
+  if (gridPool.length < MAX_POOL_SIZE) {
+    gridPool.push(grid);
+  }
+}
+
 export class SubVoxelStore {
-  private grids: Map<string, SubVoxelGrid> = new Map();
+  private grids: Map<number, SubVoxelGrid> = new Map();
 
   /** Check if a block has an allocated sub-voxel grid (i.e. has been damaged) */
   hasGrid(wx: number, wy: number, wz: number): boolean {
@@ -37,8 +62,7 @@ export class SubVoxelStore {
     const key = svKey(wx, wy, wz);
     let grid = this.grids.get(key);
     if (!grid) {
-      grid = new Uint8Array(GRID_SIZE);
-      grid.fill(1); // all solid
+      grid = allocGrid();
       this.grids.set(key, grid);
     }
     return grid;
@@ -56,8 +80,7 @@ export class SubVoxelStore {
     const key = svKey(wx, wy, wz);
     let grid = this.grids.get(key);
     if (!grid) {
-      grid = new Uint8Array(GRID_SIZE);
-      grid.fill(1);
+      grid = allocGrid();
       this.grids.set(key, grid);
     }
     grid[svIndex(sx, sy, sz)] = value;
@@ -65,6 +88,7 @@ export class SubVoxelStore {
     // Cleanup: remove grid if block is fully destroyed
     if (value === 0 && this.countSolidGrid(grid) === 0) {
       this.grids.delete(key);
+      releaseGrid(grid);
     }
   }
 
@@ -76,8 +100,7 @@ export class SubVoxelStore {
     const key = svKey(wx, wy, wz);
     let grid = this.grids.get(key);
     if (!grid) {
-      grid = new Uint8Array(GRID_SIZE);
-      grid.fill(1);
+      grid = allocGrid();
       this.grids.set(key, grid);
     }
     grid[svIndex(sx, sy, sz)] = 0;
@@ -85,6 +108,7 @@ export class SubVoxelStore {
     const solid = this.countSolidGrid(grid);
     if (solid === 0) {
       this.grids.delete(key);
+      releaseGrid(grid);
       return true;
     }
     return false;
@@ -103,8 +127,7 @@ export class SubVoxelStore {
     const key = svKey(wx, wy, wz);
     let grid = this.grids.get(key);
     if (!grid) {
-      grid = new Uint8Array(GRID_SIZE);
-      grid.fill(1);
+      grid = allocGrid();
       this.grids.set(key, grid);
     }
 
@@ -130,6 +153,7 @@ export class SubVoxelStore {
 
     if (this.countSolidGrid(grid) === 0) {
       this.grids.delete(key);
+      releaseGrid(grid);
     }
 
     return removed;
@@ -161,8 +185,7 @@ export class SubVoxelStore {
           const key = svKey(bx, by, bz);
           let grid = this.grids.get(key);
           if (!grid) {
-            grid = new Uint8Array(GRID_SIZE);
-            grid.fill(1);
+            grid = allocGrid();
             this.grids.set(key, grid);
           }
 
@@ -193,12 +216,14 @@ export class SubVoxelStore {
           if (count > 0) {
             if (this.countSolidGrid(grid) === 0) {
               this.grids.delete(key);
+              releaseGrid(grid);
             }
             results.push({ wx: bx, wy: by, wz: bz, count });
           } else {
             // No sub-voxels removed in this block - clean up if we allocated unnecessarily
             if (this.countSolidGrid(grid) === GRID_SIZE) {
               this.grids.delete(key);
+              releaseGrid(grid);
             }
           }
         }
@@ -226,6 +251,16 @@ export class SubVoxelStore {
     if (!grid) return 0;
     const solid = this.countSolidGrid(grid);
     return 1 - solid / GRID_SIZE;
+  }
+
+  /** Remove the sub-voxel grid for a single block (used when collapsing unstable blocks). */
+  clearBlock(wx: number, wy: number, wz: number): void {
+    const key = svKey(wx, wy, wz);
+    const grid = this.grids.get(key);
+    if (grid) {
+      this.grids.delete(key);
+      releaseGrid(grid);
+    }
   }
 
   /** Clear all grids. */
