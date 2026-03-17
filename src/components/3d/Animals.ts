@@ -81,11 +81,11 @@ const BIOME_ANIMALS: Record<string, AnimalConfig> = {
     headOffset: [0, 0.02, 0.18], legLength: 0.05,
   },
   village: {
-    // Chickens - small, white body, red head crest
-    count: 5, bodyColor: 0xf0e8d8, headColor: 0xcc3333, legColor: 0xcc8833,
-    size: 0.25, speed: 0.35, bounceHeight: 0.1,
-    bodyScale: [0.3, 0.25, 0.4], headScale: [0.18, 0.2, 0.18],
-    headOffset: [0, 0.15, 0.25], legLength: 0.12,
+    // Greek goats - white/tan, sturdy, medium size
+    count: 6, bodyColor: 0xe8dcc8, headColor: 0xd4c4a8, legColor: 0x8b7355,
+    size: 0.4, speed: 0.35, bounceHeight: 0.08,
+    bodyScale: [0.35, 0.4, 0.65], headScale: [0.22, 0.28, 0.25],
+    headOffset: [0, 0.15, 0.4], legLength: 0.3,
   },
 };
 
@@ -280,6 +280,7 @@ export function getAnimalName(biomeType: string): string {
     case 'mountains': return 'Kozy';
     case 'swamp': return 'Żaby';
     case 'tundra': return 'Lisy polarne';
+    case 'village': return 'Kozy';
     default: return '';
   }
 }

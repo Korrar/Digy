@@ -5,6 +5,7 @@ import { useCraftingStore } from '../../stores/craftingStore';
 import { DevTools, DevToolsToggle } from './DevTools';
 import { ambientMusic } from '../../systems/AmbientMusic';
 import { IconSpeakerOn, IconSpeakerOff, IconWrench, IconBackpack, IconClose, IconSun, IconMoon, IconSunrise, IconSunset } from './Icons';
+import { useDestructionStore } from '../../stores/destructionStore';
 
 interface HUDProps {
   timeIndicator?: string;
@@ -139,6 +140,9 @@ export function HUD({ timeIndicator, onPlateToggle, placementMode, showSaveIndic
         </div>
       )}
 
+      {/* Destruction counter - only in village biome */}
+      {scene === 'biome' && biome === 'village' && <DestructionCounter />}
+
       {/* Pause menu */}
       {showPause && (
         <div style={{
@@ -221,3 +225,49 @@ const btnStyle: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
 };
+
+/** Destruction counter widget for village biome */
+function DestructionCounter() {
+  const level = useDestructionStore((s) => s.getDestructionLevel());
+  const tier = useDestructionStore((s) => s.getDestructionTier());
+  const blocksDestroyed = useDestructionStore((s) => s.blocksDestroyed);
+  const npcsTerrorized = useDestructionStore((s) => s.npcsTerrorized);
+  const lightningStrikes = useDestructionStore((s) => s.lightningStrikes);
+  const explosions = useDestructionStore((s) => s.explosions);
+
+  // Color from green (0%) through yellow to red (100%)
+  const r = Math.min(255, Math.floor(level * 5.1));
+  const g = Math.min(255, Math.floor((100 - level) * 2.55));
+  const barColor = `rgb(${r},${g},40)`;
+
+  return (
+    <div style={{
+      position: 'fixed', top: 50, left: 8, zIndex: 110,
+      background: 'rgba(0,0,0,0.6)', borderRadius: 8, padding: '6px 10px',
+      pointerEvents: 'none', minWidth: 140,
+    }}>
+      <div style={{ color: '#ddd', fontSize: 10, fontWeight: 700, marginBottom: 3 }}>
+        Zniszczenia Polis
+      </div>
+      {/* Progress bar */}
+      <div style={{
+        width: '100%', height: 6, background: 'rgba(255,255,255,0.15)',
+        borderRadius: 3, overflow: 'hidden', marginBottom: 3,
+      }}>
+        <div style={{
+          width: `${level}%`, height: '100%', background: barColor,
+          borderRadius: 3, transition: 'width 0.3s ease',
+        }} />
+      </div>
+      <div style={{ color: barColor, fontSize: 11, fontWeight: 700 }}>
+        {tier} ({level}%)
+      </div>
+      <div style={{ color: '#999', fontSize: 9, marginTop: 2 }}>
+        {blocksDestroyed > 0 && <span>Bloki: {blocksDestroyed} </span>}
+        {lightningStrikes > 0 && <span>Pioruny: {lightningStrikes} </span>}
+        {explosions > 0 && <span>Wybuchy: {explosions} </span>}
+        {npcsTerrorized > 0 && <span>Strach: {npcsTerrorized}</span>}
+      </div>
+    </div>
+  );
+}
