@@ -22,16 +22,13 @@ export function InventoryPanel() {
 
   const handleSlotClick = (idx: number) => {
     if (selectedSlot === null) {
-      // Pick up
       if (slots[idx]) {
         setSelectedSlot(idx);
       }
     } else {
       if (selectedSlot === idx) {
-        // Deselect
         setSelectedSlot(null);
       } else {
-        // Swap
         moveSlot(selectedSlot, idx);
         setSelectedSlot(null);
       }
@@ -51,7 +48,7 @@ export function InventoryPanel() {
     if (slots[idx]) splitStack(idx);
   };
 
-  const renderSlot = (slot: typeof slots[0], idx: number, borderColor: string = '#444') => {
+  const renderSlot = (slot: typeof slots[0], idx: number, borderColor: string = 'rgba(201,168,76,0.15)') => {
     const isSelected = selectedSlot === idx;
     return (
       <div
@@ -61,12 +58,12 @@ export function InventoryPanel() {
         style={{
           width: slotSize,
           height: slotSize,
-          border: isSelected ? '2px solid #ffcc00' : `1px solid ${borderColor}`,
+          border: isSelected ? '2px solid #c9a84c' : `1px solid ${borderColor}`,
           borderRadius: 4,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: isSelected ? 'rgba(255,204,0,0.15)' : 'rgba(0,0,0,0.4)',
+          backgroundColor: isSelected ? 'rgba(201,168,76,0.15)' : 'rgba(13,10,6,0.5)',
           position: 'relative',
           flexShrink: 0,
           cursor: slot || selectedSlot !== null ? 'pointer' : 'default',
@@ -79,20 +76,20 @@ export function InventoryPanel() {
               height: blockSize,
               backgroundColor: blockColor(slot.blockType),
               borderRadius: 3,
-              border: '1px solid rgba(255,255,255,0.15)',
+              border: '1px solid rgba(201,168,76,0.15)',
               opacity: isSelected ? 0.6 : 1,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }} title={getBlock(slot.blockType).name}>
-              <ItemIcon iconId={getBlock(slot.blockType).icon} size="60%" color="#fff" />
+              <ItemIcon iconId={getBlock(slot.blockType).icon} size="60%" color="#e8dcc8" />
             </div>
             <span style={{
               position: 'absolute',
               bottom: 1,
               right: 2,
               fontSize: 'clamp(8px, 2vw, 10px)',
-              color: '#fff',
+              color: '#e8dcc8',
               fontWeight: 'bold',
               textShadow: '1px 1px 2px black',
             }}>
@@ -111,27 +108,29 @@ export function InventoryPanel() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: 'rgba(0,0,0,0.6)',
+      backgroundColor: 'rgba(10,8,4,0.7)',
       zIndex: 200,
       padding: 16,
     }}
       onClick={(e) => { if (e.target === e.currentTarget) { setSelectedSlot(null); toggle(); } }}
     >
       <div style={{
-        background: 'rgba(30,30,30,0.95)',
-        borderRadius: 12,
+        background: 'rgba(26,20,12,0.95)',
+        borderRadius: 8,
         padding: 'clamp(12px, 3vw, 20px)',
-        border: '1px solid #555',
+        border: '1px solid rgba(201,168,76,0.25)',
         maxWidth: '95vw',
         maxHeight: '85vh',
         overflow: 'auto',
       }}>
         <div style={{
-          color: '#fff',
+          color: '#c9a84c',
           fontSize: 'clamp(13px, 4vw, 16px)',
           fontWeight: 'bold',
           marginBottom: 'clamp(8px, 2vw, 12px)',
           textAlign: 'center',
+          fontFamily: "'Cinzel', serif",
+          letterSpacing: 2,
         }}>
           Ekwipunek
         </div>
@@ -147,9 +146,9 @@ export function InventoryPanel() {
         ))}
 
         {/* Hotbar */}
-        <div style={{ borderTop: '1px solid #555', marginTop: 8, paddingTop: 8 }}>
+        <div style={{ borderTop: '1px solid rgba(201,168,76,0.2)', marginTop: 8, paddingTop: 8 }}>
           <div style={{ display: 'flex', gap: 'clamp(2px, 0.5vw, 4px)', justifyContent: 'center' }}>
-            {slots.slice(0, HOTBAR_SIZE).map((slot, i) => renderSlot(slot, i, '#666'))}
+            {slots.slice(0, HOTBAR_SIZE).map((slot, i) => renderSlot(slot, i, 'rgba(201,168,76,0.25)'))}
           </div>
         </div>
 
@@ -159,13 +158,14 @@ export function InventoryPanel() {
             style={{
               padding: '8px 16px',
               borderRadius: 8,
-              border: '1px solid #555',
-              background: 'rgba(68,136,204,0.2)',
-              color: '#aaccff',
+              border: '1px solid rgba(201,168,76,0.3)',
+              background: 'rgba(201,168,76,0.1)',
+              color: '#c9a84c',
               fontSize: 'clamp(12px, 3vw, 14px)',
               cursor: 'pointer',
-              fontFamily: 'inherit',
+              fontFamily: "'Cinzel', serif",
               touchAction: 'manipulation',
+              letterSpacing: 1,
             }}
           >
             Sortuj
@@ -175,13 +175,14 @@ export function InventoryPanel() {
             style={{
               padding: '8px 24px',
               borderRadius: 8,
-              border: '1px solid #555',
-              background: 'rgba(255,255,255,0.1)',
-              color: '#aaa',
+              border: '1px solid rgba(201,168,76,0.2)',
+              background: 'rgba(201,168,76,0.05)',
+              color: '#8a7a5a',
               fontSize: 'clamp(12px, 3vw, 14px)',
               cursor: 'pointer',
-              fontFamily: 'inherit',
+              fontFamily: "'Cinzel', serif",
               touchAction: 'manipulation',
+              letterSpacing: 1,
             }}
           >
             Zamknij

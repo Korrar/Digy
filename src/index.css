@@ -9,9 +9,9 @@ html, body, #root {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  background: #1a1a2e;
-  color: #fff;
+  font-family: 'Philosopher', 'Cinzel', 'Segoe UI', system-ui, -apple-system, serif;
+  background: #0d0a06;
+  color: #e8dcc8;
   position: fixed;
   top: 0;
   left: 0;
@@ -30,6 +30,31 @@ button {
 /* Prevent pull-to-refresh and overscroll */
 body {
   overscroll-behavior: none;
+}
+
+/* Greek meander/key border pattern as CSS */
+.greek-border {
+  border-image: repeating-linear-gradient(
+    90deg,
+    #c9a84c 0px, #c9a84c 8px,
+    transparent 8px, transparent 12px,
+    #c9a84c 12px, #c9a84c 16px
+  ) 4;
+}
+
+/* Scrollbar styling for Greek theme */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(26, 18, 10, 0.5);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(201, 168, 76, 0.4);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(201, 168, 76, 0.6);
 }
 
 /* Safe area support for notched devices */

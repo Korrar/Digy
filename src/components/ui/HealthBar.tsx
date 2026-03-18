@@ -19,7 +19,7 @@ export function HealthBar() {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'radial-gradient(ellipse at center, transparent 40%, rgba(180,0,0,0.4) 100%)',
+          background: 'radial-gradient(ellipse at center, transparent 40%, rgba(140,40,30,0.4) 100%)',
           pointerEvents: 'none',
           zIndex: 300,
           animation: 'damageVignette 0.3s ease-out forwards',
@@ -38,7 +38,7 @@ export function HealthBar() {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'radial-gradient(ellipse at center, transparent 50%, rgba(120,0,0,0.3) 100%)',
+          background: 'radial-gradient(ellipse at center, transparent 50%, rgba(100,20,10,0.3) 100%)',
           pointerEvents: 'none',
           zIndex: 299,
           animation: 'lowHpPulse 2s ease-in-out infinite',
@@ -79,9 +79,10 @@ export function HealthBar() {
           gap: 4,
         }}>
           <span style={{
-            color: '#7dff7d',
+            color: '#c9a84c',
             fontSize: 'clamp(9px, 2vw, 11px)',
             fontWeight: 'bold',
+            fontFamily: "'Cinzel', serif",
           }}>
             Lv.{level}
           </span>
@@ -89,13 +90,14 @@ export function HealthBar() {
             width: 'clamp(60px, 15vw, 100px)',
             height: 5,
             borderRadius: 3,
-            background: 'rgba(0,0,0,0.5)',
+            background: 'rgba(13,10,6,0.6)',
             overflow: 'hidden',
+            border: '1px solid rgba(201,168,76,0.15)',
           }}>
             <div style={{
               width: `${(xp / xpToNext) * 100}%`,
               height: '100%',
-              background: '#7dff7d',
+              background: 'linear-gradient(90deg, #c9a84c, #e0c060)',
               borderRadius: 3,
               transition: 'width 0.3s',
             }} />

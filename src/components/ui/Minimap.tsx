@@ -31,7 +31,7 @@ export function Minimap({ center }: { center: [number, number] }) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.fillStyle = '#111';
+    ctx.fillStyle = '#0d0a06';
     ctx.fillRect(0, 0, MAP_SIZE, MAP_SIZE);
 
     const halfView = Math.floor(MAP_SIZE / PIXEL_SIZE / 2);
@@ -56,7 +56,7 @@ export function Minimap({ center }: { center: [number, number] }) {
             if (b !== BlockType.AIR) { topBlock = b; break; }
           }
 
-          const color = blockColors.get(topBlock) || '#222';
+          const color = blockColors.get(topBlock) || '#1a140c';
           ctx.fillStyle = color;
           ctx.fillRect(px * PIXEL_SIZE, pz * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
         }
@@ -65,7 +65,7 @@ export function Minimap({ center }: { center: [number, number] }) {
 
     // Draw center marker
     const cx = Math.floor(MAP_SIZE / 2);
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = '#c9a84c';
     ctx.fillRect(cx - 1, cx - 1, 3, 3);
   }, [chunks, center, blockColors]);
 
@@ -81,8 +81,8 @@ export function Minimap({ center }: { center: [number, number] }) {
         width: MAP_SIZE,
         height: MAP_SIZE,
         borderRadius: 6,
-        border: '1px solid rgba(255,255,255,0.2)',
-        background: 'rgba(0,0,0,0.6)',
+        border: '1px solid rgba(201,168,76,0.2)',
+        background: 'rgba(13,10,6,0.7)',
         zIndex: 90,
         imageRendering: 'pixelated',
         pointerEvents: 'none',

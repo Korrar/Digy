@@ -35,14 +35,17 @@ export function LootPopup() {
       onClick={closeLoot}
     >
       <div style={{
-        background: 'rgba(20,20,30,0.92)',
-        border: '2px solid rgba(255,215,0,0.5)',
-        borderRadius: 12,
+        background: 'rgba(26,20,12,0.95)',
+        border: '2px solid rgba(201,168,76,0.5)',
+        borderRadius: 8,
         padding: '14px 20px',
         minWidth: 160,
         textAlign: 'center',
       }}>
-        <div style={{ color: '#ffd700', fontSize: 14, fontWeight: 'bold', marginBottom: 10 }}>
+        <div style={{
+          color: '#c9a84c', fontSize: 14, fontWeight: 'bold', marginBottom: 10,
+          fontFamily: "'Cinzel', serif", letterSpacing: 2,
+        }}>
           Loot!
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -60,25 +63,25 @@ export function LootPopup() {
                   height: 24,
                   borderRadius: 3,
                   backgroundColor: itemColor(item.type),
-                  border: '1px solid rgba(255,255,255,0.2)',
+                  border: '1px solid rgba(201,168,76,0.2)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: 12,
                 }}>
-                  <ItemIcon iconId={def.icon} size={12} color="#fff" />
+                  <ItemIcon iconId={def.icon} size={12} color="#e8dcc8" />
                 </div>
-                <span style={{ color: '#ddd', fontSize: 12 }}>
+                <span style={{ color: '#e8dcc8', fontSize: 12 }}>
                   {def.name}
                 </span>
-                <span style={{ color: '#aaa', fontSize: 11, marginLeft: 'auto' }}>
+                <span style={{ color: '#8a7a5a', fontSize: 11, marginLeft: 'auto' }}>
                   x{item.count}
                 </span>
               </div>
             );
           })}
         </div>
-        <div style={{ color: '#666', fontSize: 10, marginTop: 8 }}>
+        <div style={{ color: '#5a5040', fontSize: 10, marginTop: 8, fontStyle: 'italic' }}>
           Tap to close
         </div>
       </div>

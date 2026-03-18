@@ -7,12 +7,12 @@ const panelStyle: React.CSSProperties = {
   bottom: 80,
   left: '50%',
   transform: 'translateX(-50%)',
-  background: 'rgba(0,0,0,0.85)',
-  border: '1px solid rgba(255,255,255,0.2)',
-  borderRadius: 10,
+  background: 'rgba(26,20,12,0.95)',
+  border: '1px solid rgba(201,168,76,0.25)',
+  borderRadius: 8,
   padding: '10px 14px',
   zIndex: 200,
-  color: '#fff',
+  color: '#e8dcc8',
   fontFamily: 'inherit',
   maxWidth: '95vw',
   display: 'flex',
@@ -29,13 +29,13 @@ const sectionStyle: React.CSSProperties = {
 
 const templateBtnStyle = (selected: boolean): React.CSSProperties => ({
   padding: '6px 10px',
-  border: selected ? '2px solid #4af' : '1px solid rgba(255,255,255,0.3)',
+  border: selected ? '2px solid #c9a84c' : '1px solid rgba(201,168,76,0.25)',
   borderRadius: 6,
-  background: selected ? 'rgba(68,170,255,0.2)' : 'rgba(255,255,255,0.05)',
-  color: '#fff',
+  background: selected ? 'rgba(201,168,76,0.2)' : 'rgba(201,168,76,0.05)',
+  color: selected ? '#c9a84c' : '#e8dcc8',
   fontSize: 12,
   cursor: 'pointer',
-  fontFamily: 'inherit',
+  fontFamily: "'Cinzel', serif",
   textAlign: 'center' as const,
   minWidth: 70,
   transition: 'all 0.15s',
@@ -44,10 +44,10 @@ const templateBtnStyle = (selected: boolean): React.CSSProperties => ({
 const positionBtnStyle = (occupied: boolean, hovered: boolean, disabled: boolean): React.CSSProperties => ({
   width: 36,
   height: 36,
-  border: hovered ? '2px solid #4f4' : occupied ? '1px solid #f44' : '1px solid rgba(255,255,255,0.3)',
+  border: hovered ? '2px solid #6b8e68' : occupied ? '1px solid #c4613a' : '1px solid rgba(201,168,76,0.25)',
   borderRadius: 6,
-  background: occupied ? 'rgba(255,68,68,0.2)' : hovered ? 'rgba(68,255,68,0.2)' : 'rgba(255,255,255,0.05)',
-  color: occupied ? '#f88' : '#fff',
+  background: occupied ? 'rgba(196,97,58,0.2)' : hovered ? 'rgba(107,142,104,0.2)' : 'rgba(201,168,76,0.05)',
+  color: occupied ? '#d8907a' : '#e8dcc8',
   fontSize: 11,
   cursor: disabled ? 'not-allowed' : 'pointer',
   fontFamily: 'inherit',
@@ -84,12 +84,12 @@ export function PlateSelector({ onPlacePlate, onRemovePlate }: PlateSelectorProp
 
   return (
     <div style={panelStyle}>
-      <div style={{ fontSize: 13, fontWeight: 'bold', textAlign: 'center' }}>
+      <div style={{ fontSize: 13, fontWeight: 'bold', textAlign: 'center', fontFamily: "'Cinzel', serif", color: '#c9a84c', letterSpacing: 1 }}>
         Dekoracyjne Platformy
       </div>
 
       {/* Template selection */}
-      <div style={{ fontSize: 11, color: '#aaa', textAlign: 'center' }}>
+      <div style={{ fontSize: 11, color: '#8a7a5a', textAlign: 'center' }}>
         Wybierz typ platformy:
       </div>
       <div style={sectionStyle}>
@@ -106,7 +106,7 @@ export function PlateSelector({ onPlacePlate, onRemovePlate }: PlateSelectorProp
       </div>
 
       {/* Position grid */}
-      <div style={{ fontSize: 11, color: '#aaa', textAlign: 'center' }}>
+      <div style={{ fontSize: 11, color: '#8a7a5a', textAlign: 'center' }}>
         {selectedTemplate
           ? 'Kliknij pozycje aby umiescic platforme:'
           : 'Wybierz typ powyzej, potem pozycje ponizej'}
@@ -123,10 +123,10 @@ export function PlateSelector({ onPlacePlate, onRemovePlate }: PlateSelectorProp
           <div />
           {renderPosBtn('W')}
           <div style={{
-            width: 36, height: 36, background: 'rgba(68,170,255,0.3)',
-            border: '1px solid #4af', borderRadius: 6,
+            width: 36, height: 36, background: 'rgba(201,168,76,0.2)',
+            border: '1px solid rgba(201,168,76,0.4)', borderRadius: 6,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 9, color: '#4af',
+            fontSize: 9, color: '#c9a84c',
           }}>
             Glowna
           </div>
@@ -142,7 +142,7 @@ export function PlateSelector({ onPlacePlate, onRemovePlate }: PlateSelectorProp
         </div>
       </div>
 
-      <div style={{ fontSize: 10, color: '#666', textAlign: 'center' }}>
+      <div style={{ fontSize: 10, color: '#5a5040', textAlign: 'center', fontStyle: 'italic' }}>
         Tab = zamknij | Czerwone = zajete (klik usuwa)
       </div>
     </div>
