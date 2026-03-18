@@ -18,7 +18,7 @@ export function FloatingText() {
     const id = nextId++;
     setEntries((prev) => [
       ...prev,
-      { id, text: detail.text, color: detail.color || '#fff', x: 30 + Math.random() * 40 },
+      { id, text: detail.text, color: detail.color || '#c9a84c', x: 30 + Math.random() * 40 },
     ]);
     setTimeout(() => {
       setEntries((prev) => prev.filter((entry) => entry.id !== id));
@@ -47,6 +47,7 @@ export function FloatingText() {
             textShadow: '0 2px 4px rgba(0,0,0,0.8)',
             animation: 'floatUp 1.5s ease-out forwards',
             pointerEvents: 'none',
+            fontFamily: "'Cinzel', serif",
           }}
         >
           {entry.text}

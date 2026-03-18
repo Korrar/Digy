@@ -218,7 +218,7 @@ function SubVoxelStats() {
   return (
     <div style={sectionStyle}>
       <div style={labelStyle}>Sub-voxele</div>
-      <div style={{ fontSize: 11, color: '#ccc' }}>
+      <div style={{ fontSize: 11, color: '#b8a888' }}>
         Aktywne siatki: {totalGrids} ({(totalGrids * 64)} bajtow)
       </div>
     </div>
@@ -258,8 +258,8 @@ export function DevTools() {
               style={{
                 ...presetBtn,
                 background: (fixedTime === p.value || (p.value === null && fixedTime === null))
-                  ? 'rgba(80,160,255,0.6)'
-                  : 'rgba(255,255,255,0.1)',
+                  ? 'rgba(201,168,76,0.5)'
+                  : 'rgba(201,168,76,0.08)',
               }}
             >
               {p.label}
@@ -275,7 +275,7 @@ export function DevTools() {
           onChange={(e) => setFixedTime(parseFloat(e.target.value))}
           style={{ width: '100%', marginTop: 6 }}
         />
-        <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>
+        <div style={{ fontSize: 10, color: '#8a7a5a', marginTop: 2 }}>
           {fixedTime !== null ? `${Math.round(fixedTime * 24)}:00` : 'automatyczny cykl'}
         </div>
       </div>
@@ -288,7 +288,7 @@ export function DevTools() {
             ...presetBtn,
             width: '100%',
             padding: '6px 8px',
-            background: fastMining ? 'rgba(255,80,80,0.6)' : 'rgba(255,255,255,0.1)',
+            background: fastMining ? 'rgba(196,97,58,0.5)' : 'rgba(201,168,76,0.08)',
           }}
         >
           {fastMining ? '⚡ Szybkie kopanie: ON' : '⛏ Szybkie kopanie: OFF'}
@@ -299,7 +299,7 @@ export function DevTools() {
       <SubVoxelStats />
 
       {/* Item categories */}
-      <div style={{ ...sectionStyle, borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: 8 }}>
+      <div style={{ ...sectionStyle, borderTop: '1px solid rgba(201,168,76,0.15)', paddingTop: 8 }}>
         <div style={labelStyle}>Przedmioty (kliknij kategorię)</div>
         <div style={{ maxHeight: 320, overflowY: 'auto', overflowX: 'hidden' }}>
           {CATEGORIES.map((cat) => (
@@ -308,11 +308,11 @@ export function DevTools() {
                 onClick={() => setExpandedCat(expandedCat === cat.label ? null : cat.label)}
                 style={{
                   ...catHeaderBtn,
-                  background: expandedCat === cat.label ? 'rgba(80,160,255,0.3)' : 'rgba(255,255,255,0.05)',
+                  background: expandedCat === cat.label ? 'rgba(80,160,255,0.3)' : 'rgba(201,168,76,0.05)',
                 }}
               >
                 <span>{expandedCat === cat.label ? '▾' : '▸'} {cat.label}</span>
-                <span style={{ fontSize: 9, color: '#888' }}>{cat.items.length}</span>
+                <span style={{ fontSize: 9, color: '#8a7a5a' }}>{cat.items.length}</span>
               </button>
               {expandedCat === cat.label && (
                 <div style={{ padding: '2px 0' }}>
@@ -322,7 +322,7 @@ export function DevTools() {
                       onClick={() => handleGive(item)}
                       style={{
                         ...itemBtn,
-                        background: flash === `${item.type}` ? 'rgba(80,255,80,0.3)' : 'rgba(255,255,255,0.05)',
+                        background: flash === `${item.type}` ? 'rgba(201,168,76,0.3)' : 'rgba(201,168,76,0.05)',
                       }}
                       title={`+${item.count} ${item.name}`}
                     >
@@ -333,13 +333,13 @@ export function DevTools() {
                           height: 10,
                           borderRadius: 2,
                           background: item.colorHex,
-                          border: '1px solid rgba(255,255,255,0.3)',
+                          border: '1px solid rgba(201,168,76,0.3)',
                           marginRight: 6,
                           flexShrink: 0,
                         }}
                       />
                       <span style={{ flex: 1, textAlign: 'left' }}>{item.name}</span>
-                      <span style={{ fontSize: 9, color: '#888', marginLeft: 4 }}>+{item.count}</span>
+                      <span style={{ fontSize: 9, color: '#8a7a5a', marginLeft: 4 }}>+{item.count}</span>
                     </button>
                   ))}
                 </div>
@@ -366,12 +366,12 @@ const panelStyle: React.CSSProperties = {
   top: 50,
   right: 8,
   width: 240,
-  background: 'rgba(0,0,0,0.9)',
-  border: '1px solid rgba(255,255,255,0.2)',
+  background: 'rgba(26,20,12,0.95)',
+  border: '1px solid rgba(201,168,76,0.25)',
   borderRadius: 8,
   padding: 12,
   zIndex: 200,
-  color: '#fff',
+  color: '#e8dcc8',
   fontFamily: 'monospace',
   fontSize: 12,
   maxHeight: 'calc(100vh - 70px)',
@@ -382,8 +382,9 @@ const headerStyle: React.CSSProperties = {
   fontSize: 14,
   fontWeight: 'bold',
   marginBottom: 10,
-  borderBottom: '1px solid rgba(255,255,255,0.2)',
+  borderBottom: '1px solid rgba(201,168,76,0.2)',
   paddingBottom: 6,
+  color: '#c9a84c',
 };
 
 const sectionStyle: React.CSSProperties = {
@@ -392,7 +393,7 @@ const sectionStyle: React.CSSProperties = {
 
 const labelStyle: React.CSSProperties = {
   fontSize: 11,
-  color: '#ccc',
+  color: '#b8a888',
   marginBottom: 4,
 };
 
@@ -404,9 +405,9 @@ const presetsRow: React.CSSProperties = {
 
 const presetBtn: React.CSSProperties = {
   padding: '3px 8px',
-  border: '1px solid rgba(255,255,255,0.2)',
+  border: '1px solid rgba(201,168,76,0.2)',
   borderRadius: 4,
-  color: '#fff',
+  color: '#e8dcc8',
   fontSize: 10,
   cursor: 'pointer',
   fontFamily: 'monospace',
@@ -418,9 +419,9 @@ const catHeaderBtn: React.CSSProperties = {
   justifyContent: 'space-between',
   alignItems: 'center',
   padding: '4px 8px',
-  border: '1px solid rgba(255,255,255,0.1)',
+  border: '1px solid rgba(201,168,76,0.1)',
   borderRadius: 4,
-  color: '#ddd',
+  color: '#c9a84c',
   fontSize: 11,
   cursor: 'pointer',
   fontFamily: 'monospace',
@@ -433,8 +434,8 @@ const itemBtn: React.CSSProperties = {
   alignItems: 'center',
   padding: '3px 8px 3px 16px',
   border: 'none',
-  borderBottom: '1px solid rgba(255,255,255,0.05)',
-  color: '#eee',
+  borderBottom: '1px solid rgba(201,168,76,0.05)',
+  color: '#e8dcc8',
   fontSize: 10,
   cursor: 'pointer',
   fontFamily: 'monospace',
@@ -443,10 +444,10 @@ const itemBtn: React.CSSProperties = {
 
 const toggleBtnStyle: React.CSSProperties = {
   padding: '3px 8px',
-  border: '1px solid rgba(255,255,255,0.3)',
+  border: '1px solid rgba(201,168,76,0.3)',
   borderRadius: 6,
-  background: 'rgba(80,80,120,0.7)',
-  color: '#aaf',
+  background: 'rgba(201,168,76,0.15)',
+  color: '#c9a84c',
   fontSize: 10,
   cursor: 'pointer',
   fontFamily: 'monospace',

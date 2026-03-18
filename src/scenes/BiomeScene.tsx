@@ -274,25 +274,30 @@ export function BiomeScene() {
       {isGameOver && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 400,
-          background: 'rgba(80,0,0,0.8)', display: 'flex',
+          background: 'rgba(40,10,5,0.85)', display: 'flex',
           flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16,
         }}>
-          <h1 style={{ color: '#ff4444', fontSize: 36, fontWeight: 900, margin: 0, textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>
+          <div style={{ fontSize: 32, marginBottom: 4 }}>💀</div>
+          <h1 style={{
+            color: '#c9a84c', fontSize: 36, fontWeight: 900, margin: 0,
+            textShadow: '0 2px 8px rgba(0,0,0,0.8)',
+            fontFamily: "'Cinzel', serif", letterSpacing: 4,
+          }}>
             Game Over
           </h1>
-          <p style={{ color: '#ffaaaa', fontSize: 14, margin: 0 }}>Zostales pokonany!</p>
+          <p style={{ color: '#b8a888', fontSize: 14, margin: 0, fontStyle: 'italic' }}>Zostales pokonany!</p>
           <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
             <button onClick={respawn} style={{
-              padding: '12px 28px', border: '2px solid rgba(100,255,100,0.4)', borderRadius: 10,
-              background: 'rgba(40,120,40,0.6)', color: '#aaffaa', fontSize: 16,
-              fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              padding: '12px 28px', border: '2px solid rgba(107,142,104,0.4)', borderRadius: 8,
+              background: 'rgba(107,142,104,0.4)', color: '#d4e8d0', fontSize: 16,
+              fontWeight: 700, cursor: 'pointer', fontFamily: "'Cinzel', serif", letterSpacing: 1,
             }}>
               Odrodzenie
             </button>
             <button onClick={returnToMenu} style={{
-              padding: '12px 28px', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 10,
-              background: 'rgba(255,255,255,0.1)', color: '#ccc', fontSize: 16,
-              fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+              padding: '12px 28px', border: '1px solid rgba(201,168,76,0.25)', borderRadius: 8,
+              background: 'rgba(201,168,76,0.1)', color: '#8a7a5a', fontSize: 16,
+              fontWeight: 600, cursor: 'pointer', fontFamily: "'Cinzel', serif", letterSpacing: 1,
             }}>
               Menu
             </button>

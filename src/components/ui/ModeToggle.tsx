@@ -8,9 +8,9 @@ interface ModeToggleProps {
 }
 
 const MODE_CONFIG: Record<GameMode, { border: string; bg: string; label: string; Icon: typeof IconPickaxe }> = {
-  build: { border: '#44cc66', bg: 'rgba(40,140,60,0.7)', label: 'Budowanie', Icon: IconHammer },
-  mine: { border: '#ff6644', bg: 'rgba(180,60,30,0.7)', label: 'Niszczenie', Icon: IconPickaxe },
-  adventure: { border: '#44aaff', bg: 'rgba(40,120,200,0.7)', label: 'Klikanie', Icon: IconHand },
+  build: { border: '#6b8e68', bg: 'rgba(107,142,104,0.6)', label: 'Budowanie', Icon: IconHammer },
+  mine: { border: '#c4613a', bg: 'rgba(196,97,58,0.6)', label: 'Niszczenie', Icon: IconPickaxe },
+  adventure: { border: '#5a7a9a', bg: 'rgba(90,122,154,0.6)', label: 'Klikanie', Icon: IconHand },
 };
 
 export function cycleMode(current: GameMode): GameMode {
@@ -34,7 +34,7 @@ export function ModeToggle({ mode, onToggle }: ModeToggleProps) {
         borderRadius: 22,
         border: `2px solid ${config.border}`,
         background: config.bg,
-        color: '#fff',
+        color: '#e8dcc8',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
@@ -44,7 +44,7 @@ export function ModeToggle({ mode, onToggle }: ModeToggleProps) {
       }}
       title={`Tryb: ${config.label} (Tab)`}
     >
-      <config.Icon size={20} color="#fff" />
+      <config.Icon size={20} color="#e8dcc8" />
     </button>
   );
 }

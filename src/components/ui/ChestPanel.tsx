@@ -37,43 +37,33 @@ export function ChestPanel() {
 
   const handleSlotClick = (source: 'chest' | 'inventory', index: number) => {
     if (dragItem === null) {
-      // Pick up item
       const slot = source === 'chest' ? chestSlots[index] : invSlots[index];
       if (slot) {
         setDragItem({ source, index });
       }
     } else {
-      // Put down / swap
       if (dragItem.source === source && dragItem.index === index) {
-        // Same slot - deselect
         setDragItem(null);
         return;
       }
 
       if (dragItem.source === 'chest' && source === 'chest') {
-        // Move within chest
         useChestStore.getState().moveChestSlot(dragItem.index, index);
       } else if (dragItem.source === 'inventory' && source === 'inventory') {
-        // Move within inventory
         useInventoryStore.getState().moveSlot(dragItem.index, index);
       } else if (dragItem.source === 'chest' && source === 'inventory') {
-        // Take from chest to inventory slot
         const chestItem = chestSlots[dragItem.index];
         const invItem = invSlots[index];
         if (chestItem) {
-          // Take from chest
           const taken = useChestStore.getState().takeFromChest(dragItem.index);
           if (taken) {
             if (invItem) {
-              // Swap: put inventory item into chest
               useInventoryStore.getState().removeBlock(index, invItem.count);
               useChestStore.getState().putInChest(dragItem.index, invItem);
-              // Put chest item into inventory slot
               const invSlotsNow = [...useInventoryStore.getState().slots];
               invSlotsNow[index] = taken;
               useInventoryStore.setState({ slots: invSlotsNow });
             } else {
-              // Empty inv slot - just put there
               const invSlotsNow = [...useInventoryStore.getState().slots];
               invSlotsNow[index] = taken;
               useInventoryStore.setState({ slots: invSlotsNow });
@@ -81,19 +71,16 @@ export function ChestPanel() {
           }
         }
       } else if (dragItem.source === 'inventory' && source === 'chest') {
-        // Put from inventory to chest slot
         const invItem = invSlots[dragItem.index];
         const chestItem = chestSlots[index];
         if (invItem) {
           if (chestItem) {
-            // Swap: take chest item, put inv item into chest
             const taken = useChestStore.getState().takeFromChest(index);
             useChestStore.getState().putInChest(index, { ...invItem });
             const invSlotsNow = [...useInventoryStore.getState().slots];
             invSlotsNow[dragItem.index] = taken;
             useInventoryStore.setState({ slots: invSlotsNow });
           } else {
-            // Empty chest slot
             useChestStore.getState().putInChest(index, { ...invItem });
             useInventoryStore.getState().removeBlock(dragItem.index, invItem.count);
           }
@@ -115,12 +102,12 @@ export function ChestPanel() {
         style={{
           width: slotSize,
           height: slotSize,
-          border: isSelected ? '2px solid #ffcc00' : '1px solid #444',
+          border: isSelected ? '2px solid #c9a84c' : '1px solid rgba(201,168,76,0.15)',
           borderRadius: 4,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: isSelected ? 'rgba(255,204,0,0.15)' : 'rgba(0,0,0,0.4)',
+          backgroundColor: isSelected ? 'rgba(201,168,76,0.15)' : 'rgba(13,10,6,0.5)',
           position: 'relative',
           flexShrink: 0,
           cursor: slot || dragItem ? 'pointer' : 'default',
@@ -133,20 +120,20 @@ export function ChestPanel() {
               height: blockSize,
               backgroundColor: blockColor(slot.blockType),
               borderRadius: 3,
-              border: '1px solid rgba(255,255,255,0.15)',
+              border: '1px solid rgba(201,168,76,0.15)',
               opacity: isSelected ? 0.6 : 1,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}>
-              <ItemIcon iconId={getBlock(slot.blockType).icon} size="60%" color="#fff" />
+              <ItemIcon iconId={getBlock(slot.blockType).icon} size="60%" color="#e8dcc8" />
             </div>
             <span style={{
               position: 'absolute',
               bottom: 1,
               right: 2,
               fontSize: 'clamp(8px, 2vw, 10px)',
-              color: '#fff',
+              color: '#e8dcc8',
               fontWeight: 'bold',
               textShadow: '1px 1px 2px black',
             }}>
@@ -158,13 +145,11 @@ export function ChestPanel() {
     );
   };
 
-  // Chest rows (3 rows of 9)
   const chestRows: (InventorySlot | null)[][] = [];
   for (let i = 0; i < CHEST_SIZE; i += 9) {
     chestRows.push(chestSlots.slice(i, i + 9));
   }
 
-  // Inventory rows (3 rows of 9, slots 9-35)
   const invRows: (InventorySlot | null)[][] = [];
   for (let i = HOTBAR_SIZE; i < INVENTORY_SIZE; i += 9) {
     invRows.push(invSlots.slice(i, i + 9));
@@ -177,28 +162,30 @@ export function ChestPanel() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: 'rgba(0,0,0,0.6)',
+      backgroundColor: 'rgba(10,8,4,0.7)',
       zIndex: 200,
       padding: 16,
     }}
       onClick={(e) => { if (e.target === e.currentTarget) { setDragItem(null); closeChest(); } }}
     >
       <div style={{
-        background: 'rgba(30,30,30,0.95)',
-        borderRadius: 12,
+        background: 'rgba(26,20,12,0.95)',
+        borderRadius: 8,
         padding: 'clamp(12px, 3vw, 20px)',
-        border: '1px solid #555',
+        border: '1px solid rgba(201,168,76,0.25)',
         maxWidth: '95vw',
         maxHeight: '90vh',
         overflow: 'auto',
       }}>
         {/* Chest section */}
         <div style={{
-          color: '#b8945a',
+          color: '#c9a84c',
           fontSize: 'clamp(13px, 4vw, 16px)',
           fontWeight: 'bold',
           marginBottom: 'clamp(6px, 1.5vw, 10px)',
           textAlign: 'center',
+          fontFamily: "'Cinzel', serif",
+          letterSpacing: 2,
         }}>
           Skrzynia
         </div>
@@ -216,28 +203,31 @@ export function ChestPanel() {
             margin: '8px auto',
             padding: '6px 18px',
             borderRadius: 6,
-            border: '1px solid #b8945a',
-            background: 'rgba(184,148,90,0.2)',
-            color: '#b8945a',
+            border: '1px solid rgba(201,168,76,0.3)',
+            background: 'rgba(201,168,76,0.1)',
+            color: '#c9a84c',
             fontSize: 'clamp(11px, 3vw, 13px)',
             cursor: 'pointer',
-            fontFamily: 'inherit',
+            fontFamily: "'Cinzel', serif",
             touchAction: 'manipulation',
+            letterSpacing: 1,
           }}
         >
           Zabierz wszystko
         </button>
 
         {/* Separator */}
-        <div style={{ borderTop: '1px solid #555', margin: '10px 0' }} />
+        <div style={{ borderTop: '1px solid rgba(201,168,76,0.2)', margin: '10px 0' }} />
 
         {/* Player inventory section */}
         <div style={{
-          color: '#aaa',
+          color: '#8a7a5a',
           fontSize: 'clamp(12px, 3.5vw, 14px)',
           fontWeight: 'bold',
           marginBottom: 'clamp(6px, 1.5vw, 10px)',
           textAlign: 'center',
+          fontFamily: "'Cinzel', serif",
+          letterSpacing: 1,
         }}>
           Ekwipunek
         </div>
@@ -249,7 +239,7 @@ export function ChestPanel() {
         ))}
 
         {/* Hotbar */}
-        <div style={{ borderTop: '1px solid #444', marginTop: 6, paddingTop: 6 }}>
+        <div style={{ borderTop: '1px solid rgba(201,168,76,0.15)', marginTop: 6, paddingTop: 6 }}>
           <div style={{ display: 'flex', gap: 'clamp(2px, 0.5vw, 4px)', justifyContent: 'center' }}>
             {invSlots.slice(0, HOTBAR_SIZE).map((slot, i) => renderSlot(slot, 'inventory', i))}
           </div>
@@ -262,13 +252,14 @@ export function ChestPanel() {
             margin: '10px auto 0',
             padding: '8px 24px',
             borderRadius: 8,
-            border: '1px solid #555',
-            background: 'rgba(255,255,255,0.1)',
-            color: '#aaa',
+            border: '1px solid rgba(201,168,76,0.2)',
+            background: 'rgba(201,168,76,0.05)',
+            color: '#8a7a5a',
             fontSize: 'clamp(12px, 3vw, 14px)',
             cursor: 'pointer',
-            fontFamily: 'inherit',
+            fontFamily: "'Cinzel', serif",
             touchAction: 'manipulation',
+            letterSpacing: 1,
           }}
         >
           Zamknij

@@ -52,8 +52,9 @@ export function Hotbar() {
       display: 'flex',
       gap: 'clamp(2px, 0.5vw, 4px)',
       padding: 'clamp(3px, 0.8vw, 6px)',
-      background: 'rgba(0,0,0,0.6)',
+      background: 'rgba(13,10,6,0.75)',
       borderRadius: 8,
+      border: '1px solid rgba(201,168,76,0.2)',
       zIndex: 100,
       maxWidth: '94vw',
     }}>
@@ -66,7 +67,7 @@ export function Hotbar() {
             style={{
               width: 'clamp(36px, 9vw, 48px)',
               height: 'clamp(36px, 9vw, 48px)',
-              border: isSelected ? '2px solid #fff' : '2px solid #555',
+              border: isSelected ? '2px solid #c9a84c' : '2px solid rgba(201,168,76,0.15)',
               borderRadius: 4,
               display: 'flex',
               alignItems: 'center',
@@ -74,8 +75,8 @@ export function Hotbar() {
               position: 'relative',
               cursor: 'pointer',
               userSelect: 'none',
-              backgroundColor: 'rgba(0,0,0,0.5)',
-              boxShadow: isSelected ? '0 0 8px rgba(255,255,255,0.5)' : 'none',
+              backgroundColor: isSelected ? 'rgba(201,168,76,0.12)' : 'rgba(13,10,6,0.5)',
+              boxShadow: isSelected ? '0 0 10px rgba(201,168,76,0.3)' : 'none',
               touchAction: 'none',
             }}
             onClick={() => setSelected(i)}
@@ -87,21 +88,21 @@ export function Hotbar() {
                   height: 'clamp(22px, 6vw, 32px)',
                   backgroundColor: blockColor(slot.blockType),
                   borderRadius: 3,
-                  border: '1px solid rgba(255,255,255,0.2)',
+                  border: '1px solid rgba(201,168,76,0.2)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}>
-                  <ItemIcon iconId={getBlock(slot.blockType).icon} size="60%" color="#fff" />
+                  <ItemIcon iconId={getBlock(slot.blockType).icon} size="60%" color="#e8dcc8" />
                 </div>
                 <span style={{
                   position: 'absolute',
                   bottom: 1,
                   right: 2,
                   fontSize: 'clamp(8px, 2.2vw, 11px)',
-                  color: '#fff',
+                  color: '#e8dcc8',
                   fontWeight: 'bold',
-                  textShadow: '1px 1px 2px black',
+                  textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
                 }}>
                   {slot.count}
                 </span>
@@ -112,7 +113,7 @@ export function Hotbar() {
               top: 1,
               left: 2,
               fontSize: 'clamp(7px, 1.8vw, 9px)',
-              color: '#888',
+              color: '#8a7a5a',
             }}>
               {i + 1}
             </span>

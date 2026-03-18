@@ -34,9 +34,10 @@ function RecipeRow({ recipe, onCraft, craftable }: {
       alignItems: 'center',
       gap: 8,
       padding: '6px 8px',
-      background: craftable ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.2)',
+      background: craftable ? 'rgba(201,168,76,0.08)' : 'rgba(13,10,6,0.3)',
       borderRadius: 6,
       opacity: craftable ? 1 : 0.5,
+      border: '1px solid rgba(201,168,76,0.08)',
     }}>
       {/* Result icon */}
       <div style={{
@@ -44,21 +45,21 @@ function RecipeRow({ recipe, onCraft, craftable }: {
         height: 32,
         borderRadius: 4,
         backgroundColor: itemColor(recipe.result.type),
-        border: '1px solid rgba(255,255,255,0.2)',
+        border: '1px solid rgba(201,168,76,0.2)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         fontSize: 16,
         flexShrink: 0,
       }}>
-        <ItemIcon iconId={getBlock(recipe.result.type).icon} size={14} color="#fff" />
+        <ItemIcon iconId={getBlock(recipe.result.type).icon} size={14} color="#e8dcc8" />
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>
+        <div style={{ color: '#e8dcc8', fontSize: 12, fontWeight: 'bold' }}>
           {recipe.name} {recipe.result.count > 1 ? `x${recipe.result.count}` : ''}
         </div>
-        <div style={{ color: '#aaa', fontSize: 10, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+        <div style={{ color: '#8a7a5a', fontSize: 10, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           {recipe.ingredients.map((ing, i) => (
             <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <span style={{
@@ -69,7 +70,7 @@ function RecipeRow({ recipe, onCraft, craftable }: {
               {ing.count}
             </span>
           ))}
-          <span style={{ color: '#888' }}>| {recipe.craftTime}s</span>
+          <span style={{ color: '#6a5a3a' }}>| {recipe.craftTime}s</span>
         </div>
       </div>
 
@@ -80,8 +81,8 @@ function RecipeRow({ recipe, onCraft, craftable }: {
           padding: '4px 10px',
           border: 'none',
           borderRadius: 4,
-          background: craftable ? '#44aa44' : '#444',
-          color: '#fff',
+          background: craftable ? 'rgba(107,142,104,0.6)' : 'rgba(201,168,76,0.1)',
+          color: craftable ? '#d4e8d0' : '#6a5a3a',
           fontSize: 11,
           cursor: craftable ? 'pointer' : 'default',
           fontWeight: 'bold',
@@ -120,9 +121,9 @@ function CraftingJobSlot({ job, onCollect }: {
         alignItems: 'center',
         gap: 6,
         padding: '4px 6px',
-        background: done ? 'rgba(68,170,68,0.2)' : 'rgba(255,255,255,0.05)',
+        background: done ? 'rgba(107,142,104,0.15)' : 'rgba(201,168,76,0.05)',
         borderRadius: 4,
-        border: done ? '1px solid #44aa44' : '1px solid rgba(255,255,255,0.1)',
+        border: done ? '1px solid rgba(107,142,104,0.4)' : '1px solid rgba(201,168,76,0.1)',
         cursor: done ? 'pointer' : 'default',
       }}
       onClick={done ? onCollect : undefined}
@@ -133,23 +134,23 @@ function CraftingJobSlot({ job, onCollect }: {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 12,
       }}>
-        <ItemIcon iconId={getBlock(job.result.type).icon} size={12} color="#fff" />
+        <ItemIcon iconId={getBlock(job.result.type).icon} size={12} color="#e8dcc8" />
       </div>
       <div style={{ flex: 1 }}>
         <div style={{
           height: 4, borderRadius: 2,
-          background: 'rgba(255,255,255,0.1)',
+          background: 'rgba(201,168,76,0.1)',
           overflow: 'hidden',
         }}>
           <div style={{
             width: `${progress * 100}%`,
             height: '100%',
-            background: done ? '#44aa44' : '#4488cc',
+            background: done ? 'rgba(107,142,104,0.7)' : '#c9a84c',
             transition: 'width 0.1s',
           }} />
         </div>
       </div>
-      <span style={{ color: '#aaa', fontSize: 10 }}>
+      <span style={{ color: '#8a7a5a', fontSize: 10 }}>
         {done ? 'Collect!' : `${Math.ceil((job.endTime - Date.now()) / 1000)}s`}
       </span>
     </div>
@@ -238,16 +239,16 @@ export function CraftingPanel() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'rgba(0,0,0,0.6)',
+        background: 'rgba(10,8,4,0.7)',
       }}
       onClick={(e) => { if (e.target === e.currentTarget) toggleCrafting(); }}
     >
       <div style={{
         width: 'min(400px, 92vw)',
         maxHeight: '80vh',
-        background: 'rgba(30,30,40,0.95)',
-        borderRadius: 12,
-        border: '1px solid rgba(255,255,255,0.15)',
+        background: 'rgba(26,20,12,0.95)',
+        borderRadius: 8,
+        border: '1px solid rgba(201,168,76,0.25)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -258,28 +259,31 @@ export function CraftingPanel() {
           justifyContent: 'space-between',
           alignItems: 'center',
           padding: '10px 14px',
-          borderBottom: '1px solid rgba(255,255,255,0.1)',
+          borderBottom: '1px solid rgba(201,168,76,0.15)',
         }}>
-          <span style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>
+          <span style={{
+            color: '#c9a84c', fontWeight: 'bold', fontSize: 16,
+            fontFamily: "'Cinzel', serif", letterSpacing: 2,
+          }}>
             Crafting
           </span>
           <button onClick={toggleCrafting} style={{
-            background: 'rgba(180,40,40,0.7)',
+            background: 'rgba(140,50,40,0.5)',
             border: 'none',
             borderRadius: 4,
-            color: '#fff',
+            color: '#e8dcc8',
             padding: '2px 8px',
             cursor: 'pointer',
             fontSize: 14,
           }}>
-            <IconClose size={14} color="#fff" />
+            <IconClose size={14} color="#e8dcc8" />
           </button>
         </div>
 
         {/* Active jobs */}
         {activeJobs.length > 0 && (
-          <div style={{ padding: '6px 14px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-            <div style={{ color: '#aaa', fontSize: 10, marginBottom: 4 }}>
+          <div style={{ padding: '6px 14px', borderBottom: '1px solid rgba(201,168,76,0.15)' }}>
+            <div style={{ color: '#8a7a5a', fontSize: 10, marginBottom: 4 }}>
               Active ({activeJobs.length}/{maxSlots})
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -291,15 +295,15 @@ export function CraftingPanel() {
         )}
 
         {/* Search + Category tabs */}
-        <div style={{ padding: '6px 14px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ padding: '6px 14px', borderBottom: '1px solid rgba(201,168,76,0.15)', display: 'flex', flexDirection: 'column', gap: 4 }}>
           <input
             type="text"
             placeholder="Szukaj receptury..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{
-              width: '100%', padding: '4px 8px', border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: 4, background: 'rgba(0,0,0,0.3)', color: '#fff', fontSize: 12,
+              width: '100%', padding: '4px 8px', border: '1px solid rgba(201,168,76,0.2)',
+              borderRadius: 4, background: 'rgba(13,10,6,0.5)', color: '#e8dcc8', fontSize: 12,
               fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
             }}
           />
@@ -310,8 +314,9 @@ export function CraftingPanel() {
                 onClick={() => setCategory(cat.key)}
                 style={{
                   padding: '3px 8px', border: 'none', borderRadius: 4,
-                  background: category === cat.key ? 'rgba(68,136,204,0.5)' : 'rgba(255,255,255,0.08)',
-                  color: '#fff', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap',
+                  background: category === cat.key ? 'rgba(201,168,76,0.3)' : 'rgba(201,168,76,0.05)',
+                  color: category === cat.key ? '#c9a84c' : '#8a7a5a', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap',
+                  fontFamily: "'Cinzel', serif",
                 }}
               >
                 {cat.label}
@@ -323,8 +328,8 @@ export function CraftingPanel() {
         {/* Error toast */}
         {craftError && (
           <div style={{
-            padding: '4px 14px', background: 'rgba(180,40,40,0.3)',
-            color: '#ffaaaa', fontSize: 11, textAlign: 'center',
+            padding: '4px 14px', background: 'rgba(140,50,40,0.3)',
+            color: '#e8a8a0', fontSize: 11, textAlign: 'center',
           }}>
             {craftError}
           </div>
@@ -355,7 +360,7 @@ export function CraftingPanel() {
                     onClick={() => handleCraft(recipe, maxSlots - activeJobs.length)}
                     style={{
                       padding: '4px 6px', border: 'none', borderRadius: 4,
-                      background: 'rgba(68,136,204,0.4)', color: '#aaccff',
+                      background: 'rgba(201,168,76,0.2)', color: '#c9a84c',
                       fontSize: 10, cursor: 'pointer', fontWeight: 'bold',
                       display: 'flex', alignItems: 'center',
                     }}
